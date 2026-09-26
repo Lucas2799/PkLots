@@ -1,0 +1,13 @@
+
+# PkLots - Parking Lot Management System
+Builds/
+obj/
+bin/
+.vs/
+.vscode/
+__pycache__/
+*.pyc
+.env
+.env.local
+docker/data/
+
