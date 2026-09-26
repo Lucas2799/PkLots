@@ -1,0 +1,118 @@
+version: '3.8'
+
+services:
+  # =========================================
+  # 1. PostgreSQL 16 (Banco de Dados)
+  # =========================================
+  pklots-db:
+    image: docker.io/library/postgres:16-alpine
+    container_name: pklots-postgres
+    environment:
+      POSTGRES_USER: pklots_admin
+      POSTGRES_PASSWORD: SenhaForteAqui123!
+      POSTGRES_DB: pklots_core
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pklots-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pklots_admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # =========================================
+  # 2. Redis 7 (Cache + Ocupação em Tempo Real)
+  # =========================================
+  pklots-cache:
+    image: docker.io/library/redis:7-alpine
+    container_name: pklots-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - pklots-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # =========================================
+  # 3. Backend .NET (Minimal API)
+  # =========================================
+  pklots-backend:
+    build:
+      context: ./src/PkLots.Api
+      dockerfile: ../../docker/Dockerfile.api
+      args:
+        DOTNET_VERSION: "8.0"
+    container_name: pklots-dotnet-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=pklots-db;Port=5432;Database=pklots_core;Username=pklots_admin;Password=SenhaForteAqui123!;
+      - ConnectionStrings__RedisConnection=pklots-cache:6379
+      - Services__LprServiceUrl=http://pklots-lpr:5000
+    depends_on:
+      pklots-db:
+        condition: service_healthy
+      pklots-cache:
+        condition: service_healthy
+    networks:
+      - pklots-network
+    restart: unless-stopped
+
+  # =========================================
+  # 4. Microsserviço Python (OpenCV + LPR)
+  # =========================================
+  pklots-lpr:
+    build:
+      context: ./src/PkLots.LprEngine
+      dockerfile: ../../docker/Dockerfile.lpr
+    container_name: pklots-python-lpr
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - FLASK_APP=app.py
+    networks:
+      - pklots-network
+    restart: unless-stopped
+
+  # =========================================
+  # 5. Reverse Proxy / API Gateway (YARP - .NET)
+  # =========================================
+  pklots-gateway:
+    image: docker.io/library/nginx:alpine
+    container_name: pklots-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - pklots-backend
+    networks:
+      - pklots-network
+    restart: unless-stopped
+
+networks:
+  pklots-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

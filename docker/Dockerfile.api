@@ -1,0 +1,49 @@
+# =========================================
+# Build Stage
+# =========================================
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+WORKDIR /src
+
+# Copiar arquivos de projeto
+COPY ["PkLots.Api/PkLots.Api.csproj", "PkLots.Api/"]
+COPY ["PkLots.Core/PkLots.Core.csproj", "PkLots.Core/"]
+COPY ["PkLots.Infrastructure/PkLots.Infrastructure.csproj", "PkLots.Infrastructure/"]
+COPY ["PkLots.Application/PkLots.Application.csproj", "PkLots.Application/"]
+
+# Restaurar dependências
+RUN dotnet restore "PkLots.Api/PkLots.Api.csproj"
+
+# Copiar código-fonte
+COPY ["PkLots.Api/", "PkLots.Api/"]
+COPY ["PkLots.Core/", "PkLots.Core/"]
+COPY ["PkLots.Infrastructure/", "PkLots.Infrastructure/"]
+COPY ["PkLots.Application/", "PkLots.Application/"]
+
+# Build
+RUN dotnet build "PkLots.Api/PkLots.Api.csproj" -c Release -o /app/build
+
+# =========================================
+# Publish Stage
+# =========================================
+FROM build AS publish
+RUN dotnet publish "PkLots.Api/PkLots.Api.csproj" -c Release -o /app/publish
+
+# =========================================
+# Runtime Stage
+# =========================================
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
+WORKDIR /app
+
+# Criar usuário não-root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# Copiar build publicado
+COPY --from=publish /app/publish .
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD dotnet --version
+
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "PkLots.Api.dll"]
