@@ -47,6 +47,28 @@ namespace PkLots.Application.Tests
         }
 
         [Theory]
+        [InlineData(10, 0, true)]      // dentro da tolerância: grátis
+        [InlineData(15, 0, true)]      // no limite: grátis
+        [InlineData(16, 4.00, false)]  // passou: cobra o tempo todo (16 min)
+        public void Tolerancia_de_15_minutos(int minutos, double valorEsperado, bool isento)
+        {
+            var tarifa = CalculadoraTarifa.Calcular(Entrada, Entrada.AddMinutes(minutos), 15m, minutosTolerancia: 15);
+
+            Assert.Equal((decimal)valorEsperado, tarifa.ValorTotal);
+            Assert.Equal(isento, tarifa.Isento);
+            Assert.Equal(minutos, tarifa.MinutosCobrados);
+        }
+
+        [Fact]
+        public void Sem_tolerancia_cobra_desde_o_primeiro_minuto()
+        {
+            var tarifa = CalculadoraTarifa.Calcular(Entrada, Entrada.AddMinutes(4), 15m, minutosTolerancia: 0);
+
+            Assert.False(tarifa.Isento);
+            Assert.Equal(1.00m, tarifa.ValorTotal);
+        }
+
+        [Theory]
         [InlineData(0, "0h 0m")]
         [InlineData(59, "0h 59m")]
         [InlineData(154, "2h 34m")]

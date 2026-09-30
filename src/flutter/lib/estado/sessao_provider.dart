@@ -23,6 +23,8 @@ class SessaoProvider extends ChangeNotifier {
 
   bool get ehGestao => perfil == 'admin' || perfil == 'operador';
 
+  bool get ehAdmin => perfil == 'admin';
+
   /// Primeiro nome, para a saudação no topo
   String get primeiroNome => (nomeUsuario ?? '').split(' ').first;
 

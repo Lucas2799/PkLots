@@ -185,7 +185,11 @@ class Saida {
   final String duracaoFormatada;
   final double valorHora;
   final double valorTotal;
+  final String situacaoPagamento;
   final String? numeroVaga;
+
+  /// Saída dentro da tolerância gratuita
+  bool get isento => situacaoPagamento == 'isento';
 
   Saida({
     required this.id,
@@ -195,6 +199,7 @@ class Saida {
     required this.duracaoFormatada,
     required this.valorHora,
     required this.valorTotal,
+    this.situacaoPagamento = 'calculado',
     this.numeroVaga,
   });
 
@@ -206,6 +211,7 @@ class Saida {
         duracaoFormatada: json['duracaoFormatada'] as String,
         valorHora: _numero(json['valorHora']),
         valorTotal: _numero(json['valorTotal']),
+        situacaoPagamento: (json['situacaoPagamento'] as String?) ?? 'calculado',
         numeroVaga: json['numeroVaga'] as String?,
       );
 }
@@ -278,5 +284,61 @@ class Dashboard {
         ocupacao24h: (json['ocupacao24h'] as List).map((e) => OcupacaoHora.deJson(e as Map<String, dynamic>)).toList(),
         estacionados:
             (json['estacionados'] as List).map((e) => VeiculoEstacionado.deJson(e as Map<String, dynamic>)).toList(),
+      );
+}
+
+class ConfiguracaoPatio {
+  final String nome;
+  final double valorHora;
+  final int minutosTolerancia;
+  final int totalVagas;
+  final int vagasPorFileira;
+  final int maximoVagas;
+
+  ConfiguracaoPatio({
+    required this.nome,
+    required this.valorHora,
+    required this.minutosTolerancia,
+    required this.totalVagas,
+    required this.vagasPorFileira,
+    required this.maximoVagas,
+  });
+
+  factory ConfiguracaoPatio.deJson(Map<String, dynamic> json) => ConfiguracaoPatio(
+        nome: json['nome'] as String,
+        valorHora: _numero(json['valorHora']),
+        minutosTolerancia: json['minutosTolerancia'] as int,
+        totalVagas: json['totalVagas'] as int,
+        vagasPorFileira: json['vagasPorFileira'] as int,
+        maximoVagas: json['maximoVagas'] as int,
+      );
+}
+
+class UsuarioAdmin {
+  static const perfis = ['admin', 'operador', 'motorista'];
+
+  final String id;
+  final String email;
+  final String nomeCompleto;
+  final String perfil;
+  final bool ativo;
+  final DateTime? ultimoLogin;
+
+  UsuarioAdmin({
+    required this.id,
+    required this.email,
+    required this.nomeCompleto,
+    required this.perfil,
+    required this.ativo,
+    this.ultimoLogin,
+  });
+
+  factory UsuarioAdmin.deJson(Map<String, dynamic> json) => UsuarioAdmin(
+        id: json['id'] as String,
+        email: json['email'] as String,
+        nomeCompleto: json['nomeCompleto'] as String,
+        perfil: json['perfil'] as String,
+        ativo: json['ativo'] as bool,
+        ultimoLogin: _dataOpcional(json['ultimoLogin']),
       );
 }

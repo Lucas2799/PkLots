@@ -17,7 +17,7 @@ namespace PkLots.Application.Servicos
             var patioId = await contextoPatio.ObterPatioIdAsync(ct);
 
             return await db.Vagas
-                .Where(v => v.PatioId == patioId)
+                .Where(v => v.PatioId == patioId && v.Ativa)
                 .OrderBy(v => v.Fileira).ThenBy(v => v.Indice)
                 .Select(v => new VagaDto(
                     v.Id,
@@ -41,7 +41,7 @@ namespace PkLots.Application.Servicos
                 return emCache;
 
             var contagem = await db.Vagas
-                .Where(v => v.PatioId == patioId)
+                .Where(v => v.PatioId == patioId && v.Ativa)
                 .GroupBy(v => v.Situacao)
                 .Select(g => new { Situacao = g.Key, Quantidade = g.Count() })
                 .ToListAsync(ct);
@@ -62,7 +62,7 @@ namespace PkLots.Application.Servicos
         public async Task<VagaDto> MarcarManutencaoAsync(Guid vagaId, string? observacoes, CancellationToken ct = default)
         {
             var patioId = await contextoPatio.ObterPatioIdAsync(ct);
-            var vaga = await db.Vagas.FirstOrDefaultAsync(v => v.Id == vagaId && v.PatioId == patioId, ct)
+            var vaga = await db.Vagas.FirstOrDefaultAsync(v => v.Id == vagaId && v.PatioId == patioId && v.Ativa, ct)
                 ?? throw new ExcecaoNaoEncontrado("Vaga não encontrada.");
 
             if (vaga.Ocupada)
@@ -86,7 +86,7 @@ namespace PkLots.Application.Servicos
         public async Task<VagaDto> LiberarManutencaoAsync(Guid vagaId, CancellationToken ct = default)
         {
             var patioId = await contextoPatio.ObterPatioIdAsync(ct);
-            var vaga = await db.Vagas.FirstOrDefaultAsync(v => v.Id == vagaId && v.PatioId == patioId, ct)
+            var vaga = await db.Vagas.FirstOrDefaultAsync(v => v.Id == vagaId && v.PatioId == patioId && v.Ativa, ct)
                 ?? throw new ExcecaoNaoEncontrado("Vaga não encontrada.");
 
             if (vaga.Situacao != SituacaoVaga.Manutencao)

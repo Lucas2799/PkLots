@@ -4,18 +4,38 @@ import 'package:http/http.dart' as http;
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:pklots/app.dart';
+import 'package:pklots/estado/administracao_provider.dart';
 import 'package:pklots/estado/gestao_provider.dart';
 import 'package:pklots/estado/motorista_provider.dart';
 import 'package:pklots/estado/sessao_provider.dart';
 import 'package:pklots/servicos/armazenamento_sessao.dart';
 import 'package:pklots/servicos/cliente_api.dart';
+import 'package:pklots/telas/admin/aba_preco.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'apoio.dart';
 
+/// Requisições de escrita recebidas pelo servidor simulado (para conferir o que foi enviado)
+final enviadas = <http.Request>[];
+
 /// Servidor simulado com as rotas usadas pelas telas
 Future<http.Response> servidor(http.Request req, {required String perfil}) async {
+  if (req.method != 'GET') enviadas.add(req);
   switch (req.url.path) {
+    case '/api/admin/configuracao':
+      return json({
+        'nome': 'Pátio Padrão',
+        'valorHora': 15.0,
+        'minutosTolerancia': req.method == 'PUT' ? 15 : 0,
+        'totalVagas': 30,
+        'vagasPorFileira': 10,
+        'maximoVagas': 260,
+      });
+    case '/api/admin/usuarios':
+      return json([
+        {'id': 'u1', 'email': 'teste@pklots.local', 'nomeCompleto': 'Lucas Tavares', 'perfil': 'admin', 'ativo': true},
+        {'id': 'u2', 'email': 'op@pklots.local', 'nomeCompleto': 'Operador Um', 'perfil': 'operador', 'ativo': false},
+      ]);
     case '/api/auth/login':
       final senhaCorreta = req.body.contains('Senha@123');
       return senhaCorreta
@@ -76,6 +96,7 @@ Future<void> abrirApp(WidgetTester tester, {required String perfil}) async {
       ChangeNotifierProvider.value(value: sessao),
       ChangeNotifierProvider(create: (_) => MotoristaProvider(api)),
       ChangeNotifierProvider(create: (_) => GestaoProvider(api)),
+      ChangeNotifierProvider(create: (_) => AdministracaoProvider(api)),
     ],
     child: const PkLotsApp(),
   ));
@@ -91,7 +112,10 @@ Future<void> entrar(WidgetTester tester, String senha) async {
 
 void main() {
   setUpAll(() => initializeDateFormatting('pt_BR'));
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    enviadas.clear();
+  });
 
   testWidgets('sem sessão abre o login e valida campos vazios', (tester) async {
     await abrirApp(tester, perfil: 'motorista');
@@ -140,6 +164,8 @@ void main() {
     await tester.tap(find.text('Ver tabela'));
     await tester.pumpAndSettle();
     expect(find.text('Ocupadas'), findsWidgets);
+    // Operador não vê a administração
+    expect(find.byTooltip('Administração'), findsNothing);
 
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
@@ -157,6 +183,59 @@ void main() {
     expect(find.text('Olá, Ana'), findsOneWidget);
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('admin abre a administração, simula e salva a tolerância', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Pátio e preço'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '15,00'), findsOneWidget);
+
+    // Sem tolerância, 10 minutos custam R$ 2,50; com 15 min de tolerância, ficam grátis
+    expect(find.text('R\$\u00a02,50'), findsOneWidget);
+    await tester.tap(find.text('15 min'));
+    await tester.pumpAndSettle();
+    expect(find.text('Grátis'), findsNWidgets(1)); // só "Ficou 10 min"; 16 min já é cobrado
+
+    await tester.ensureVisible(find.text('Salvar'));
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    final put = enviadas.singleWhere((r) => r.url.path == '/api/admin/configuracao');
+    expect(put.method, 'PUT');
+    expect(put.body, contains('"minutosTolerancia":15'));
+    expect(put.body, contains('"valorHora":15.0'));
+    expect(find.textContaining('Configuração salva'), findsOneWidget);
+  });
+
+  testWidgets('admin vê usuários e o próprio usuário marcado', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+    await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Usuários'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lucas Tavares (você)'), findsOneWidget);
+    expect(find.textContaining('Inativo'), findsOneWidget);
+    expect(find.text('Novo usuário'), findsOneWidget);
+
+    // Na própria conta, perfil e desativação ficam bloqueados
+    await tester.tap(find.text('Lucas Tavares (você)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Você não pode desativar a própria conta'), findsOneWidget);
+  });
+
+  test('lê valores em reais com vírgula ou ponto', () {
+    expect(AbaPreco.lerValor('15,50'), 15.5);
+    expect(AbaPreco.lerValor('1.234,50'), 1234.5);
+    expect(AbaPreco.lerValor('15.50'), 15.5);
+    expect(AbaPreco.lerValor('abc'), isNull);
   });
 
   test('lê nome e e-mail do payload do token', () {

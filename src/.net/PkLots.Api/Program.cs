@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +55,30 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SecretKey)),
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1)
+        };
+
+        // Usuário desativado ou com perfil alterado perde o acesso na hora, sem esperar o token expirar
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async contexto =>
+            {
+                var usuarioId = contexto.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+                var perfil = contexto.Principal?.FindFirstValue(ClaimTypes.Role);
+                if (!Guid.TryParse(usuarioId, out var id))
+                {
+                    contexto.Fail("Token sem usuário.");
+                    return;
+                }
+
+                var db = contexto.HttpContext.RequestServices.GetRequiredService<IPkLotsDbContext>();
+                var usuario = await db.Usuarios.IgnoreQueryFilters().AsNoTracking()
+                    .Where(u => u.Id == id)
+                    .Select(u => new { u.Ativo, u.Perfil })
+                    .FirstOrDefaultAsync(contexto.HttpContext.RequestAborted);
+
+                if (usuario is null || !usuario.Ativo || usuario.Perfil != perfil)
+                    contexto.Fail("Usuário inativo ou com perfil alterado.");
+            }
         };
     });
 builder.Services.AddAuthorization(Autorizacao.AdicionarPoliticas);
@@ -126,6 +151,7 @@ app.MapearMovimentacao();
 app.MapearVagas();
 app.MapearGestao();
 app.MapearMotorista();
+app.MapearAdministracao();
 
 // Migração e dados iniciais
 using (var scope = app.Services.CreateScope())

@@ -18,6 +18,7 @@ namespace PkLots.Core.Constantes
     {
         public const string Calculado = "calculado";
         public const string Pago = "pago";
+        public const string Isento = "isento"; // saída dentro da tolerância
         public const string Erro = "erro";
     }
 
@@ -30,6 +31,11 @@ namespace PkLots.Core.Constantes
         public const string LprFalhou = "lpr_falhou";
         public const string VagaManutencao = "vaga_manutencao";
         public const string VagaLiberada = "vaga_liberada";
+        public const string ConfiguracaoAlterada = "configuracao_alterada";
+        public const string QuantidadeVagasAlterada = "quantidade_vagas_alterada";
+        public const string UsuarioCriado = "usuario_criado";
+        public const string UsuarioAlterado = "usuario_alterado";
+        public const string SenhaRedefinida = "senha_redefinida";
     }
 
     public static class SituacaoAuditoria

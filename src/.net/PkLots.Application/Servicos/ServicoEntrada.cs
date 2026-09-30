@@ -38,7 +38,7 @@ namespace PkLots.Application.Servicos
             }
 
             var vaga = await db.Vagas
-                .Where(v => v.PatioId == patioId && v.Situacao == SituacaoVaga.Disponivel)
+                .Where(v => v.PatioId == patioId && v.Ativa && v.Situacao == SituacaoVaga.Disponivel)
                 .OrderBy(v => v.Fileira).ThenBy(v => v.Indice)
                 .FirstOrDefaultAsync(ct);
             if (vaga is null)

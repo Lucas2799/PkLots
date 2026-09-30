@@ -130,6 +130,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<int>("MaximoVagas")
                         .HasColumnType("integer");
 
+                    b.Property<int>("MinutosTolerancia")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
@@ -257,6 +260,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("AtualizadoEm")
                         .HasColumnType("timestamp with time zone");

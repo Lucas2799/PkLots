@@ -31,14 +31,10 @@ namespace PkLots.Application.Servicos
         // Cadastro de motorista pelo app ("Criar Conta")
         public async Task<TokenDto> RegistrarMotoristaAsync(RegistroRequisicao requisicao, CancellationToken ct = default)
         {
-            var email = requisicao.Email.Trim().ToLowerInvariant();
+            var email = RegrasUsuario.NormalizarEmail(requisicao.Email);
+            RegrasUsuario.ValidarSenha(requisicao.Senha);
+            var nome = RegrasUsuario.ValidarNome(requisicao.NomeCompleto);
 
-            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
-                throw new ExcecaoNegocio("E-mail inválido.");
-            if (string.IsNullOrWhiteSpace(requisicao.Senha) || requisicao.Senha.Length < 8)
-                throw new ExcecaoNegocio("A senha deve ter pelo menos 8 caracteres.");
-            if (string.IsNullOrWhiteSpace(requisicao.NomeCompleto))
-                throw new ExcecaoNegocio("Nome completo é obrigatório.");
             if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
                 throw new ExcecaoConflito("E-mail já cadastrado.");
 
@@ -48,7 +44,7 @@ namespace PkLots.Application.Servicos
                 PatioId = await contextoPatio.ObterPatioIdAsync(ct),
                 Email = email,
                 SenhaHash = hashSenha.Gerar(requisicao.Senha),
-                NomeCompleto = requisicao.NomeCompleto.Trim(),
+                NomeCompleto = nome,
                 Perfil = Perfis.Motorista,
                 UltimoLogin = agora,
                 CriadoEm = agora,

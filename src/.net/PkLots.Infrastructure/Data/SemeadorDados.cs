@@ -8,8 +8,7 @@ namespace PkLots.Infrastructure.Data
     // Dados iniciais do MVP: pátio padrão com 30 vagas (A1–C10) e os três usuários padrão
     public static class SemeadorDados
     {
-        private static readonly char[] Fileiras = ['A', 'B', 'C'];
-        private const int VagasPorFileira = 10;
+        private const int TotalVagasInicial = 30;
 
         public static async Task SemearAsync(PkLotsDbContext db, IHashSenha hashSenha, CancellationToken ct = default)
         {
@@ -20,23 +19,20 @@ namespace PkLots.Infrastructure.Data
             {
                 Nome = "Pátio Padrão",
                 Descricao = "Pátio inicial do MVP",
-                MaximoVagas = Fileiras.Length * VagasPorFileira,
+                MaximoVagas = TotalVagasInicial,
                 ValorHora = 15.00m
             };
             db.Patios.Add(patio);
 
-            foreach (var fileira in Fileiras)
+            for (var posicao = 0; posicao < TotalVagasInicial; posicao++)
             {
-                for (var indice = 1; indice <= VagasPorFileira; indice++)
+                db.Vagas.Add(new Vaga
                 {
-                    db.Vagas.Add(new Vaga
-                    {
-                        PatioId = patio.Id,
-                        Numero = $"{fileira}{indice}",
-                        Fileira = fileira,
-                        Indice = indice
-                    });
-                }
+                    PatioId = patio.Id,
+                    Numero = LayoutPatio.Numero(posicao),
+                    Fileira = LayoutPatio.Fileira(posicao),
+                    Indice = LayoutPatio.Indice(posicao)
+                });
             }
 
             db.Usuarios.AddRange(

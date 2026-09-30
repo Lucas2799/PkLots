@@ -1,0 +1,263 @@
+using Microsoft.EntityFrameworkCore;
+using PkLots.Application.DTOs;
+using PkLots.Application.Excecoes;
+using PkLots.Application.Interfaces;
+using PkLots.Core.Constantes;
+using PkLots.Core.Entities;
+
+namespace PkLots.Application.Servicos
+{
+    // Funcionalidades exclusivas do perfil admin: preço, tolerância, quantidade de vagas e usuários
+    public class ServicoAdministracao(
+        IPkLotsDbContext db,
+        IContextoPatio contextoPatio,
+        ICacheVagas cache,
+        IHashSenha hashSenha,
+        TimeProvider relogio)
+    {
+        public const decimal ValorHoraMaximo = 1000m;
+        public const int ToleranciaMaxima = 240;
+
+        // ---------- Configuração do pátio ----------
+
+        public async Task<ConfiguracaoPatioDto> ObterConfiguracaoAsync(CancellationToken ct = default)
+        {
+            var patio = await ObterPatioAsync(ct);
+            var totalVagas = await db.Vagas.CountAsync(v => v.PatioId == patio.Id && v.Ativa, ct);
+            return ParaDto(patio, totalVagas);
+        }
+
+        public async Task<ConfiguracaoPatioDto> AtualizarConfiguracaoAsync(Guid adminId, AtualizarConfiguracaoRequisicao requisicao, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(requisicao.Nome))
+                throw new ExcecaoNegocio("Informe o nome do pátio.");
+            if (requisicao.ValorHora <= 0 || requisicao.ValorHora > ValorHoraMaximo)
+                throw new ExcecaoNegocio("O valor por hora deve ser maior que zero e até R$ 1.000,00.");
+            if (decimal.Round(requisicao.ValorHora, 2) != requisicao.ValorHora)
+                throw new ExcecaoNegocio("O valor por hora deve ter no máximo duas casas decimais.");
+            if (requisicao.MinutosTolerancia < 0 || requisicao.MinutosTolerancia > ToleranciaMaxima)
+                throw new ExcecaoNegocio($"A tolerância deve ficar entre 0 e {ToleranciaMaxima} minutos.");
+
+            var patio = await ObterPatioAsync(ct);
+            var agora = relogio.GetUtcNow().UtcDateTime;
+
+            Auditoria.Registrar(db, patio.Id, AcoesAuditoria.ConfiguracaoAlterada, SituacaoAuditoria.Sucesso, null, agora,
+                new()
+                {
+                    ["adminId"] = adminId.ToString(),
+                    ["nomeAnterior"] = patio.Nome,
+                    ["nome"] = requisicao.Nome.Trim(),
+                    ["valorHoraAnterior"] = patio.ValorHora,
+                    ["valorHora"] = requisicao.ValorHora,
+                    ["toleranciaAnterior"] = patio.MinutosTolerancia,
+                    ["tolerancia"] = requisicao.MinutosTolerancia
+                });
+
+            patio.Nome = requisicao.Nome.Trim();
+            patio.ValorHora = requisicao.ValorHora;
+            patio.MinutosTolerancia = requisicao.MinutosTolerancia;
+            patio.AtualizadoEm = agora;
+
+            await db.SaveChangesAsync(ct);
+            return await ObterConfiguracaoAsync(ct);
+        }
+
+        // ---------- Quantidade de vagas ----------
+
+        // As vagas ocupam as posições 0..total-1 (A1, A2... A10, B1...). Aumentar reativa ou cria vagas;
+        // diminuir desativa as últimas (histórico preservado) e é recusado se alguma delas estiver ocupada.
+        public async Task<ConfiguracaoPatioDto> AlterarQuantidadeVagasAsync(Guid adminId, int total, CancellationToken ct = default)
+        {
+            if (total < 1 || total > LayoutPatio.MaximoVagas)
+                throw new ExcecaoNegocio($"A quantidade de vagas deve ficar entre 1 e {LayoutPatio.MaximoVagas}.");
+
+            var patio = await ObterPatioAsync(ct);
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            var vagas = await db.Vagas.Where(v => v.PatioId == patio.Id).ToDictionaryAsync(v => v.Numero, ct);
+            var totalAnterior = vagas.Values.Count(v => v.Ativa);
+
+            // Vagas que ficariam fora da nova quantidade
+            var numerosMantidos = Enumerable.Range(0, total).Select(LayoutPatio.Numero).ToHashSet();
+            var removidas = vagas.Values.Where(v => v.Ativa && !numerosMantidos.Contains(v.Numero)).ToList();
+
+            var ocupadas = removidas.Where(v => v.Ocupada).Select(v => v.Numero).OrderBy(n => n).ToList();
+            if (ocupadas.Count > 0)
+                throw new ExcecaoConflito($"Não é possível remover vagas ocupadas: {string.Join(", ", ocupadas)}. Registre a saída antes.");
+
+            foreach (var vaga in removidas)
+            {
+                vaga.Ativa = false;
+                vaga.Disponivel = false;
+                vaga.Situacao = SituacaoVaga.Disponivel;
+                vaga.Observacoes = null;
+                vaga.AtualizadoEm = agora;
+            }
+
+            for (var posicao = 0; posicao < total; posicao++)
+            {
+                var numero = LayoutPatio.Numero(posicao);
+                if (vagas.TryGetValue(numero, out var existente))
+                {
+                    if (existente.Ativa)
+                        continue;
+
+                    existente.Ativa = true;
+                    existente.Disponivel = true;
+                    existente.Ocupada = false;
+                    existente.Situacao = SituacaoVaga.Disponivel;
+                    existente.VeiculoAtualId = null;
+                    existente.OcupadaDesde = null;
+                    existente.AtualizadoEm = agora;
+                }
+                else
+                {
+                    db.Vagas.Add(new Vaga
+                    {
+                        PatioId = patio.Id,
+                        Numero = numero,
+                        Fileira = LayoutPatio.Fileira(posicao),
+                        Indice = LayoutPatio.Indice(posicao),
+                        CriadoEm = agora,
+                        AtualizadoEm = agora
+                    });
+                }
+            }
+
+            patio.MaximoVagas = total;
+            patio.AtualizadoEm = agora;
+
+            Auditoria.Registrar(db, patio.Id, AcoesAuditoria.QuantidadeVagasAlterada, SituacaoAuditoria.Sucesso, null, agora,
+                new() { ["adminId"] = adminId.ToString(), ["totalAnterior"] = totalAnterior, ["total"] = total });
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new ExcecaoConflito("Uma vaga foi ocupada durante a alteração. Tente novamente.");
+            }
+
+            await cache.InvalidarAsync(patio.Id);
+            return ParaDto(patio, total);
+        }
+
+        // ---------- Usuários ----------
+
+        public async Task<IReadOnlyList<UsuarioDto>> ListarUsuariosAsync(CancellationToken ct = default)
+        {
+            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            return await db.Usuarios
+                .Where(u => u.PatioId == patioId)
+                .OrderByDescending(u => u.Ativo).ThenBy(u => u.NomeCompleto)
+                .Select(u => new UsuarioDto(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm))
+                .ToListAsync(ct);
+        }
+
+        public async Task<UsuarioDto> CriarUsuarioAsync(Guid adminId, CriarUsuarioRequisicao requisicao, CancellationToken ct = default)
+        {
+            var email = RegrasUsuario.NormalizarEmail(requisicao.Email);
+            var nome = RegrasUsuario.ValidarNome(requisicao.NomeCompleto);
+            var perfil = RegrasUsuario.ValidarPerfil(requisicao.Perfil);
+            RegrasUsuario.ValidarSenha(requisicao.Senha);
+
+            if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
+                throw new ExcecaoConflito("E-mail já cadastrado.");
+
+            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            var usuario = new Usuario
+            {
+                PatioId = patioId,
+                Email = email,
+                NomeCompleto = nome,
+                Perfil = perfil,
+                SenhaHash = hashSenha.Gerar(requisicao.Senha),
+                CriadoEm = agora,
+                AtualizadoEm = agora
+            };
+            db.Usuarios.Add(usuario);
+
+            Auditoria.Registrar(db, patioId, AcoesAuditoria.UsuarioCriado, SituacaoAuditoria.Sucesso, null, agora,
+                new() { ["adminId"] = adminId.ToString(), ["usuarioId"] = usuario.Id.ToString(), ["email"] = email, ["perfil"] = perfil });
+
+            await db.SaveChangesAsync(ct);
+            return ParaDto(usuario);
+        }
+
+        public async Task<UsuarioDto> AtualizarUsuarioAsync(Guid adminId, Guid usuarioId, AtualizarUsuarioRequisicao requisicao, CancellationToken ct = default)
+        {
+            var nome = RegrasUsuario.ValidarNome(requisicao.NomeCompleto);
+            var perfil = RegrasUsuario.ValidarPerfil(requisicao.Perfil);
+            var usuario = await ObterUsuarioAsync(usuarioId, ct);
+
+            var perdeAdmin = usuario.Perfil == Perfis.Admin && usuario.Ativo && (perfil != Perfis.Admin || !requisicao.Ativo);
+            if (perdeAdmin && usuario.Id == adminId)
+                throw new ExcecaoNegocio("Você não pode remover o seu próprio acesso de administrador.");
+            if (perdeAdmin)
+            {
+                var outrosAdmins = await db.Usuarios.CountAsync(
+                    u => u.PatioId == usuario.PatioId && u.Id != usuario.Id && u.Ativo && u.Perfil == Perfis.Admin, ct);
+                if (outrosAdmins == 0)
+                    throw new ExcecaoConflito("O pátio precisa ter pelo menos um administrador ativo.");
+            }
+
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            Auditoria.Registrar(db, usuario.PatioId, AcoesAuditoria.UsuarioAlterado, SituacaoAuditoria.Sucesso, null, agora,
+                new()
+                {
+                    ["adminId"] = adminId.ToString(),
+                    ["usuarioId"] = usuario.Id.ToString(),
+                    ["perfilAnterior"] = usuario.Perfil,
+                    ["perfil"] = perfil,
+                    ["ativoAnterior"] = usuario.Ativo,
+                    ["ativo"] = requisicao.Ativo
+                });
+
+            usuario.NomeCompleto = nome;
+            usuario.Perfil = perfil;
+            usuario.Ativo = requisicao.Ativo;
+            usuario.AtualizadoEm = agora;
+
+            await db.SaveChangesAsync(ct);
+            return ParaDto(usuario);
+        }
+
+        public async Task RedefinirSenhaAsync(Guid adminId, Guid usuarioId, string senha, CancellationToken ct = default)
+        {
+            RegrasUsuario.ValidarSenha(senha);
+            var usuario = await ObterUsuarioAsync(usuarioId, ct);
+            var agora = relogio.GetUtcNow().UtcDateTime;
+
+            usuario.SenhaHash = hashSenha.Gerar(senha);
+            usuario.AtualizadoEm = agora;
+
+            Auditoria.Registrar(db, usuario.PatioId, AcoesAuditoria.SenhaRedefinida, SituacaoAuditoria.Sucesso, null, agora,
+                new() { ["adminId"] = adminId.ToString(), ["usuarioId"] = usuario.Id.ToString() });
+
+            await db.SaveChangesAsync(ct);
+        }
+
+        // ---------- Auxiliares ----------
+
+        private async Task<Patio> ObterPatioAsync(CancellationToken ct)
+        {
+            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            return await db.Patios.FirstOrDefaultAsync(p => p.Id == patioId, ct)
+                ?? throw new ExcecaoNaoEncontrado("Pátio não encontrado.");
+        }
+
+        private async Task<Usuario> ObterUsuarioAsync(Guid usuarioId, CancellationToken ct)
+        {
+            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            return await db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId && u.PatioId == patioId, ct)
+                ?? throw new ExcecaoNaoEncontrado("Usuário não encontrado.");
+        }
+
+        private static ConfiguracaoPatioDto ParaDto(Patio patio, int totalVagas) =>
+            new(patio.Nome, patio.ValorHora, patio.MinutosTolerancia, totalVagas, LayoutPatio.VagasPorFileira, LayoutPatio.MaximoVagas);
+
+        private static UsuarioDto ParaDto(Usuario u) =>
+            new(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm);
+    }
+}

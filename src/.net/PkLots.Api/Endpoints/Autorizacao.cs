@@ -6,11 +6,13 @@ namespace PkLots.Api.Endpoints
 {
     public static class Autorizacao
     {
+        public const string Admin = "admin";
         public const string Gestao = "gestao"; // admin e operador
         public const string Motorista = "motorista";
 
         public static void AdicionarPoliticas(Microsoft.AspNetCore.Authorization.AuthorizationOptions opcoes)
         {
+            opcoes.AddPolicy(Admin, p => p.RequireRole(Perfis.Admin));
             opcoes.AddPolicy(Gestao, p => p.RequireRole(Perfis.Admin, Perfis.Operador));
             opcoes.AddPolicy(Motorista, p => p.RequireRole(Perfis.Motorista));
         }

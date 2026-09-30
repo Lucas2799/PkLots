@@ -12,6 +12,7 @@ import '../../widgets/estados_tela.dart';
 import '../../widgets/grafico_ocupacao.dart';
 import '../../widgets/logo_pklots.dart';
 import '../../widgets/recibo_dialogo.dart';
+import '../admin/administracao_tela.dart';
 import 'busca_placa_dialogo.dart';
 import 'mapa_vagas_cartao.dart';
 import 'movimentacao_cartao.dart';
@@ -61,6 +62,16 @@ class _PainelTelaState extends State<PainelTela> {
           ],
         ]),
         actions: [
+          if (sessao.ehAdmin)
+            IconButton(
+              tooltip: 'Administração',
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+              onPressed: () async {
+                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdministracaoTela()));
+                // Preço, vagas ou nome podem ter mudado
+                await estado.carregar(silencioso: true);
+              },
+            ),
           IconButton(
               tooltip: 'Histórico por placa', icon: const Icon(Icons.manage_search), onPressed: () => mostrarBuscaPlaca(context)),
           IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: estado.carregar),

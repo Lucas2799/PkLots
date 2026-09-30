@@ -77,6 +77,30 @@ class ClienteApi {
   Future<Saida> registrarSaidaPorImagem(List<int> bytes, String nomeArquivo) async =>
       Saida.deJson(await _enviarImagem('/api/saidas/imagem', bytes, nomeArquivo));
 
+  // ---------- Administração (somente admin) ----------
+
+  Future<ConfiguracaoPatio> configuracao() async => ConfiguracaoPatio.deJson(await _get('/api/admin/configuracao'));
+
+  Future<ConfiguracaoPatio> salvarConfiguracao(String nome, double valorHora, int minutosTolerancia) async =>
+      ConfiguracaoPatio.deJson(await _enviar('PUT', '/api/admin/configuracao',
+          {'nome': nome, 'valorHora': valorHora, 'minutosTolerancia': minutosTolerancia}));
+
+  Future<ConfiguracaoPatio> alterarQuantidadeVagas(int total) async =>
+      ConfiguracaoPatio.deJson(await _enviar('PUT', '/api/admin/vagas/quantidade', {'total': total}));
+
+  Future<List<UsuarioAdmin>> usuarios() async => _lista(await _get('/api/admin/usuarios'), UsuarioAdmin.deJson);
+
+  Future<UsuarioAdmin> criarUsuario(String email, String nomeCompleto, String senha, String perfil) async =>
+      UsuarioAdmin.deJson(await _post('/api/admin/usuarios',
+          {'email': email, 'nomeCompleto': nomeCompleto, 'senha': senha, 'perfil': perfil}));
+
+  Future<UsuarioAdmin> atualizarUsuario(String id, String nomeCompleto, String perfil, bool ativo) async =>
+      UsuarioAdmin.deJson(await _enviar('PUT', '/api/admin/usuarios/$id',
+          {'nomeCompleto': nomeCompleto, 'perfil': perfil, 'ativo': ativo}));
+
+  Future<void> redefinirSenha(String id, String senha) =>
+      _enviar('PUT', '/api/admin/usuarios/$id/senha', {'senha': senha});
+
   // ---------- Infraestrutura ----------
 
   Map<String, String> get _cabecalhos => {

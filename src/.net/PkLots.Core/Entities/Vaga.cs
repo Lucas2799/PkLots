@@ -13,6 +13,7 @@ namespace PkLots.Core.Entities
         public string Situacao { get; set; } = "disponivel"; // disponivel, ocupada, manutencao
         public DateTime? OcupadaDesde { get; set; }
         public string? Observacoes { get; set; }
+        public bool Ativa { get; set; } = true; // vagas removidas pelo admin ficam inativas (preserva o histórico)
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
         public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
         public uint Versao { get; set; } // controle de concorrência (xmin no PostgreSQL)

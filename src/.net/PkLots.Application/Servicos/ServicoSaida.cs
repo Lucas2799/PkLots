@@ -58,7 +58,7 @@ namespace PkLots.Application.Servicos
         {
             var agora = relogio.GetUtcNow().UtcDateTime;
             var patio = await db.Patios.FirstAsync(p => p.Id == entrada.PatioId, ct);
-            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, patio.ValorHora);
+            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, patio.ValorHora, patio.MinutosTolerancia);
 
             var saida = new SaidaVeiculo
             {
@@ -72,7 +72,7 @@ namespace PkLots.Application.Servicos
                 ValorHora = patio.ValorHora,
                 ValorTotal = tarifa.ValorTotal,
                 Moeda = "BRL",
-                SituacaoPagamento = SituacaoPagamento.Calculado,
+                SituacaoPagamento = tarifa.Isento ? SituacaoPagamento.Isento : SituacaoPagamento.Calculado,
                 Situacao = SituacaoEntrada.Concluida,
                 CriadoEm = agora
             };

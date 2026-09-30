@@ -3,6 +3,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'estado/administracao_provider.dart';
 import 'estado/gestao_provider.dart';
 import 'estado/motorista_provider.dart';
 import 'estado/sessao_provider.dart';
@@ -23,6 +24,7 @@ Future<void> main() async {
       ChangeNotifierProvider.value(value: sessao),
       ChangeNotifierProvider(create: (_) => MotoristaProvider(api)),
       ChangeNotifierProvider(create: (_) => GestaoProvider(api)),
+      ChangeNotifierProvider(create: (_) => AdministracaoProvider(api)),
     ],
     child: const PkLotsApp(),
   ));

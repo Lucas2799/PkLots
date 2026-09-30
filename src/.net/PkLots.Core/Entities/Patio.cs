@@ -8,6 +8,7 @@ namespace PkLots.Core.Entities
         public string? Descricao { get; set; }
         public int MaximoVagas { get; set; } = 30;
         public decimal ValorHora { get; set; } = 15.00m;
+        public int MinutosTolerancia { get; set; } = 0; // saída dentro da tolerância não paga
         public bool Ativo { get; set; } = true;
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
         public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;

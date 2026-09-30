@@ -45,6 +45,7 @@ namespace PkLots.Application.Tests
         public ServicoVeiculos Veiculos => new(Db, ContextoPatio);
         public ServicoMotorista Motorista => new(Db, ContextoPatio, Veiculos, Saida, Relogio);
         public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Relogio);
+        public ServicoAdministracao Administracao => new(Db, ContextoPatio, Cache, HashSenha, Relogio);
         public ServicoAutenticacao Autenticacao => new(Db, HashSenha, new GeradorTokenFalso(), ContextoPatio, Relogio);
 
         public Usuario CriarUsuario(string email, string senha, string perfil = Perfis.Motorista)

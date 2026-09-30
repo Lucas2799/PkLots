@@ -54,14 +54,14 @@ namespace PkLots.Application.Servicos
         public async Task<EstacionamentoAtualDto?> ObterEstacionamentoAtualAsync(Guid usuarioId, CancellationToken ct = default)
         {
             var entrada = await ConsultarEntradaAtiva(usuarioId)
-                .Select(e => new { e.Id, e.Placa, e.DataHoraEntrada, NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null, e.Patio.ValorHora })
+                .Select(e => new { e.Id, e.Placa, e.DataHoraEntrada, NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null, e.Patio.ValorHora, e.Patio.MinutosTolerancia })
                 .FirstOrDefaultAsync(ct);
 
             if (entrada is null)
                 return null;
 
             var agora = relogio.GetUtcNow().UtcDateTime;
-            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, entrada.ValorHora);
+            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, entrada.ValorHora, entrada.MinutosTolerancia);
 
             return new EstacionamentoAtualDto(entrada.Id, entrada.Placa, entrada.DataHoraEntrada,
                 tarifa.DuracaoFormatada, entrada.NumeroVaga, tarifa.ValorTotal);
