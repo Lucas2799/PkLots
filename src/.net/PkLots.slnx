@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="../../tests/PkLots.Application.Tests/PkLots.Application.Tests.csproj" />
   <Project Path="PkLots.Api/PkLots.Api.csproj" />
   <Project Path="PkLots.Application/PkLots.Application.csproj" />
   <Project Path="PkLots.Core/PkLots.Core.csproj" />

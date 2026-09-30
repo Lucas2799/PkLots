@@ -2,11 +2,13 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using PkLots.Application.Interfaces;
+using PkLots.Core.Constantes;
 using PkLots.Core.Entities;
 
 namespace PkLots.Infrastructure.Data
 {
-    public class PkLotsDbContext : DbContext
+    public class PkLotsDbContext : DbContext, IPkLotsDbContext
     {
         // Pátio atual resolvido a partir de HttpContext.Items["PatioId"].
         // Quando nulo (migrations, jobs, startup), os filtros não restringem por pátio.
@@ -63,6 +65,29 @@ namespace PkLots.Infrastructure.Data
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Email).IsUnique();
 
+            modelBuilder.Entity<Vaga>()
+                .HasIndex(v => new { v.PatioId, v.Numero }).IsUnique();
+
+            modelBuilder.Entity<Veiculo>()
+                .HasIndex(v => new { v.PatioId, v.Placa }).IsUnique();
+
+            // Um veículo só pode ter uma entrada ativa por pátio
+            modelBuilder.Entity<EntradaVeiculo>()
+                .HasIndex(e => new { e.PatioId, e.Placa })
+                .IsUnique()
+                .HasFilter($"\"Situacao\" = '{SituacaoEntrada.Ativa}'");
+
+            modelBuilder.Entity<SaidaVeiculo>()
+                .HasIndex(s => s.EntradaVeiculoId).IsUnique();
+
+            modelBuilder.Entity<LogAuditoria>()
+                .HasIndex(l => new { l.PatioId, l.CriadoEm });
+
+            // Concorrência otimista na alocação de vagas (coluna de sistema xmin)
+            modelBuilder.Entity<Vaga>()
+                .Property(v => v.Versao)
+                .IsRowVersion();
+
             // Relacionamentos
             modelBuilder.Entity<Usuario>()
                 .HasOne(u => u.Patio)
@@ -93,6 +118,12 @@ namespace PkLots.Infrastructure.Data
                 .WithMany(p => p.Saidas)
                 .HasForeignKey(s => s.PatioId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Veiculo>()
+                .HasOne(v => v.Usuario)
+                .WithMany()
+                .HasForeignKey(v => v.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             // LogAuditoria.Detalhes armazenado como jsonb
             modelBuilder.Entity<LogAuditoria>()

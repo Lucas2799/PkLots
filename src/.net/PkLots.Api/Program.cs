@@ -1,10 +1,24 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using PkLots.Api.Endpoints;
+using PkLots.Api.Middleware;
+using PkLots.Application;
+using PkLots.Application.Interfaces;
+using PkLots.Infrastructure;
 using PkLots.Infrastructure.Data;
+using PkLots.Infrastructure.Seguranca;
+using PkLots.Infrastructure.Servicos;
 using Serilog;
 
 // Serilog
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", Serilog.Events.LogEventLevel.Information)
+    .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File("logs/pklots-.txt", rollingInterval: RollingInterval.Day)
     .CreateLogger();
@@ -14,12 +28,34 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog();
 
 // Services
-builder.Services.AddDbContext<PkLotsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddAplicacao();
+builder.Services.AddInfraestrutura(builder.Configuration);
 
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddAuthorization();
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddExceptionHandler<ManipuladorExcecoes>();
+builder.Services.AddProblemDetails();
+
+var jwt = builder.Configuration.GetSection("Jwt").Get<OpcoesJwt>() ?? new OpcoesJwt();
+if (Encoding.UTF8.GetByteCount(jwt.SecretKey) < 32)
+    throw new InvalidOperationException("Jwt:SecretKey deve ter pelo menos 32 bytes.");
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SecretKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+builder.Services.AddAuthorization(Autorizacao.AdicionarPoliticas);
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -30,22 +66,72 @@ builder.Services.AddCors(options =>
     });
 });
 
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "PkLots API", Version = "v1" });
+    var esquema = new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+    };
+    options.AddSecurityDefinition("Bearer", esquema);
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement { [esquema] = Array.Empty<string>() });
+});
+
 var app = builder.Build();
 
-app.UseHttpsRedirection();
+app.UseExceptionHandler();
+app.UseSerilogRequestLogging();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else
+{
+    app.UseHttpsRedirection();
+}
+
 app.UseCors("AllowAll");
+app.UseAuthentication();
+
+// Disponibiliza o pátio do token para os filtros multi-pátio do DbContext
+app.Use(async (contexto, proximo) =>
+{
+    var patio = contexto.User.FindFirst(ContextoPatio.ClaimPatio)?.Value;
+    if (patio is not null)
+        contexto.Items["PatioId"] = patio;
+    await proximo();
+});
+
 app.UseAuthorization();
 
 // Health Check
 app.MapGet("/health", () => new { status = "healthy" })
     .WithName("Health")
-    .WithOpenApi();
+    .WithOpenApi()
+    .AllowAnonymous();
 
-// Database Migration
+app.MapearAutenticacao();
+app.MapearMovimentacao();
+app.MapearVagas();
+app.MapearGestao();
+app.MapearMotorista();
+
+// Migração e dados iniciais
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<PkLotsDbContext>();
     db.Database.Migrate();
+    await SemeadorDados.SemearAsync(db, scope.ServiceProvider.GetRequiredService<IHashSenha>());
 }
 
 app.Run();
+
+public partial class Program;

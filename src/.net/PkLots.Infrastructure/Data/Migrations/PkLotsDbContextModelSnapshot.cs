@@ -68,6 +68,10 @@ namespace PkLots.Infrastructure.Data.Migrations
 
                     b.HasIndex("PatioId", "DataHoraEntrada");
 
+                    b.HasIndex("PatioId", "Placa")
+                        .IsUnique()
+                        .HasFilter("\"Situacao\" = 'ativa'");
+
                     b.ToTable("EntradasVeiculos");
                 });
 
@@ -100,7 +104,7 @@ namespace PkLots.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PatioId");
+                    b.HasIndex("PatioId", "CriadoEm");
 
                     b.ToTable("LogsAuditoria");
                 });
@@ -193,7 +197,8 @@ namespace PkLots.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("EntradaVeiculoId");
+                    b.HasIndex("EntradaVeiculoId")
+                        .IsUnique();
 
                     b.HasIndex("PatioId");
 
@@ -291,9 +296,18 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<Guid?>("VeiculoAtualId")
                         .HasColumnType("uuid");
 
+                    b.Property<uint>("Versao")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PatioId", "Disponivel");
+
+                    b.HasIndex("PatioId", "Numero")
+                        .IsUnique();
 
                     b.ToTable("Vagas");
                 });
@@ -329,11 +343,17 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("Telefone")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("PatioId");
-
                     b.HasIndex("Placa");
+
+                    b.HasIndex("UsuarioId");
+
+                    b.HasIndex("PatioId", "Placa")
+                        .IsUnique();
 
                     b.ToTable("Veiculos");
                 });
@@ -421,7 +441,14 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PkLots.Core.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Patio");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Patio", b =>

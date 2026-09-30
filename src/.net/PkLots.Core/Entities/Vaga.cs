@@ -15,6 +15,7 @@ namespace PkLots.Core.Entities
         public string? Observacoes { get; set; }
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
         public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
+        public uint Versao { get; set; } // controle de concorrência (xmin no PostgreSQL)
 
         public Patio Patio { get; set; } = null!;
     }
