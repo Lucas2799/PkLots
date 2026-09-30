@@ -53,7 +53,7 @@ namespace PkLots.Application.Servicos
             return new DashboardDto(patio.Nome, hoje, vagas, ocupacao, listaEstacionados);
         }
 
-        // Quantidade de vagas ocupadas no fim de cada uma das últimas 24 horas
+        // Vagas ocupadas no início de cada uma das últimas 23 horas e no momento atual (último ponto)
         private async Task<IReadOnlyList<OcupacaoHoraDto>> CalcularOcupacao24hAsync(Guid patioId, DateTime agora, int totalVagas, CancellationToken ct)
         {
             var inicioJanela = agora.AddHours(-24);
@@ -73,8 +73,9 @@ namespace PkLots.Application.Servicos
 
             var horaAtual = new DateTime(agora.Year, agora.Month, agora.Day, agora.Hour, 0, 0, DateTimeKind.Utc);
 
-            return Enumerable.Range(0, 24)
-                .Select(i => horaAtual.AddHours(i - 23))
+            return Enumerable.Range(0, 23)
+                .Select(i => horaAtual.AddHours(i - 22))
+                .Append(agora)
                 .Select(hora =>
                 {
                     var ocupadas = periodos.Count(p => p.DataHoraEntrada <= hora && (p.DataHoraSaida == null || p.DataHoraSaida > hora));

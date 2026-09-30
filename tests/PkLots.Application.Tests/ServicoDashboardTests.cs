@@ -23,8 +23,11 @@ namespace PkLots.Application.Tests
             var estacionado = Assert.Single(dashboard.Estacionados);
             Assert.Equal("BBB2222", estacionado.Placa);
             Assert.Equal(24, dashboard.Ocupacao24h.Count);
-            // Último ponto = início da hora atual (14:00), quando os dois veículos ainda estavam no pátio
-            Assert.Equal(2, dashboard.Ocupacao24h[^1].Ocupadas);
+            // Último ponto = agora (14:30:45): AAA1111 acabou de sair, só BBB2222 segue no pátio
+            Assert.Equal(1, dashboard.Ocupacao24h[^1].Ocupadas);
+            Assert.Equal(Cenario.Inicio.UtcDateTime.AddHours(1), dashboard.Ocupacao24h[^1].Hora);
+            // Ponto das 14:00: os dois veículos estavam no pátio
+            Assert.Equal(2, dashboard.Ocupacao24h[^2].Ocupadas);
         }
 
         [Fact]

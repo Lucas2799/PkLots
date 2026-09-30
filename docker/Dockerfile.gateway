@@ -1,0 +1,31 @@
+# =========================================
+# PkLots Gateway: Nginx servindo o app Flutter (web) + proxy da API
+# Contexto de build: raiz do projeto
+# =========================================
+
+# =========================================
+# Build do Flutter Web
+# =========================================
+FROM ghcr.io/cirruslabs/flutter:stable AS build
+WORKDIR /app
+
+# Dependências primeiro (camada cacheada enquanto o pubspec não muda)
+COPY src/flutter/pubspec.yaml src/flutter/pubspec.lock ./
+RUN flutter pub get
+
+COPY src/flutter/ ./
+# --no-web-resources-cdn: CanvasKit servido pelo próprio gateway (sem depender do CDN do Google)
+RUN flutter build web --release --no-web-resources-cdn
+
+# =========================================
+# Runtime
+# =========================================
+FROM docker.io/library/nginx:alpine AS final
+
+COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
+COPY --from=build /app/build/web /usr/share/nginx/html
+
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/health >/dev/null || exit 1

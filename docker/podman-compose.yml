@@ -5,7 +5,7 @@
 #   cp docker/.env.example docker/.env   # ajuste senhas e chave JWT
 #   podman compose -f docker/podman-compose.yml up -d --build
 #
-# Gateway (API via Nginx): http://localhost:${GATEWAY_PORTA:-8000}
+# App web + API (via Nginx): http://localhost:${GATEWAY_PORTA:-8000}
 # =========================================
 
 services:
@@ -111,19 +111,17 @@ services:
     restart: unless-stopped
 
   # =========================================
-  # 5. Reverse Proxy / API Gateway (Nginx)
+  # 5. Gateway (Nginx): app Flutter web em / e proxy de /api e /swagger
   # =========================================
   pklots-gateway:
-    image: docker.io/library/nginx:alpine
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.gateway
+    image: localhost/pklots-gateway:latest
     container_name: pklots-nginx
     ports:
       # Porta alta: Podman rootless não publica portas < 1024
       - "${GATEWAY_PORTA:-8000}:80"
-    environment:
-      # Gera NGINX_LOCAL_RESOLVERS a partir do DNS do container (usado no template)
-      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
-    volumes:
-      - ./nginx.conf:/etc/nginx/templates/default.conf.template:ro,Z
     depends_on:
       pklots-backend:
         condition: service_healthy
