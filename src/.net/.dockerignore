@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+**/logs/
+**/.vs/
+**/.vscode/
+**/*.user
+**/appsettings.Development.json
+PkLots.LprEngine/

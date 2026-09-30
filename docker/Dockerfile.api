@@ -1,49 +1,65 @@
+# syntax=docker/dockerfile:1
 # =========================================
-# Build Stage
+# PkLots.Api - imagem enxuta
+# Publish self-contained + trimming sobre runtime-deps Alpine:
+# a imagem final não tem SDK, nem runtime .NET compartilhado, nem ICU.
+# Contexto de build: src/.net
+# =========================================
+
+# =========================================
+# Build / Publish
 # =========================================
 FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+ARG TARGETARCH
 WORKDIR /src
 
-# Copiar arquivos de projeto
-COPY ["PkLots.Api/PkLots.Api.csproj", "PkLots.Api/"]
-COPY ["PkLots.Core/PkLots.Core.csproj", "PkLots.Core/"]
-COPY ["PkLots.Infrastructure/PkLots.Infrastructure.csproj", "PkLots.Infrastructure/"]
-COPY ["PkLots.Application/PkLots.Application.csproj", "PkLots.Application/"]
+# Restaurar dependências primeiro (camada cacheada enquanto os .csproj não mudam)
+COPY PkLots.Api/PkLots.Api.csproj PkLots.Api/
+COPY PkLots.Application/PkLots.Application.csproj PkLots.Application/
+COPY PkLots.Core/PkLots.Core.csproj PkLots.Core/
+COPY PkLots.Infrastructure/PkLots.Infrastructure.csproj PkLots.Infrastructure/
+RUN dotnet restore PkLots.Api/PkLots.Api.csproj \
+        --runtime linux-musl-${TARGETARCH/amd64/x64} \
+        -p:PublishTrimmed=true
 
-# Restaurar dependências
-RUN dotnet restore "PkLots.Api/PkLots.Api.csproj"
-
-# Copiar código-fonte
-COPY ["PkLots.Api/", "PkLots.Api/"]
-COPY ["PkLots.Core/", "PkLots.Core/"]
-COPY ["PkLots.Infrastructure/", "PkLots.Infrastructure/"]
-COPY ["PkLots.Application/", "PkLots.Application/"]
-
-# Build
-RUN dotnet build "PkLots.Api/PkLots.Api.csproj" -c Release -o /app/build
+# Copiar código-fonte e publicar
+COPY PkLots.Api/ PkLots.Api/
+COPY PkLots.Application/ PkLots.Application/
+COPY PkLots.Core/ PkLots.Core/
+COPY PkLots.Infrastructure/ PkLots.Infrastructure/
+RUN dotnet publish PkLots.Api/PkLots.Api.csproj \
+        -c Release \
+        --runtime linux-musl-${TARGETARCH/amd64/x64} \
+        --self-contained true \
+        --no-restore \
+        -p:PublishTrimmed=true \
+        -p:TrimMode=partial \
+        -p:InvariantGlobalization=true \
+        -p:JsonSerializerIsReflectionEnabledByDefault=true \
+        -p:DebugType=none \
+        -p:GenerateDocumentationFile=false \
+        -o /app
 
 # =========================================
-# Publish Stage
+# Runtime
 # =========================================
-FROM build AS publish
-RUN dotnet publish "PkLots.Api/PkLots.Api.csproj" -c Release -o /app/publish
-
-# =========================================
-# Runtime Stage
-# =========================================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS final
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine AS final
 WORKDIR /app
 
-# Criar usuário não-root
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
+ENV ASPNETCORE_URLS=http://+:8080 \
+    ASPNETCORE_ENVIRONMENT=Production \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true \
+    DOTNET_gcServer=0 \
+    DOTNET_GCHeapHardLimitPercent=0x4B
 
-# Copiar build publicado
-COPY --from=publish /app/publish .
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD dotnet --version
+# Usuário não-root já existente na imagem base (UID 1654)
+COPY --from=build --chown=$APP_UID:$APP_UID /app .
+USER $APP_UID
 
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "PkLots.Api.dll"]
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1
+
+ENTRYPOINT ["./PkLots.Api"]

@@ -20,6 +20,8 @@ namespace PkLots.Infrastructure.Servicos
             try
             {
                 using var resposta = await http.PostAsync("v1/lpr/analisar", conteudo, ct);
+                if (resposta.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                    throw new ExcecaoNegocio("O arquivo enviado não é uma imagem válida.");
                 if (!resposta.IsSuccessStatusCode)
                     throw new ExcecaoServicoExterno($"Serviço de reconhecimento respondeu {(int)resposta.StatusCode}.");
 

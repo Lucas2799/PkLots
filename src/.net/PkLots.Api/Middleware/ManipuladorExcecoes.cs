@@ -20,7 +20,9 @@ namespace PkLots.Api.Middleware
                 _ => (StatusCodes.Status500InternalServerError, "Erro interno")
             };
 
-            if (status >= 500)
+            if (status == StatusCodes.Status503ServiceUnavailable)
+                logger.LogWarning(excecao.InnerException, "{Mensagem} ({Metodo} {Caminho})", excecao.Message, contexto.Request.Method, contexto.Request.Path);
+            else if (status >= 500)
                 logger.LogError(excecao, "Erro ao processar {Metodo} {Caminho}", contexto.Request.Method, contexto.Request.Path);
 
             var detalhe = status == StatusCodes.Status500InternalServerError

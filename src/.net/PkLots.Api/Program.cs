@@ -18,6 +18,8 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.Hosting.Lifetime", Serilog.Events.LogEventLevel.Information)
+    // Exceções já tratadas pelo ManipuladorExcecoes, que registra ele mesmo as falhas reais
+    .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", Serilog.Events.LogEventLevel.Fatal)
     .Enrich.FromLogContext()
     .WriteTo.Console()
     .WriteTo.File("logs/pklots-.txt", rollingInterval: RollingInterval.Day)
@@ -85,18 +87,19 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
 app.UseSerilogRequestLogging();
+app.UseExceptionHandler();
 
-if (app.Environment.IsDevelopment())
+// Swagger: sempre em Development; nos demais ambientes só com Swagger:Habilitado=true
+if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger:Habilitado"))
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-else
-{
+
+// Atrás do Nginx/containers o TLS termina no gateway; redirecionar só quando configurado
+if (app.Configuration.GetValue<bool>("RedirecionarHttps"))
     app.UseHttpsRedirection();
-}
 
 app.UseCors("AllowAll");
 app.UseAuthentication();
