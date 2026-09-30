@@ -11,3 +11,4 @@ __pycache__/
 .env.local
 docker/data/
 
+logs/
