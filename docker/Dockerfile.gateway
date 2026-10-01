@@ -23,6 +23,15 @@ RUN versao=$(sha256sum build/web/main.dart.js | cut -c1-12) \
     && sed -i "s|\"mainJsPath\":\"main.dart.js\"|\"mainJsPath\":\"main.dart.js?v=$versao\"|" build/web/flutter_bootstrap.js \
     && grep -q "main.dart.js?v=$versao" build/web/flutter_bootstrap.js
 
+# Mesmo problema nas fontes: a de ícones é reduzida aos ícones usados em cada build, com o mesmo nome.
+# Acrescenta o hash de cada fonte ao endereço registrado no FontManifest.json
+RUN cd build/web/assets \
+    && for fonte in $(grep -o '"asset":"[^"]*"' FontManifest.json | cut -d'"' -f4); do \
+         versao=$(sha256sum "$fonte" | cut -c1-12); \
+         sed -i "s|\"asset\":\"$fonte\"|\"asset\":\"$fonte?v=$versao\"|" FontManifest.json; \
+       done \
+    && grep -q '?v=' FontManifest.json
+
 # =========================================
 # Runtime
 # =========================================
