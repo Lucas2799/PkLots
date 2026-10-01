@@ -17,6 +17,12 @@ COPY src/flutter/ ./
 # --no-web-resources-cdn: CanvasKit servido pelo próprio gateway (sem depender do CDN do Google)
 RUN flutter build web --release --no-web-resources-cdn
 
+# O Flutter não versiona o nome do main.dart.js: acrescenta o hash do arquivo ao endereço
+# carregado pelo bootstrap, para nenhum navegador ficar preso a uma versão antiga em cache
+RUN versao=$(sha256sum build/web/main.dart.js | cut -c1-12) \
+    && sed -i "s|\"mainJsPath\":\"main.dart.js\"|\"mainJsPath\":\"main.dart.js?v=$versao\"|" build/web/flutter_bootstrap.js \
+    && grep -q "main.dart.js?v=$versao" build/web/flutter_bootstrap.js
+
 # =========================================
 # Runtime
 # =========================================

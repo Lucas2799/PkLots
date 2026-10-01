@@ -62,16 +62,7 @@ class _PainelTelaState extends State<PainelTela> {
           ],
         ]),
         actions: [
-          if (sessao.ehAdmin)
-            IconButton(
-              tooltip: 'Administração',
-              icon: const Icon(Icons.admin_panel_settings_outlined),
-              onPressed: () async {
-                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdministracaoTela()));
-                // Preço, vagas ou nome podem ter mudado
-                await estado.carregar(silencioso: true);
-              },
-            ),
+          if (sessao.ehAdmin) _BotaoAdministracao(aoVoltar: () => estado.carregar(silencioso: true)),
           IconButton(
               tooltip: 'Histórico por placa', icon: const Icon(Icons.manage_search), onPressed: () => mostrarBuscaPlaca(context)),
           IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: estado.carregar),
@@ -259,4 +250,45 @@ class _Estacionados extends StatelessWidget {
           ]),
         ),
       );
+}
+
+/// Acesso à administração: com texto em telas largas, ícone destacado no celular
+class _BotaoAdministracao extends StatelessWidget {
+  const _BotaoAdministracao({required this.aoVoltar});
+
+  /// Preço, vagas ou nome do pátio podem ter mudado
+  final Future<void> Function() aoVoltar;
+
+  Future<void> _abrir(BuildContext context) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdministracaoTela()));
+    await aoVoltar();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const icone = Icon(Icons.admin_panel_settings_outlined);
+
+    if (MediaQuery.sizeOf(context).width >= 600) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: FilledButton.tonalIcon(
+          style: FilledButton.styleFrom(
+            backgroundColor: CoresPkLots.ambar,
+            foregroundColor: CoresPkLots.azulMarinho,
+            minimumSize: const Size(0, 40),
+          ),
+          onPressed: () => _abrir(context),
+          icon: icone,
+          label: const Text('Administração'),
+        ),
+      );
+    }
+
+    return IconButton(
+      tooltip: 'Administração',
+      style: IconButton.styleFrom(backgroundColor: CoresPkLots.ambar, foregroundColor: CoresPkLots.azulMarinho),
+      onPressed: () => _abrir(context),
+      icon: icone,
+    );
+  }
 }
