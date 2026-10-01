@@ -1,75 +1,46 @@
-from flask import Flask, request
-import easyocr
+import logging
+
 import numpy as np
-from PIL import Image, UnidentifiedImageError
-import re
+from flask import Flask, request
+from PIL import Image, ImageOps, UnidentifiedImageError
+
+from reconhecedor import ReconhecedorPlacas
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
+log = logging.getLogger('pklots.lpr')
 
 app = Flask(__name__)
-leitor = easyocr.Reader(['pt'], gpu=False)
-
-# Formato antigo (ABC1234) e Mercosul (ABC1D23)
-PADRAO_PLACA = re.compile(r'^[A-Z]{3}\d[A-Z0-9]\d{2}$')
+reconhecedor = ReconhecedorPlacas()
 
 
-def validar_placa_brasileira(texto):
-    """Valida formato brasileiro: ABC1234 ou ABC1D23 (Mercosul)"""
-    limpo = texto.replace(" ", "").replace("-", "").replace(".", "").upper()
-    if PADRAO_PLACA.match(limpo):
-        return limpo
-    return None
-
-
-def escolher_placa(resultados):
-    """
-    Retorna (placa, confianca) do melhor candidato válido.
-    O OCR costuma separar "ABC 1234" em dois trechos, então além de cada
-    trecho isolado são testadas as junções de trechos vizinhos (esquerda → direita).
-    """
-    trechos = sorted(resultados, key=lambda r: min(p[0] for p in r[0]))
-    candidatos = []
-
-    for inicio in range(len(trechos)):
-        for fim in range(inicio + 1, min(inicio + 3, len(trechos)) + 1):
-            grupo = trechos[inicio:fim]
-            placa = validar_placa_brasileira("".join(r[1] for r in grupo))
-            if placa:
-                confianca = sum(r[2] for r in grupo) / len(grupo)
-                candidatos.append((placa, confianca))
-
-    if not candidatos:
-        return None, max(r[2] for r in resultados)
-    return max(candidatos, key=lambda c: c[1])
+def ler_imagem(arquivo):
+    """Abre a imagem enviada, aplica a orientação EXIF (fotos de celular) e converte para BGR."""
+    imagem = ImageOps.exif_transpose(Image.open(arquivo.stream)).convert('RGB')
+    return np.ascontiguousarray(np.array(imagem)[:, :, ::-1])
 
 
 @app.route('/v1/lpr/analisar', methods=['POST'])
 def analisar_placa():
+    if 'imagem' not in request.files:
+        return {'erro': 'campo imagem obrigatório'}, 400
+
     try:
-        if 'imagem' not in request.files:
-            return {'erro': 'campo imagem obrigatório'}, 400
+        imagem = ler_imagem(request.files['imagem'])
+    except UnidentifiedImageError:
+        return {'erro': 'arquivo enviado não é uma imagem válida'}, 400
 
-        arquivo = request.files['imagem']
-        try:
-            imagem = np.array(Image.open(arquivo.stream).convert('RGB'))
-        except UnidentifiedImageError:
-            return {'erro': 'arquivo enviado não é uma imagem válida'}, 400
+    try:
+        placa, confianca, metodo = reconhecedor.reconhecer(imagem)
+    except Exception:
+        log.exception('falha ao analisar imagem')
+        return {'erro': 'falha ao analisar a imagem'}, 500
 
-        # OCR
-        resultados = leitor.readtext(imagem, detail=1)
-
-        if not resultados:
-            return {'sucesso': False, 'placa': None, 'confianca': 0}, 200
-
-        placa, confianca = escolher_placa(resultados)
-
-        return {
-            'sucesso': placa is not None,
-            'placa': placa,
-            'confianca': round(float(confianca), 4),
-            'metodo': 'easyocr'
-        }, 200
-
-    except Exception as e:
-        return {'erro': str(e)}, 500
+    return {
+        'sucesso': placa is not None,
+        'placa': placa,
+        'confianca': round(float(confianca), 4),
+        'metodo': metodo
+    }, 200
 
 
 # Página simples para testar o reconhecimento pelo navegador (desenvolvimento)
@@ -93,7 +64,7 @@ PAGINA_TESTE = """<!doctype html>
       const r = document.getElementById('r');
       r.textContent = 'Analisando...';
       const resposta = await fetch('/v1/lpr/analisar', { method: 'POST', body: new FormData(e.target) });
-      r.textContent = resposta.status + '\n' + JSON.stringify(await resposta.json(), null, 2);
+      r.textContent = resposta.status + '\\n' + JSON.stringify(await resposta.json(), null, 2);
     };
   </script>
 </body>

@@ -1,31 +1,20 @@
 # =========================================
 # PkLots.LprEngine - Python Requirements (produção)
 # Dependências de desenvolvimento: requirements-dev.txt
-# PyTorch (CPU) é instalado à parte no Dockerfile.lpr
 # =========================================
 
-# Web Framework
+# Web
 Flask==3.0.0
 gunicorn==23.0.0
-python-dotenv==1.0.0
 
-# Computer Vision (headless: sem dependências de interface gráfica/libGL)
-opencv-python-headless==4.8.1.78
-numpy==1.24.3
+# Reconhecimento de placas (modelos ONNX locais, sem custo por requisição)
+#   detector: open-image-models (YOLOv9) · leitura: fast-plate-ocr
+fast-alpr[onnx]==0.4.0
+fast-plate-ocr==1.1.0
+open-image-models==0.6.0
+onnxruntime==1.30.0
+opencv-python-headless==5.0.0.93
+numpy==2.4.6
 
-# OCR & Plate Recognition
-easyocr==1.7.1
-
-# Image Processing
-Pillow==10.0.0
-scipy==1.11.2
-
-# Logging & Monitoring
-python-json-logger==2.0.7
-
-# HTTP & API
-requests==2.31.0
-
-# Utils
-pydantic==2.3.0
-pydantic-settings==2.0.3
+# Leitura de imagens (inclui orientação EXIF de fotos de celular)
+Pillow==11.3.0
