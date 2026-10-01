@@ -147,6 +147,7 @@ app.MapearGestao();
 app.MapearMotorista();
 app.MapearAdministracao();
 app.MapearPlataforma();
+app.MapearMensalistas();
 
 // Migração e dados iniciais
 using (var scope = app.Services.CreateScope())

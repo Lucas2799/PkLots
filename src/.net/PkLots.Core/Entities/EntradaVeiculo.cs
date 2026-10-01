@@ -13,10 +13,12 @@ namespace PkLots.Core.Entities
         public decimal Confianca { get; set; } // 0.95
         public string Situacao { get; set; } = "ativa"; // ativa, concluida, erro
         public string? CodigoTicket { get; set; } // código impresso no ticket/QR (ex.: K7M2Q9XD), usado na saída por ticket
+        public Guid? MensalistaId { get; set; } // preenchido quando entrou como mensalista em dia (usa as vagas reservadas)
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
         public Patio Patio { get; set; } = null!;
         public Veiculo? Veiculo { get; set; }
         public Vaga? Vaga { get; set; }
+        public Mensalista? Mensalista { get; set; }
     }
 }

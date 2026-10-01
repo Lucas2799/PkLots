@@ -87,6 +87,18 @@ namespace PkLots.Application.Servicos
             var patio = await db.Patios.FirstAsync(p => p.Id == entrada.PatioId, ct);
             var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, patio.ValorHora, patio.MinutosTolerancia);
 
+            // Mensalista: sem cobrança se entrou em dia ou está em dia agora; vencido paga como avulso
+            var mensalista = await ServicoMensalistas.BuscarPorPlacaAsync(db, entrada.PatioId, entrada.Placa, ct);
+            var cobertoPorMensalidade = entrada.MensalistaId is not null
+                || (mensalista is not null && ServicoMensalistas.EmDia(mensalista, ServicoMensalistas.Hoje(agora)));
+            string? aviso = null;
+            if (cobertoPorMensalidade)
+                tarifa = tarifa with { ValorTotal = 0m };
+            else if (mensalista is not null)
+                aviso = mensalista.ValidoAte is { } venceu
+                    ? $"Mensalidade de {mensalista.Nome} vencida em {venceu:dd/MM/yyyy}: cobrado como avulso."
+                    : $"{mensalista.Nome} ainda não pagou a mensalidade: cobrado como avulso.";
+
             var saida = new SaidaVeiculo
             {
                 PatioId = entrada.PatioId,
@@ -99,7 +111,9 @@ namespace PkLots.Application.Servicos
                 ValorHora = patio.ValorHora,
                 ValorTotal = tarifa.ValorTotal,
                 Moeda = "BRL",
-                SituacaoPagamento = tarifa.Isento ? SituacaoPagamento.Isento : SituacaoPagamento.Calculado,
+                SituacaoPagamento = cobertoPorMensalidade ? SituacaoPagamento.Mensalista
+                    : tarifa.Isento ? SituacaoPagamento.Isento
+                    : SituacaoPagamento.Calculado,
                 Situacao = SituacaoEntrada.Concluida,
                 CriadoEm = agora
             };
@@ -125,6 +139,10 @@ namespace PkLots.Application.Servicos
                 ["valor"] = tarifa.ValorTotal,
                 ["origem"] = origem
             };
+            if (mensalista is not null)
+                detalhes["mensalista"] = mensalista.Nome;
+            if (aviso is not null)
+                detalhes["aviso"] = aviso;
             if (confianca is not null)
                 detalhes["confianca"] = confianca;
 
@@ -144,7 +162,8 @@ namespace PkLots.Application.Servicos
 
             return new SaidaDto(saida.Id, entrada.Id, entrada.Placa, entrada.DataHoraEntrada, agora, urlFoto,
                 tarifa.DuracaoSegundos, tarifa.DuracaoFormatada, tarifa.DuracaoHoras, patio.ValorHora,
-                tarifa.ValorTotal, saida.Moeda, saida.SituacaoPagamento, vaga?.Numero, patio.Nome);
+                tarifa.ValorTotal, saida.Moeda, saida.SituacaoPagamento, vaga?.Numero, patio.Nome,
+                mensalista?.Nome, aviso);
         }
     }
 }

@@ -18,7 +18,10 @@ namespace PkLots.Application.DTOs
         Guid? VagaId,
         string? NumeroVaga,
         string Situacao,
-        string? Impressao = null); // impresso, falhou, navegador ou null (sem impressão automática)
+        string? Impressao = null, // impresso, falhou, navegador ou null (sem impressão automática)
+        string? Mensalista = null,          // nome, quando a placa é de um mensalista do pátio
+        string? SituacaoMensalista = null,  // em_dia, vencendo ou vencido
+        DateOnly? MensalidadeValidaAte = null);
 
     public record SaidaDto(
         Guid Id,
@@ -35,7 +38,9 @@ namespace PkLots.Application.DTOs
         string Moeda,
         string SituacaoPagamento,
         string? NumeroVaga,
-        string NomePatio = "");
+        string NomePatio = "",
+        string? Mensalista = null,
+        string? Aviso = null); // ex.: mensalidade vencida, cobrado como avulso
 
     public record HistoricoVeiculoDto(
         Guid EntradaId,

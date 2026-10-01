@@ -37,15 +37,35 @@ namespace PkLots.Application.Servicos
                 throw new ExcecaoConflito($"O veículo {placa} já está estacionado.");
             }
 
-            var vaga = await db.Vagas
-                .Where(v => v.PatioId == patioId && v.Ativa && v.Situacao == SituacaoVaga.Disponivel)
-                .OrderBy(v => v.Fileira).ThenBy(v => v.Indice)
-                .FirstOrDefaultAsync(ct);
-            if (vaga is null)
+            // Mensalista em dia usa qualquer vaga livre (inclusive as reservadas);
+            // avulso (ou mensalista vencido) só entra se sobrar vaga além das reservadas ainda não usadas
+            var mensalista = await ServicoMensalistas.BuscarPorPlacaAsync(db, patioId, placa, ct);
+            var hoje = ServicoMensalistas.Hoje(agora);
+            var mensalistaEmDia = mensalista is not null && ServicoMensalistas.EmDia(mensalista, hoje);
+
+            var vagasLivres = await db.Vagas.CountAsync(v => v.PatioId == patioId && v.Ativa && v.Situacao == SituacaoVaga.Disponivel, ct);
+            if (vagasLivres == 0)
             {
                 await RecusarAsync(patioId, placa, agora, "patio_lotado", ct);
                 throw new ExcecaoConflito("Pátio lotado: não há vagas disponíveis.");
             }
+            if (!mensalistaEmDia)
+            {
+                var reservadas = await db.Patios.Where(p => p.Id == patioId).Select(p => p.VagasReservadasMensalistas).FirstAsync(ct);
+                var reservadasLivres = Math.Max(0, reservadas - await ServicoMensalistas.ContarMensalistasEstacionadosAsync(db, patioId, ct));
+                if (vagasLivres <= reservadasLivres)
+                {
+                    await RecusarAsync(patioId, placa, agora, "lotado_para_avulsos", ct);
+                    throw new ExcecaoConflito(mensalista is null
+                        ? "Pátio lotado para avulsos: as vagas restantes são reservadas a mensalistas."
+                        : $"Mensalidade de {mensalista.Nome} vencida e as vagas restantes são reservadas a mensalistas em dia.");
+                }
+            }
+
+            var vaga = await db.Vagas
+                .Where(v => v.PatioId == patioId && v.Ativa && v.Situacao == SituacaoVaga.Disponivel)
+                .OrderBy(v => v.Fileira).ThenBy(v => v.Indice)
+                .FirstAsync(ct);
 
             var veiculo = await db.Veiculos.FirstOrDefaultAsync(v => v.PatioId == patioId && v.Placa == placa, ct);
             if (veiculo is null)
@@ -58,6 +78,7 @@ namespace PkLots.Application.Servicos
             {
                 PatioId = patioId,
                 CodigoTicket = await GerarCodigoTicketAsync(patioId, ct),
+                MensalistaId = mensalistaEmDia ? mensalista!.Id : null,
                 VeiculoId = veiculo.Id,
                 Placa = placa,
                 VagaId = vaga.Id,
@@ -97,7 +118,10 @@ namespace PkLots.Application.Servicos
             await cache.InvalidarAsync(patioId);
 
             return new EntradaDto(entrada.Id, placa, agora, entrada.UrlFotoEntrada, entrada.MetodoReconhecimento,
-                entrada.Confianca, vaga.Id, vaga.Numero, entrada.Situacao);
+                entrada.Confianca, vaga.Id, vaga.Numero, entrada.Situacao,
+                Mensalista: mensalista?.Nome,
+                SituacaoMensalista: mensalista is null ? null : ServicoMensalistas.Situacao(mensalista, hoje),
+                MensalidadeValidaAte: mensalista?.ValidoAte);
         }
 
         private async Task<string> GerarCodigoTicketAsync(Guid patioId, CancellationToken ct)

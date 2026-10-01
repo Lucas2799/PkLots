@@ -28,6 +28,30 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
   recebidas.add(req);
   if (req.method != 'GET') enviadas.add(req);
   switch (req.url.path) {
+    case '/api/mensalistas':
+      if (req.method == 'POST') {
+        final corpo = jsonDecode(req.body) as Map<String, dynamic>;
+        return json({
+          'id': 'm9',
+          'nome': corpo['nome'],
+          'placas': corpo['placas'],
+          'situacao': 'vencido',
+          'ativo': true,
+          'estacionado': false,
+        }, 201);
+      }
+      final filtro = req.url.queryParameters['situacao'];
+      final todos = [
+        {'id': 'm1', 'nome': 'João Silva', 'placas': ['ABC1234'], 'validoAte': '2026-10-29', 'situacao': 'em_dia', 'diasParaVencer': 28, 'ativo': true, 'estacionado': true},
+        {'id': 'm2', 'nome': 'Maria Souza', 'placas': ['BRA2E19'], 'validoAte': '2026-09-20', 'situacao': 'vencido', 'diasParaVencer': -10, 'ativo': true, 'estacionado': false},
+      ];
+      return json(filtro == null ? todos : todos.where((m) => m['situacao'] == filtro).toList());
+    case '/api/mensalistas/m2/pagamentos':
+    case '/api/mensalistas/m9/pagamentos':
+      if (req.method == 'POST') {
+        return json({'id': 'm2', 'nome': 'Maria Souza', 'placas': ['BRA2E19'], 'validoAte': '2026-12-29', 'situacao': 'em_dia', 'diasParaVencer': 89, 'ativo': true, 'estacionado': false});
+      }
+      return json([]);
     case '/api/patios':
       return json([
         {'id': 'p1', 'nome': 'Pátio Padrão'},
@@ -113,8 +137,25 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'estacionados': [
           {'entradaId': 'e1', 'placa': 'ABC1234', 'dataHoraEntrada': '2026-09-30T10:30:45Z', 'duracao': '4h 15m', 'numeroVaga': 'A1'}
         ],
+        'mensalistas': {
+          'ativos': 2, 'emDia': 1, 'vencendo': 0, 'vencidos': 1, 'estacionados': 1,
+          'vagasReservadas': 5, 'reservadasLivres': 4, 'valorMensalidade': 300.0,
+        },
       });
     case '/api/entradas/':
+      if (req.body.contains('BRA2E19')) {
+        return json({
+          'id': 'e3',
+          'placa': 'BRA2E19',
+          'dataHoraEntrada': '2026-09-30T14:00:00Z',
+          'numeroVaga': 'A3',
+          'confianca': 1,
+          'situacao': 'ativa',
+          'mensalista': 'Maria Souza',
+          'situacaoMensalista': 'vencido',
+          'mensalidadeValidaAte': '2026-09-20',
+        }, 201);
+      }
       return json({
         'id': 'e2',
         'placa': 'XYZ9876',
@@ -465,6 +506,93 @@ void main() {
 
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('operador cadastra mensalista e registra o pagamento', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+
+    // Resumo no painel
+    expect(find.text('Mensalistas (2)'), findsOneWidget);
+    expect(find.text('4 de 5 vagas reservadas livres'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Mensalistas'));
+    await tester.pumpAndSettle();
+    expect(find.text('João Silva'), findsOneWidget);
+    expect(find.text('Vencido'), findsOneWidget);
+
+    // Filtro
+    await tester.tap(find.text('Vencidos'));
+    await tester.pumpAndSettle();
+    expect(recebidas.last.url.queryParameters['situacao'], 'vencido');
+    expect(find.text('João Silva'), findsNothing);
+
+    // Novo mensalista com duas placas
+    await tester.tap(find.text('Novo mensalista'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nome'), 'Pedro Lima');
+    await tester.enterText(find.widgetWithText(TextField, 'Adicionar placa'), 'pqr-1234');
+    await tester.tap(find.byTooltip('Adicionar placa'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Adicionar placa'), 'XY');
+    await tester.tap(find.byTooltip('Adicionar placa'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Placa inválida'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Adicionar placa'), 'bra2e20');
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar')); // placa digitada entra ao salvar
+    await tester.pumpAndSettle();
+
+    final post = enviadas.singleWhere((r) => r.url.path == '/api/mensalistas');
+    expect((jsonDecode(post.body) as Map)['placas'], ['PQR1234', 'BRA2E20']);
+
+    // Abre o detalhe e registra 3 meses: valor sugerido = 3 × mensalidade
+    expect(find.text('Registrar pagamento'), findsOneWidget);
+    await tester.tap(find.text('Registrar pagamento'));
+    await tester.pumpAndSettle();
+    expect(find.text('Mensalidade do pátio: R\$\u00a0300,00'), findsOneWidget);
+    await tester.tap(find.text('1 mês'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3 meses').last);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, '900,00'), findsOneWidget);
+    await tester.tap(find.text('Dinheiro'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Registrar'));
+    await tester.pumpAndSettle();
+
+    final pagamento = jsonDecode(enviadas.last.body) as Map<String, dynamic>;
+    expect((pagamento['meses'], pagamento['valor'], pagamento['formaPagamento']), (3, 900.0, 'dinheiro'));
+    expect(find.textContaining('Válida até 29/12/2026'), findsOneWidget);
+  });
+
+  testWidgets('entrada de mensalista vencido avisa que será cobrado como avulso', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Placa'), 'BRA2E19');
+    await tester.tap(find.widgetWithText(FilledButton, 'Entrada'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Mensalidade de Maria Souza vencida: será cobrado como avulso'), findsOneWidget);
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('admin configura mensalidade e vagas reservadas', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+    await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Preço'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Mensalidade'), '280,00');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Vagas reservadas'), '8');
+    await tester.ensureVisible(find.text('Salvar'));
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    final corpo = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/admin/configuracao').body) as Map<String, dynamic>;
+    expect((corpo['valorMensalidade'], corpo['vagasReservadasMensalistas']), (280.0, 8));
   });
 
   test('lê valores em reais com vírgula ou ponto', () {

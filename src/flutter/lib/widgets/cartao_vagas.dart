@@ -66,7 +66,15 @@ class CartaoVagas extends StatelessWidget {
               Wrap(spacing: 20, runSpacing: 8, children: [
                 _Contador(Icons.directions_car, 'Ocupadas', resumo.ocupadas, CoresPkLots.ocupada),
                 _Contador(Icons.build_outlined, 'Manutenção', resumo.manutencao, CoresPkLots.manutencao),
+                if (resumo.reservadasLivres > 0)
+                  _Contador(Icons.card_membership_outlined, 'Reservadas a mensalistas', resumo.reservadasLivres,
+                      CoresPkLots.azulMarinho),
               ]),
+              if (resumo.reservadasLivres > 0) ...[
+                const SizedBox(height: 6),
+                Text('Livres para avulsos: ${resumo.disponiveisAvulsos}',
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho)),
+              ],
             ],
             const SizedBox(height: 4),
             Text('Atualizado às ${Formatadores.hora(resumo.atualizadoEm)}',

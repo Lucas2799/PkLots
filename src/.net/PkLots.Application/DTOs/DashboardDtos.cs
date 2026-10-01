@@ -11,7 +11,8 @@ namespace PkLots.Application.DTOs
         ResumoDiaDto Hoje,
         ResumoVagasDto Vagas,
         IReadOnlyList<OcupacaoHoraDto> Ocupacao24h,
-        IReadOnlyList<VeiculoEstacionadoDto> Estacionados);
+        IReadOnlyList<VeiculoEstacionadoDto> Estacionados,
+        ResumoMensalistasDto? Mensalistas = null);
 
     public record EstacionamentoAtualDto(
         Guid EntradaId,

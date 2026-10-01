@@ -20,6 +20,7 @@ namespace PkLots.Application
             services.AddScoped<ServicoImpressao>();
             services.AddScoped<ServicoPatios>();
             services.AddScoped<ServicoPlataforma>();
+            services.AddScoped<ServicoMensalistas>();
             return services;
         }
     }

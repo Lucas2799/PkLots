@@ -17,8 +17,29 @@ Future<void> mostrarRecibo(BuildContext context, Saida saida) => showDialog(
             Text(Formatadores.moeda(saida.valorTotal),
                 style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w800, color: CoresPkLots.azulMarinho)),
             const SizedBox(height: 4),
-            Text(saida.isento ? 'Isento: dentro da tolerância gratuita' : 'Valor calculado',
+            Text(
+                saida.mensalistaSemCobranca
+                    ? 'Mensalista${saida.mensalista != null ? ' ${saida.mensalista}' : ''}: sem cobrança'
+                    : saida.isento
+                        ? 'Isento: dentro da tolerância gratuita'
+                        : 'Valor calculado',
+                textAlign: TextAlign.center,
                 style: const TextStyle(color: CoresPkLots.textoSecundario)),
+            if (saida.aviso != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: CoresPkLots.manutencao.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.warning_amber_rounded, color: CoresPkLots.manutencao),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(saida.aviso!)),
+                ]),
+              ),
+            ],
             const Divider(height: 28),
             _Linha('Placa', Formatadores.placa(saida.placa)),
             if (saida.numeroVaga != null) _Linha('Vaga', saida.numeroVaga!),

@@ -49,12 +49,16 @@ namespace PkLots.Application.Servicos
 
             int Quantidade(string situacao) => contagem.FirstOrDefault(c => c.Situacao == situacao)?.Quantidade ?? 0;
 
+            var reservadas = await db.Patios.Where(p => p.Id == patioId).Select(p => p.VagasReservadasMensalistas).FirstOrDefaultAsync(ct);
+            var mensalistasDentro = reservadas > 0 ? await ServicoMensalistas.ContarMensalistasEstacionadosAsync(db, patioId, ct) : 0;
+
             var resumo = new ResumoVagasDto(
                 contagem.Sum(c => c.Quantidade),
                 Quantidade(SituacaoVaga.Disponivel),
                 Quantidade(SituacaoVaga.Ocupada),
                 Quantidade(SituacaoVaga.Manutencao),
-                relogio.GetUtcNow().UtcDateTime);
+                relogio.GetUtcNow().UtcDateTime,
+                Math.Max(0, reservadas - mensalistasDentro));
 
             await cache.DefinirAsync(patioId, resumo);
             return resumo;

@@ -34,8 +34,10 @@ class AdministracaoProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> salvarConfiguracao(String nome, double valorHora, int minutosTolerancia) async {
-    configuracao = await _api.salvarConfiguracao(nome, valorHora, minutosTolerancia);
+  Future<void> salvarConfiguracao(String nome, double valorHora, int minutosTolerancia,
+      {double? valorMensalidade, int? vagasReservadasMensalistas}) async {
+    configuracao = await _api.salvarConfiguracao(nome, valorHora, minutosTolerancia,
+        valorMensalidade: valorMensalidade, vagasReservadasMensalistas: vagasReservadasMensalistas);
     notifyListeners();
   }
 

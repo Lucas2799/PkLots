@@ -104,7 +104,7 @@ namespace PkLots.Application.Servicos
             foreach (var patio in patios)
             {
                 var resumo = await servicoVagas.ObterResumoDoPatioAsync(patio.Id, ct);
-                resultado.Add(new PatioDisponibilidadeDto(patio.Id, patio.Nome, patio.NomeEmpresa, resumo.Disponiveis, resumo.Total));
+                resultado.Add(new PatioDisponibilidadeDto(patio.Id, patio.Nome, patio.NomeEmpresa, resumo.DisponiveisAvulsos, resumo.Total));
             }
             return resultado;
         }

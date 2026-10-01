@@ -11,6 +11,10 @@ namespace PkLots.Core.Entities
         public decimal ValorHora { get; set; } = 15.00m;
         public int MinutosTolerancia { get; set; } = 0; // saída dentro da tolerância não paga
 
+        // Mensalistas
+        public decimal ValorMensalidade { get; set; } = 0m;
+        public int VagasReservadasMensalistas { get; set; } = 0; // não ficam disponíveis para avulsos
+
         // Impressão do ticket de entrada
         public string ModoImpressao { get; set; } = "desativada"; // desativada, rede, navegador
         public string? ImpressoraHost { get; set; } // IP/nome da impressora térmica (modo rede)

@@ -10,7 +10,11 @@ namespace PkLots.Application.DTOs
         DateTime? OcupadaDesde,
         string? Observacoes);
 
-    public record ResumoVagasDto(int Total, int Disponiveis, int Ocupadas, int Manutencao, DateTime AtualizadoEm);
+    // ReservadasLivres: vagas reservadas a mensalistas ainda não usadas (não servem a avulsos)
+    public record ResumoVagasDto(int Total, int Disponiveis, int Ocupadas, int Manutencao, DateTime AtualizadoEm, int ReservadasLivres = 0)
+    {
+        public int DisponiveisAvulsos => Math.Max(0, Disponiveis - ReservadasLivres);
+    }
 
     public record ManutencaoRequisicao(string? Observacoes);
 }

@@ -34,6 +34,8 @@ class _AbaPrecoState extends State<AbaPreco> {
   late final _nome = TextEditingController(text: widget.configuracao.nome);
   late final _valorHora = TextEditingController(text: _formatarValor(widget.configuracao.valorHora));
   late final _tolerancia = TextEditingController(text: '${widget.configuracao.minutosTolerancia}');
+  late final _mensalidade = TextEditingController(text: _formatarValor(widget.configuracao.valorMensalidade));
+  late final _reservadas = TextEditingController(text: '${widget.configuracao.vagasReservadasMensalistas}');
   bool _salvando = false;
 
   static const _atalhosTolerancia = [0, 10, 15, 20, 30];
@@ -52,7 +54,7 @@ class _AbaPrecoState extends State<AbaPreco> {
 
   @override
   void dispose() {
-    for (final c in [_nome, _valorHora, _tolerancia]) {
+    for (final c in [_nome, _valorHora, _tolerancia, _mensalidade, _reservadas]) {
       c.dispose();
     }
     super.dispose();
@@ -64,7 +66,8 @@ class _AbaPrecoState extends State<AbaPreco> {
     try {
       await context
           .read<AdministracaoProvider>()
-          .salvarConfiguracao(_nome.text.trim(), lerValor(_valorHora.text)!, int.parse(_tolerancia.text));
+          .salvarConfiguracao(_nome.text.trim(), lerValor(_valorHora.text)!, int.parse(_tolerancia.text),
+              valorMensalidade: lerValor(_mensalidade.text) ?? 0, vagasReservadasMensalistas: int.parse(_reservadas.text));
       if (mounted) mostrarAviso(context, 'Configuração salva. Vale para as próximas saídas.');
     } on ExcecaoApi catch (e) {
       if (mounted) mostrarAviso(context, e.mensagem, erro: true);
@@ -146,6 +149,53 @@ class _AbaPrecoState extends State<AbaPreco> {
                     onSelected: (_) => _tolerancia.text = '$minutos',
                   ),
               ]),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              const TituloSecao('Mensalistas', icone: Icons.card_membership_outlined),
+              const Text('Mensalista em dia não paga as saídas e pode usar as vagas reservadas.',
+                  style: TextStyle(color: CoresPkLots.textoSecundario)),
+              const SizedBox(height: 14),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _mensalidade,
+                    decoration: const InputDecoration(labelText: 'Mensalidade', prefixText: 'R\$ ', hintText: 'Ex.: 300,00'),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))],
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return null;
+                      final valor = lerValor(v);
+                      return valor == null || valor < 0 ? 'Valor inválido' : null;
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextFormField(
+                    controller: _reservadas,
+                    decoration: InputDecoration(
+                      labelText: 'Vagas reservadas',
+                      helperText: 'de ${widget.configuracao.totalVagas} vagas',
+                    ),
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      if (n == null) return 'Informe (0 = sem reserva)';
+                      return n > widget.configuracao.totalVagas ? 'Máximo ${widget.configuracao.totalVagas}' : null;
+                    },
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 6),
+              const Text('Vagas reservadas não aparecem como livres para avulsos enquanto não forem usadas por mensalistas.',
+                  style: TextStyle(fontSize: 12, color: CoresPkLots.textoSuave)),
             ]),
           ),
         ),

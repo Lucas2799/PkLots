@@ -25,12 +25,17 @@ class ResumoVagas {
   final int manutencao;
   final DateTime atualizadoEm;
 
+  /// Vagas reservadas a mensalistas ainda não usadas (não servem a avulsos)
+  final int reservadasLivres;
+  int get disponiveisAvulsos => (disponiveis - reservadasLivres).clamp(0, disponiveis);
+
   ResumoVagas({
     required this.total,
     required this.disponiveis,
     required this.ocupadas,
     required this.manutencao,
     required this.atualizadoEm,
+    this.reservadasLivres = 0,
   });
 
   double get percentualDisponivel => total == 0 ? 0 : disponiveis / total;
@@ -41,6 +46,7 @@ class ResumoVagas {
         ocupadas: json['ocupadas'] as int,
         manutencao: json['manutencao'] as int,
         atualizadoEm: _data(json['atualizadoEm']),
+        reservadasLivres: (json['reservadasLivres'] as int?) ?? 0,
       );
 }
 
@@ -175,6 +181,11 @@ class Entrada {
   /// Resultado da impressão automática: impresso, falhou, navegador ou null
   final String? impressao;
 
+  /// Nome e situação (em_dia, vencendo, vencido) quando a placa é de um mensalista
+  final String? mensalista;
+  final String? situacaoMensalista;
+  final DateTime? mensalidadeValidaAte;
+
   Entrada({
     required this.id,
     required this.placa,
@@ -182,6 +193,9 @@ class Entrada {
     this.numeroVaga,
     required this.confianca,
     this.impressao,
+    this.mensalista,
+    this.situacaoMensalista,
+    this.mensalidadeValidaAte,
   });
 
   factory Entrada.deJson(Map<String, dynamic> json) => Entrada(
@@ -191,6 +205,9 @@ class Entrada {
         numeroVaga: json['numeroVaga'] as String?,
         confianca: _numero(json['confianca']),
         impressao: json['impressao'] as String?,
+        mensalista: json['mensalista'] as String?,
+        situacaoMensalista: json['situacaoMensalista'] as String?,
+        mensalidadeValidaAte: _dataOpcional(json['mensalidadeValidaAte']),
       );
 }
 
@@ -205,6 +222,12 @@ class Saida {
   final String situacaoPagamento;
   final String? numeroVaga;
   final String nomePatio;
+  final String? mensalista;
+
+  /// Aviso para o operador (ex.: mensalidade vencida, cobrado como avulso)
+  final String? aviso;
+
+  bool get mensalistaSemCobranca => situacaoPagamento == 'mensalista';
 
   /// Saída dentro da tolerância gratuita
   bool get isento => situacaoPagamento == 'isento';
@@ -220,6 +243,8 @@ class Saida {
     this.situacaoPagamento = 'calculado',
     this.numeroVaga,
     this.nomePatio = '',
+    this.mensalista,
+    this.aviso,
   });
 
   factory Saida.deJson(Map<String, dynamic> json) => Saida(
@@ -233,6 +258,8 @@ class Saida {
         situacaoPagamento: (json['situacaoPagamento'] as String?) ?? 'calculado',
         numeroVaga: json['numeroVaga'] as String?,
         nomePatio: (json['nomePatio'] as String?) ?? '',
+        mensalista: json['mensalista'] as String?,
+        aviso: json['aviso'] as String?,
       );
 }
 
@@ -290,6 +317,7 @@ class Dashboard {
   final ResumoVagas vagas;
   final List<OcupacaoHora> ocupacao24h;
   final List<VeiculoEstacionado> estacionados;
+  final ResumoMensalistas? mensalistas;
 
   Dashboard({
     required this.nomePatio,
@@ -297,6 +325,7 @@ class Dashboard {
     required this.vagas,
     required this.ocupacao24h,
     required this.estacionados,
+    this.mensalistas,
   });
 
   factory Dashboard.deJson(Map<String, dynamic> json) => Dashboard(
@@ -306,6 +335,9 @@ class Dashboard {
         ocupacao24h: (json['ocupacao24h'] as List).map((e) => OcupacaoHora.deJson(e as Map<String, dynamic>)).toList(),
         estacionados:
             (json['estacionados'] as List).map((e) => VeiculoEstacionado.deJson(e as Map<String, dynamic>)).toList(),
+        mensalistas: json['mensalistas'] == null
+            ? null
+            : ResumoMensalistas.deJson(json['mensalistas'] as Map<String, dynamic>),
       );
 }
 
@@ -316,6 +348,8 @@ class ConfiguracaoPatio {
   final int totalVagas;
   final int vagasPorFileira;
   final int maximoVagas;
+  final double valorMensalidade;
+  final int vagasReservadasMensalistas;
 
   ConfiguracaoPatio({
     required this.nome,
@@ -324,6 +358,8 @@ class ConfiguracaoPatio {
     required this.totalVagas,
     required this.vagasPorFileira,
     required this.maximoVagas,
+    this.valorMensalidade = 0,
+    this.vagasReservadasMensalistas = 0,
   });
 
   factory ConfiguracaoPatio.deJson(Map<String, dynamic> json) => ConfiguracaoPatio(
@@ -333,6 +369,8 @@ class ConfiguracaoPatio {
         totalVagas: json['totalVagas'] as int,
         vagasPorFileira: json['vagasPorFileira'] as int,
         maximoVagas: json['maximoVagas'] as int,
+        valorMensalidade: _numero(json['valorMensalidade']),
+        vagasReservadasMensalistas: (json['vagasReservadasMensalistas'] as int?) ?? 0,
       );
 }
 
@@ -534,5 +572,120 @@ class PatioDisponibilidade {
         nomeEmpresa: json['nomeEmpresa'] as String,
         disponiveis: json['disponiveis'] as int,
         total: json['total'] as int,
+      );
+}
+
+class ResumoMensalistas {
+  final int ativos;
+  final int emDia;
+  final int vencendo;
+  final int vencidos;
+  final int estacionados;
+  final int vagasReservadas;
+  final int reservadasLivres;
+  final double valorMensalidade;
+
+  ResumoMensalistas({
+    required this.ativos,
+    required this.emDia,
+    required this.vencendo,
+    required this.vencidos,
+    required this.estacionados,
+    required this.vagasReservadas,
+    required this.reservadasLivres,
+    this.valorMensalidade = 0,
+  });
+
+  factory ResumoMensalistas.deJson(Map<String, dynamic> json) => ResumoMensalistas(
+        ativos: json['ativos'] as int,
+        emDia: json['emDia'] as int,
+        vencendo: json['vencendo'] as int,
+        vencidos: json['vencidos'] as int,
+        estacionados: json['estacionados'] as int,
+        vagasReservadas: json['vagasReservadas'] as int,
+        reservadasLivres: json['reservadasLivres'] as int,
+        valorMensalidade: _numero(json['valorMensalidade']),
+      );
+}
+
+class Mensalista {
+  static const emDia = 'em_dia';
+  static const vencendo = 'vencendo';
+  static const vencido = 'vencido';
+  static const inativo = 'inativo';
+
+  final String id;
+  final String nome;
+  final String? telefone;
+  final String? documento;
+  final String? observacoes;
+  final List<String> placas;
+  final DateTime? validoAte;
+  final String situacao;
+  final int? diasParaVencer;
+  final bool ativo;
+  final bool estacionado;
+
+  Mensalista({
+    required this.id,
+    required this.nome,
+    this.telefone,
+    this.documento,
+    this.observacoes,
+    required this.placas,
+    this.validoAte,
+    required this.situacao,
+    this.diasParaVencer,
+    required this.ativo,
+    required this.estacionado,
+  });
+
+  factory Mensalista.deJson(Map<String, dynamic> json) => Mensalista(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        telefone: json['telefone'] as String?,
+        documento: json['documento'] as String?,
+        observacoes: json['observacoes'] as String?,
+        placas: ((json['placas'] as List?) ?? []).cast<String>(),
+        validoAte: _dataOpcional(json['validoAte']),
+        situacao: json['situacao'] as String,
+        diasParaVencer: json['diasParaVencer'] as int?,
+        ativo: json['ativo'] as bool,
+        estacionado: (json['estacionado'] as bool?) ?? false,
+      );
+}
+
+class PagamentoMensalidade {
+  static const formas = {'dinheiro': 'Dinheiro', 'pix': 'PIX', 'cartao': 'Cartão', 'outro': 'Outro'};
+
+  final String id;
+  final double valor;
+  final int meses;
+  final DateTime validoDe;
+  final DateTime validoAte;
+  final String formaPagamento;
+  final String? observacao;
+  final DateTime pagoEm;
+
+  PagamentoMensalidade({
+    required this.id,
+    required this.valor,
+    required this.meses,
+    required this.validoDe,
+    required this.validoAte,
+    required this.formaPagamento,
+    this.observacao,
+    required this.pagoEm,
+  });
+
+  factory PagamentoMensalidade.deJson(Map<String, dynamic> json) => PagamentoMensalidade(
+        id: json['id'] as String,
+        valor: _numero(json['valor']),
+        meses: json['meses'] as int,
+        validoDe: _data(json['validoDe']),
+        validoAte: _data(json['validoAte']),
+        formaPagamento: json['formaPagamento'] as String,
+        observacao: json['observacao'] as String?,
+        pagoEm: _data(json['pagoEm']),
       );
 }

@@ -38,8 +38,16 @@ namespace PkLots.Application.Servicos
             if (requisicao.MinutosTolerancia < 0 || requisicao.MinutosTolerancia > ToleranciaMaxima)
                 throw new ExcecaoNegocio($"A tolerância deve ficar entre 0 e {ToleranciaMaxima} minutos.");
 
+            if (requisicao.ValorMensalidade is < 0 or > 100_000m || (requisicao.ValorMensalidade is { } mensalidade && decimal.Round(mensalidade, 2) != mensalidade))
+                throw new ExcecaoNegocio("Valor da mensalidade inválido.");
+
             var patio = await ObterPatioAsync(ct);
             var agora = relogio.GetUtcNow().UtcDateTime;
+
+            var reservadas = requisicao.VagasReservadasMensalistas ?? patio.VagasReservadasMensalistas;
+            var totalVagas = await db.Vagas.CountAsync(v => v.PatioId == patio.Id && v.Ativa, ct);
+            if (reservadas < 0 || reservadas > totalVagas)
+                throw new ExcecaoNegocio($"As vagas reservadas a mensalistas devem ficar entre 0 e {totalVagas} (total do pátio).");
 
             Auditoria.Registrar(db, patio.Id, AcoesAuditoria.ConfiguracaoAlterada, SituacaoAuditoria.Sucesso, null, agora,
                 new()
@@ -50,15 +58,22 @@ namespace PkLots.Application.Servicos
                     ["valorHoraAnterior"] = patio.ValorHora,
                     ["valorHora"] = requisicao.ValorHora,
                     ["toleranciaAnterior"] = patio.MinutosTolerancia,
-                    ["tolerancia"] = requisicao.MinutosTolerancia
+                    ["tolerancia"] = requisicao.MinutosTolerancia,
+                    ["mensalidadeAnterior"] = patio.ValorMensalidade,
+                    ["mensalidade"] = requisicao.ValorMensalidade ?? patio.ValorMensalidade,
+                    ["reservadasAnterior"] = patio.VagasReservadasMensalistas,
+                    ["reservadas"] = reservadas
                 });
 
             patio.Nome = requisicao.Nome.Trim();
             patio.ValorHora = requisicao.ValorHora;
             patio.MinutosTolerancia = requisicao.MinutosTolerancia;
+            patio.ValorMensalidade = requisicao.ValorMensalidade ?? patio.ValorMensalidade;
+            patio.VagasReservadasMensalistas = reservadas;
             patio.AtualizadoEm = agora;
 
             await db.SaveChangesAsync(ct);
+            await cache.InvalidarAsync(patio.Id); // vagas reservadas mudam o resumo
             return await ObterConfiguracaoAsync(ct);
         }
 
@@ -72,6 +87,8 @@ namespace PkLots.Application.Servicos
                 throw new ExcecaoNegocio($"A quantidade de vagas deve ficar entre 1 e {LayoutPatio.MaximoVagas}.");
 
             var patio = await ObterPatioAsync(ct);
+            if (total < patio.VagasReservadasMensalistas)
+                throw new ExcecaoConflito($"O pátio tem {patio.VagasReservadasMensalistas} vagas reservadas a mensalistas: reduza a reserva antes.");
             var agora = relogio.GetUtcNow().UtcDateTime;
             var vagas = await db.Vagas.Where(v => v.PatioId == patio.Id).ToDictionaryAsync(v => v.Numero, ct);
             var totalAnterior = vagas.Values.Count(v => v.Ativa);
@@ -277,7 +294,8 @@ namespace PkLots.Application.Servicos
         }
 
         private static ConfiguracaoPatioDto ParaDto(Patio patio, int totalVagas) =>
-            new(patio.Nome, patio.ValorHora, patio.MinutosTolerancia, totalVagas, LayoutPatio.VagasPorFileira, LayoutPatio.MaximoVagas);
+            new(patio.Nome, patio.ValorHora, patio.MinutosTolerancia, totalVagas, LayoutPatio.VagasPorFileira, LayoutPatio.MaximoVagas,
+                patio.ValorMensalidade, patio.VagasReservadasMensalistas);
 
         private static UsuarioDto ParaDto(Usuario u) =>
             new(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm, u.Patios.Select(up => up.PatioId).ToList());

@@ -81,7 +81,8 @@ namespace PkLots.Application.Tests
         public ServicoMotorista Motorista => new(Db, Veiculos, Saida, Vagas, Relogio);
         public ServicoPatios Patios => new(Db, ContextoPatio, Relogio);
         public ServicoPlataforma Plataforma => new(Db, HashSenha, Relogio);
-        public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Relogio);
+        public ServicoMensalistas Mensalistas => new(Db, ContextoPatio, Relogio);
+        public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Mensalistas, Relogio);
         public ImpressoraFalsa Impressora { get; } = new();
         public ServicoImpressao Impressao =>
             new(Db, ContextoPatio, Impressora, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);

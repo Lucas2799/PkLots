@@ -15,6 +15,7 @@ import '../../widgets/grafico_ocupacao.dart';
 import '../../widgets/logo_pklots.dart';
 import '../../widgets/recibo_dialogo.dart';
 import '../admin/administracao_tela.dart';
+import '../mensalistas/mensalistas_tela.dart';
 import 'busca_placa_dialogo.dart';
 import 'mapa_vagas_cartao.dart';
 import 'movimentacao_cartao.dart';
@@ -65,6 +66,11 @@ class _PainelTelaState extends State<PainelTela> {
               await estado.carregar(silencioso: true);
             }),
           IconButton(
+            tooltip: 'Mensalistas',
+            icon: const Icon(Icons.card_membership_outlined),
+            onPressed: () => _abrirMensalistas(context, estado),
+          ),
+          IconButton(
               tooltip: 'Histórico por placa', icon: const Icon(Icons.manage_search), onPressed: () => mostrarBuscaPlaca(context)),
           IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: estado.carregar),
           IconButton(tooltip: 'Sair', icon: const Icon(Icons.logout), onPressed: sessao.sair),
@@ -96,6 +102,10 @@ class _PainelTelaState extends State<PainelTela> {
           final colunaLateral = <Widget>[
             if (dashboard != null) ...[
               CartaoVagas(resumo: dashboard.vagas, mostrarDetalhes: true),
+              if (dashboard.mensalistas case final mensalistas? when mensalistas.ativos > 0 || mensalistas.vagasReservadas > 0) ...[
+                const SizedBox(height: 16),
+                _ResumoMensalistas(resumo: mensalistas, aoAbrir: () => _abrirMensalistas(context, estado)),
+              ],
               const SizedBox(height: 16),
             ],
             const MovimentacaoCartao(),
@@ -323,4 +333,61 @@ class _SeletorPatio extends StatelessWidget {
       ]),
     );
   }
+}
+
+Future<void> _abrirMensalistas(BuildContext context, GestaoProvider estado) async {
+  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MensalistasTela()));
+  await estado.carregar(silencioso: true);
+}
+
+/// Mensalistas do pátio: em dia, vencendo, vencidos e estacionados
+class _ResumoMensalistas extends StatelessWidget {
+  const _ResumoMensalistas({required this.resumo, required this.aoAbrir});
+
+  final ResumoMensalistas resumo;
+  final VoidCallback aoAbrir;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: aoAbrir,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              TituloSecao('Mensalistas (${resumo.ativos})',
+                  icone: Icons.card_membership_outlined,
+                  acao: TextButton(onPressed: aoAbrir, child: const Text('Ver todos'))),
+              Wrap(spacing: 16, runSpacing: 8, children: [
+                _Indicador(Icons.check_circle_outline, 'Em dia', resumo.emDia, CoresPkLots.disponivel),
+                _Indicador(Icons.schedule, 'Vencendo', resumo.vencendo, CoresPkLots.manutencao),
+                _Indicador(Icons.error_outline, 'Vencidos', resumo.vencidos, CoresPkLots.erro),
+                _Indicador(Icons.local_parking, 'No pátio', resumo.estacionados, CoresPkLots.azulMarinho),
+              ]),
+              if (resumo.vagasReservadas > 0) ...[
+                const SizedBox(height: 10),
+                Text('${resumo.reservadasLivres} de ${resumo.vagasReservadas} vagas reservadas livres',
+                    style: const TextStyle(fontSize: 13, color: CoresPkLots.textoSecundario)),
+              ],
+            ]),
+          ),
+        ),
+      );
+}
+
+class _Indicador extends StatelessWidget {
+  const _Indicador(this.icone, this.rotulo, this.valor, this.cor);
+
+  final IconData icone;
+  final String rotulo;
+  final int valor;
+  final Color cor;
+
+  @override
+  Widget build(BuildContext context) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icone, size: 18, color: cor),
+        const SizedBox(width: 4),
+        Text('$rotulo: ', style: const TextStyle(color: CoresPkLots.textoSecundario)),
+        Text('$valor', style: const TextStyle(fontWeight: FontWeight.w700, color: CoresPkLots.azulMarinho)),
+      ]);
 }

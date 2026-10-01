@@ -1,8 +1,11 @@
 namespace PkLots.Application.DTOs
 {
-    public record ConfiguracaoPatioDto(string Nome, decimal ValorHora, int MinutosTolerancia, int TotalVagas, int VagasPorFileira, int MaximoVagas);
+    public record ConfiguracaoPatioDto(string Nome, decimal ValorHora, int MinutosTolerancia, int TotalVagas, int VagasPorFileira, int MaximoVagas,
+        decimal ValorMensalidade = 0, int VagasReservadasMensalistas = 0);
 
-    public record AtualizarConfiguracaoRequisicao(string Nome, decimal ValorHora, int MinutosTolerancia);
+    // Mensalidade e vagas reservadas: nulos mantêm o valor atual
+    public record AtualizarConfiguracaoRequisicao(string Nome, decimal ValorHora, int MinutosTolerancia,
+        decimal? ValorMensalidade = null, int? VagasReservadasMensalistas = null);
 
     public record AlterarQuantidadeVagasRequisicao(int Total);
 

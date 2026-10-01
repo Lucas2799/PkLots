@@ -26,6 +26,9 @@ namespace PkLots.Infrastructure.Data
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<UsuarioPatio> UsuariosPatios { get; set; }
         public DbSet<VeiculoMotorista> VeiculosMotoristas { get; set; }
+        public DbSet<Mensalista> Mensalistas { get; set; }
+        public DbSet<MensalistaPlaca> MensalistasPlacas { get; set; }
+        public DbSet<PagamentoMensalidade> PagamentosMensalidade { get; set; }
         public DbSet<Vaga> Vagas { get; set; }
         public DbSet<Veiculo> Veiculos { get; set; }
         public DbSet<EntradaVeiculo> EntradasVeiculos { get; set; }
@@ -70,6 +73,15 @@ namespace PkLots.Infrastructure.Data
             modelBuilder.Entity<LogAuditoria>()
                 .HasQueryFilter(l => _empresaId == null || l.Patio.EmpresaId == _empresaId);
 
+            modelBuilder.Entity<Mensalista>()
+                .HasQueryFilter(m => _empresaId == null || m.Patio.EmpresaId == _empresaId);
+
+            modelBuilder.Entity<MensalistaPlaca>()
+                .HasQueryFilter(mp => _empresaId == null || mp.Mensalista.Patio.EmpresaId == _empresaId);
+
+            modelBuilder.Entity<PagamentoMensalidade>()
+                .HasQueryFilter(p => _empresaId == null || p.Patio.EmpresaId == _empresaId);
+
             // Placas dos motoristas são da plataforma: só aparecem para quem não pertence a uma empresa
             // (o próprio motorista; os serviços filtram pelo UsuarioId)
             modelBuilder.Entity<VeiculoMotorista>()
@@ -93,6 +105,22 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<UsuarioPatio>()
                 .HasKey(up => new { up.UsuarioId, up.PatioId });
+
+            // Uma placa pertence a um só mensalista por pátio
+            modelBuilder.Entity<MensalistaPlaca>()
+                .HasIndex(mp => new { mp.PatioId, mp.Placa }).IsUnique();
+
+            modelBuilder.Entity<Mensalista>()
+                .HasIndex(m => new { m.PatioId, m.Nome });
+
+            modelBuilder.Entity<PagamentoMensalidade>()
+                .HasIndex(p => new { p.MensalistaId, p.PagoEm });
+
+            modelBuilder.Entity<PagamentoMensalidade>()
+                .Property(p => p.Valor).HasPrecision(10, 2);
+
+            modelBuilder.Entity<Patio>()
+                .Property(p => p.ValorMensalidade).HasPrecision(10, 2);
 
             modelBuilder.Entity<Vaga>()
                 .HasIndex(v => new { v.PatioId, v.Numero }).IsUnique();
@@ -150,6 +178,36 @@ namespace PkLots.Infrastructure.Data
                 .WithMany(p => p.Usuarios)
                 .HasForeignKey(up => up.PatioId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Mensalista>()
+                .HasOne(m => m.Patio)
+                .WithMany()
+                .HasForeignKey(m => m.PatioId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<MensalistaPlaca>()
+                .HasOne(mp => mp.Mensalista)
+                .WithMany(m => m.Placas)
+                .HasForeignKey(mp => mp.MensalistaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PagamentoMensalidade>()
+                .HasOne(p => p.Mensalista)
+                .WithMany(m => m.Pagamentos)
+                .HasForeignKey(p => p.MensalistaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PagamentoMensalidade>()
+                .HasOne(p => p.Patio)
+                .WithMany()
+                .HasForeignKey(p => p.PatioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EntradaVeiculo>()
+                .HasOne(e => e.Mensalista)
+                .WithMany()
+                .HasForeignKey(e => e.MensalistaId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<VeiculoMotorista>()
                 .HasOne(v => v.Usuario)

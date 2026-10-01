@@ -15,6 +15,9 @@ namespace PkLots.Application.Interfaces
         DbSet<EntradaVeiculo> EntradasVeiculos { get; }
         DbSet<SaidaVeiculo> SaidasVeiculos { get; }
         DbSet<LogAuditoria> LogsAuditoria { get; }
+        DbSet<Mensalista> Mensalistas { get; }
+        DbSet<MensalistaPlaca> MensalistasPlacas { get; }
+        DbSet<PagamentoMensalidade> PagamentosMensalidade { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

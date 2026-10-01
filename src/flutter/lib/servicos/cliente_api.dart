@@ -109,9 +109,15 @@ class ClienteApi {
 
   Future<ConfiguracaoPatio> configuracao() async => ConfiguracaoPatio.deJson(await _get('/api/admin/configuracao'));
 
-  Future<ConfiguracaoPatio> salvarConfiguracao(String nome, double valorHora, int minutosTolerancia) async =>
-      ConfiguracaoPatio.deJson(await _enviar('PUT', '/api/admin/configuracao',
-          {'nome': nome, 'valorHora': valorHora, 'minutosTolerancia': minutosTolerancia}));
+  Future<ConfiguracaoPatio> salvarConfiguracao(String nome, double valorHora, int minutosTolerancia,
+          {double? valorMensalidade, int? vagasReservadasMensalistas}) async =>
+      ConfiguracaoPatio.deJson(await _enviar('PUT', '/api/admin/configuracao', {
+        'nome': nome,
+        'valorHora': valorHora,
+        'minutosTolerancia': minutosTolerancia,
+        'valorMensalidade': valorMensalidade,
+        'vagasReservadasMensalistas': vagasReservadasMensalistas,
+      }));
 
   Future<ConfiguracaoPatio> alterarQuantidadeVagas(int total) async =>
       ConfiguracaoPatio.deJson(await _enviar('PUT', '/api/admin/vagas/quantidade', {'total': total}));
@@ -133,6 +139,45 @@ class ClienteApi {
 
   Future<PatioAdmin> atualizarPatio(String id, String nome, bool ativo) async =>
       PatioAdmin.deJson(await _enviar('PUT', '/api/admin/patios/$id', {'nome': nome, 'ativo': ativo}));
+
+  // ---------- Mensalistas (pátio selecionado) ----------
+
+  Future<List<Mensalista>> mensalistas({String? situacao, String? busca}) async {
+    final parametros = {
+      'situacao': ?situacao,
+      if (busca != null && busca.trim().isNotEmpty) 'busca': busca.trim(),
+    };
+    final consulta = parametros.isEmpty ? '' : '?${Uri(queryParameters: parametros).query}';
+    return _lista(await _get('/api/mensalistas$consulta'), Mensalista.deJson);
+  }
+
+  Future<Mensalista> salvarMensalista({
+    String? id,
+    required String nome,
+    String? telefone,
+    String? documento,
+    String? observacoes,
+    required List<String> placas,
+    bool ativo = true,
+  }) async {
+    final corpo = {
+      'nome': nome,
+      'telefone': telefone,
+      'documento': documento,
+      'observacoes': observacoes,
+      'placas': placas,
+      'ativo': ativo,
+    };
+    return Mensalista.deJson(
+        id == null ? await _post('/api/mensalistas', corpo) : await _enviar('PUT', '/api/mensalistas/$id', corpo));
+  }
+
+  Future<List<PagamentoMensalidade>> pagamentosMensalista(String id) async =>
+      _lista(await _get('/api/mensalistas/$id/pagamentos'), PagamentoMensalidade.deJson);
+
+  Future<Mensalista> registrarPagamento(String id, {required int meses, double? valor, required String forma, String? observacao}) async =>
+      Mensalista.deJson(await _post('/api/mensalistas/$id/pagamentos',
+          {'meses': meses, 'valor': valor, 'formaPagamento': forma, 'observacao': observacao}));
 
   // ---------- Plataforma (superadmin) ----------
 

@@ -16,6 +16,11 @@ class Formatadores {
 
   static String dataHoraCompleta(DateTime data) => _dataHoraCompleta.format(data.toLocal());
 
+  static final _data = DateFormat('dd/MM/yyyy', 'pt_BR');
+
+  /// Data sem hora (validade de mensalidade): não converte fuso
+  static String data(DateTime data) => _data.format(data);
+
   static String dataCurta(DateTime data) => _dataCurta.format(data.toLocal());
 
   static String percentual(num valor) => '${_percentual.format(valor)}%';

@@ -102,6 +102,9 @@ class DocumentosPdf {
         _linha('Valor por hora', Formatadores.moeda(saida.valorHora), escala),
         pw.Divider(thickness: 0.5),
         _linha('TOTAL', Formatadores.moeda(saida.valorTotal), escala, destaque: true),
+        if (saida.mensalistaSemCobranca)
+          pw.Text('Mensalista${saida.mensalista != null ? ' ${saida.mensalista}' : ''}: sem cobrança',
+              textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7 * escala, color: _cinza)),
         if (saida.isento)
           pw.Text('Isento: saída dentro da tolerância gratuita',
               textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7 * escala, color: _cinza)),

@@ -19,6 +19,7 @@ namespace PkLots.Core.Constantes
         public const string Calculado = "calculado";
         public const string Pago = "pago";
         public const string Isento = "isento"; // saída dentro da tolerância
+        public const string Mensalista = "mensalista"; // mensalista em dia: sem cobrança
         public const string Erro = "erro";
     }
 
@@ -39,6 +40,20 @@ namespace PkLots.Core.Constantes
         public const string Navegador = "navegador"; // o app deve imprimir pelo navegador
     }
 
+    public static class SituacaoMensalista
+    {
+        public const string EmDia = "em_dia";
+        public const string Vencendo = "vencendo"; // em dia, mas vence nos próximos dias
+        public const string Vencido = "vencido";
+        public const string Inativo = "inativo";
+        public const int DiasAvisoVencimento = 5;
+    }
+
+    public static class FormasPagamento
+    {
+        public static readonly string[] Todas = ["dinheiro", "pix", "cartao", "outro"];
+    }
+
     public static class AcoesAuditoria
     {
         public const string EntradaSucesso = "entrada_sucesso";
@@ -53,6 +68,9 @@ namespace PkLots.Core.Constantes
         public const string UsuarioCriado = "usuario_criado";
         public const string UsuarioAlterado = "usuario_alterado";
         public const string SenhaRedefinida = "senha_redefinida";
+        public const string MensalistaCriado = "mensalista_criado";
+        public const string MensalistaAlterado = "mensalista_alterado";
+        public const string MensalidadePaga = "mensalidade_paga";
         public const string EmpresaCriada = "empresa_criada";
         public const string EmpresaAlterada = "empresa_alterada";
         public const string PatioCriado = "patio_criado";

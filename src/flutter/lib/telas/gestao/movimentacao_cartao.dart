@@ -71,6 +71,16 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
   /// Após a entrada: avisa o resultado da impressão automática ou imprime pelo navegador
   Future<void> _aposEntrada(Entrada entrada, String mensagem) async {
     final impressao = ImpressaoTickets(context.read<ClienteApi>());
+    if (entrada.mensalista != null) {
+      if (entrada.situacaoMensalista == Mensalista.vencido) {
+        // Destaca a mensalidade vencida (o operador pode registrar o pagamento antes da saída)
+        mostrarAviso(context, '$mensagem · Mensalidade de ${entrada.mensalista} vencida: será cobrado como avulso.',
+            erro: true);
+        return;
+      }
+      mensagem = '$mensagem · Mensalista ${entrada.mensalista}'
+          '${entrada.mensalidadeValidaAte != null ? ' (em dia até ${Formatadores.data(entrada.mensalidadeValidaAte!)})' : ''}';
+    }
     switch (entrada.impressao) {
       case 'impresso':
         mostrarAviso(context, '$mensagem · ticket impresso');

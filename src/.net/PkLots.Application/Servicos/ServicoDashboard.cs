@@ -9,6 +9,7 @@ namespace PkLots.Application.Servicos
         IPkLotsDbContext db,
         IContextoPatio contextoPatio,
         ServicoVagas servicoVagas,
+        ServicoMensalistas servicoMensalistas,
         TimeProvider relogio)
     {
         public async Task<DashboardDto> ObterAsync(CancellationToken ct = default)
@@ -50,7 +51,8 @@ namespace PkLots.Application.Servicos
 
             var ocupacao = await CalcularOcupacao24hAsync(patioId, agora, vagas.Total, ct);
 
-            return new DashboardDto(patio.Nome, hoje, vagas, ocupacao, listaEstacionados);
+            var mensalistas = await servicoMensalistas.ObterResumoAsync(patioId, ct);
+            return new DashboardDto(patio.Nome, hoje, vagas, ocupacao, listaEstacionados, mensalistas);
         }
 
         // Vagas ocupadas no início de cada uma das últimas 23 horas e no momento atual (último ponto)

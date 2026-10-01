@@ -63,7 +63,10 @@ class _AdministracaoTelaState extends State<AdministracaoTela> {
               (final config?, _) => TabBarView(children: [
                   const AbaPatios(),
                   // A chave recria a aba com os valores salvos no servidor
-                  AbaPreco(key: ValueKey(('preco', config.valorHora, config.minutosTolerancia, config.nome)), configuracao: config),
+                  AbaPreco(
+                      key: ValueKey(('preco', config.valorHora, config.minutosTolerancia, config.nome, config.valorMensalidade,
+                          config.vagasReservadasMensalistas)),
+                      configuracao: config),
                   AbaVagas(key: ValueKey(('vagas', config.totalVagas)), configuracao: config),
                   const AbaUsuarios(),
                   if (estado.impressao case final impressao?)

@@ -68,6 +68,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<DateTime>("DataHoraEntrada")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("MensalistaId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("MetodoReconhecimento")
                         .HasColumnType("text");
 
@@ -92,6 +95,8 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MensalistaId");
 
                     b.HasIndex("VagaId");
 
@@ -144,6 +149,120 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.ToTable("LogsAuditoria");
                 });
 
+            modelBuilder.Entity("PkLots.Core.Entities.Mensalista", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Documento")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Observacoes")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PatioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Telefone")
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly?>("ValidoAte")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatioId", "Nome");
+
+                    b.ToTable("Mensalistas");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.MensalistaPlaca", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("MensalistaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PatioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Placa")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MensalistaId");
+
+                    b.HasIndex("PatioId", "Placa")
+                        .IsUnique();
+
+                    b.ToTable("MensalistasPlacas");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.PagamentoMensalidade", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FormaPagamento")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("MensalistaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Meses")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("PagoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PatioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RegistradoPorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("ValidoAte")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("ValidoDe")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatioId");
+
+                    b.HasIndex("MensalistaId", "PagoEm");
+
+                    b.ToTable("PagamentosMensalidade");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.Patio", b =>
                 {
                     b.Property<Guid>("Id")
@@ -191,8 +310,15 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("VagasReservadasMensalistas")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("ValorHora")
                         .HasColumnType("numeric");
+
+                    b.Property<decimal>("ValorMensalidade")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.HasKey("Id");
 
@@ -467,6 +593,11 @@ namespace PkLots.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("PkLots.Core.Entities.EntradaVeiculo", b =>
                 {
+                    b.HasOne("PkLots.Core.Entities.Mensalista", "Mensalista")
+                        .WithMany()
+                        .HasForeignKey("MensalistaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PkLots.Core.Entities.Patio", "Patio")
                         .WithMany("Entradas")
                         .HasForeignKey("PatioId")
@@ -480,6 +611,8 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.HasOne("PkLots.Core.Entities.Veiculo", "Veiculo")
                         .WithMany()
                         .HasForeignKey("VeiculoId");
+
+                    b.Navigation("Mensalista");
 
                     b.Navigation("Patio");
 
@@ -495,6 +628,47 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .HasForeignKey("PatioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Patio");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.Mensalista", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Patio", "Patio")
+                        .WithMany()
+                        .HasForeignKey("PatioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patio");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.MensalistaPlaca", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Mensalista", "Mensalista")
+                        .WithMany("Placas")
+                        .HasForeignKey("MensalistaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Mensalista");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.PagamentoMensalidade", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Mensalista", "Mensalista")
+                        .WithMany("Pagamentos")
+                        .HasForeignKey("MensalistaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PkLots.Core.Entities.Patio", "Patio")
+                        .WithMany()
+                        .HasForeignKey("PatioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Mensalista");
 
                     b.Navigation("Patio");
                 });
@@ -596,6 +770,13 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Navigation("Patios");
 
                     b.Navigation("Usuarios");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.Mensalista", b =>
+                {
+                    b.Navigation("Pagamentos");
+
+                    b.Navigation("Placas");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Patio", b =>
