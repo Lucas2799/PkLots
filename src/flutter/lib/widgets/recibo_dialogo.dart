@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../modelos/modelos.dart';
+import '../servicos/impressao_tickets.dart';
 import '../tema/cores.dart';
 import '../util/formatadores.dart';
 
@@ -27,7 +28,26 @@ Future<void> mostrarRecibo(BuildContext context, Saida saida) => showDialog(
             _Linha('Valor/hora', Formatadores.moeda(saida.valorHora)),
           ]),
         ),
-        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              try {
+                await ImpressaoTickets.baixarRecibo(saida);
+              } catch (_) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(const SnackBar(content: Text('Não foi possível gerar o PDF do recibo.')));
+                }
+              }
+            },
+            icon: const Icon(Icons.picture_as_pdf_outlined),
+            label: const Text('Baixar PDF'),
+          ),
+          SizedBox(
+            width: 100,
+            child: FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK')),
+          ),
+        ],
       ),
     );
 

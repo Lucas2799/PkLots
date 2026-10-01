@@ -40,11 +40,11 @@ namespace PkLots.Application.Servicos
             var estacionados = await db.EntradasVeiculos
                 .Where(e => e.PatioId == patioId && e.Situacao == SituacaoEntrada.Ativa)
                 .OrderBy(e => e.DataHoraEntrada)
-                .Select(e => new { e.Placa, e.DataHoraEntrada, NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null })
+                .Select(e => new { e.Id, e.Placa, e.DataHoraEntrada, NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null })
                 .ToListAsync(ct);
 
             var listaEstacionados = estacionados
-                .Select(e => new VeiculoEstacionadoDto(e.Placa, e.DataHoraEntrada,
+                .Select(e => new VeiculoEstacionadoDto(e.Id, e.Placa, e.DataHoraEntrada,
                     CalculadoraTarifa.FormatarDuracao(agora - e.DataHoraEntrada), e.NumeroVaga))
                 .ToList();
 

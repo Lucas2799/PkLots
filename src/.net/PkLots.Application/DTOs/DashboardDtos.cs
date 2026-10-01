@@ -2,7 +2,7 @@ namespace PkLots.Application.DTOs
 {
     public record ResumoDiaDto(int Entradas, int Saidas, decimal Receita, string MediaEstadia);
 
-    public record VeiculoEstacionadoDto(string Placa, DateTime DataHoraEntrada, string Duracao, string? NumeroVaga);
+    public record VeiculoEstacionadoDto(Guid EntradaId, string Placa, DateTime DataHoraEntrada, string Duracao, string? NumeroVaga);
 
     public record OcupacaoHoraDto(DateTime Hora, int Ocupadas, decimal Percentual);
 

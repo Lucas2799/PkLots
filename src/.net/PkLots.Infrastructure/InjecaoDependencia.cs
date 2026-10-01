@@ -47,6 +47,7 @@ namespace PkLots.Infrastructure
             services.Configure<OpcoesJwt>(configuracao.GetSection("Jwt"));
             services.AddSingleton<IGeradorToken, GeradorTokenJwt>();
             services.AddSingleton<IHashSenha, HashSenhaBcrypt>();
+            services.AddSingleton<IImpressoraTickets, ImpressoraTicketsTcp>();
 
             return services;
         }

@@ -12,15 +12,17 @@ class AdministracaoProvider extends ChangeNotifier {
   bool carregando = false;
   String? erro;
   ConfiguracaoPatio? configuracao;
+  ConfiguracaoImpressao? impressao;
   List<UsuarioAdmin> usuarios = [];
 
   Future<void> carregar() async {
     carregando = true;
     notifyListeners();
     try {
-      final resultados = await Future.wait([_api.configuracao(), _api.usuarios()]);
+      final resultados = await Future.wait([_api.configuracao(), _api.usuarios(), _api.configuracaoImpressao()]);
       configuracao = resultados[0] as ConfiguracaoPatio;
       usuarios = resultados[1] as List<UsuarioAdmin>;
+      impressao = resultados[2] as ConfiguracaoImpressao;
       erro = null;
     } on ExcecaoApi catch (e) {
       erro = e.mensagem;
@@ -39,6 +41,13 @@ class AdministracaoProvider extends ChangeNotifier {
     configuracao = await _api.alterarQuantidadeVagas(total);
     notifyListeners();
   }
+
+  Future<void> salvarImpressao(ConfiguracaoImpressao nova) async {
+    impressao = await _api.salvarConfiguracaoImpressao(nova);
+    notifyListeners();
+  }
+
+  Future<void> imprimirTesteNaRede() => _api.imprimirTeste();
 
   Future<void> criarUsuario(String email, String nome, String senha, String perfil) async {
     await _api.criarUsuario(email, nome, senha, perfil);

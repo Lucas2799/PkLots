@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -68,9 +70,23 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
             {'hora': DateTime.utc(2026, 9, 30).add(Duration(hours: i)).toIso8601String(), 'ocupadas': i % 5, 'percentual': 0}
         ],
         'estacionados': [
-          {'placa': 'ABC1234', 'dataHoraEntrada': '2026-09-30T10:30:45Z', 'duracao': '4h 15m', 'numeroVaga': 'A1'}
+          {'entradaId': 'e1', 'placa': 'ABC1234', 'dataHoraEntrada': '2026-09-30T10:30:45Z', 'duracao': '4h 15m', 'numeroVaga': 'A1'}
         ],
       });
+    case '/api/entradas/':
+      return json({
+        'id': 'e2',
+        'placa': 'XYZ9876',
+        'dataHoraEntrada': '2026-09-30T14:00:00Z',
+        'numeroVaga': 'A2',
+        'confianca': 1,
+        'situacao': 'ativa',
+        'impressao': 'impresso',
+      }, 201);
+    case '/api/admin/impressao':
+      final corpo = req.method == 'PUT' ? jsonDecode(req.body) as Map<String, dynamic> : null;
+      return json(corpo ??
+          {'modo': 'desativada', 'impressoraHost': null, 'impressoraPorta': 9100, 'larguraPapelMm': 80, 'imprimirEntradaAutomaticamente': true});
     case '/api/vagas':
       return json([
         {'id': 'a1', 'numero': 'A1', 'fileira': 'A', 'indice': 1, 'situacao': 'ocupada', 'placaAtual': 'ABC1234'},
@@ -229,6 +245,52 @@ void main() {
     await tester.tap(find.text('Lucas Tavares (você)'));
     await tester.pumpAndSettle();
     expect(find.text('Você não pode desativar a própria conta'), findsOneWidget);
+  });
+
+  testWidgets('entrada com impressão automática avisa que o ticket foi impresso', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Placa'), 'XYZ9876');
+    await tester.tap(find.widgetWithText(FilledButton, 'Entrada'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ticket impresso'), findsOneWidget);
+    expect(find.byTooltip('Reimprimir ticket de ABC1234'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('admin configura a impressora de rede', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+    await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Impressão'));
+    await tester.pumpAndSettle();
+
+    // Desativada: sem campos de impressora
+    expect(find.text('IP da impressora'), findsNothing);
+
+    await tester.tap(find.text('Impressora de rede'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'IP da impressora'), '192.168.0.50');
+    await tester.tap(find.text('58 mm'));
+    await tester.pumpAndSettle();
+    // Teste da rede só depois de salvar
+    expect(find.text('Salve para testar a impressora de rede.'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Salvar'));
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    final put = enviadas.singleWhere((r) => r.url.path == '/api/admin/impressao');
+    final corpo = jsonDecode(put.body) as Map<String, dynamic>;
+    expect(corpo['modo'], 'rede');
+    expect(corpo['impressoraHost'], '192.168.0.50');
+    expect(corpo['larguraPapelMm'], 58);
+    expect(find.textContaining('Configuração de impressão salva'), findsOneWidget);
   });
 
   test('lê valores em reais com vírgula ou ponto', () {

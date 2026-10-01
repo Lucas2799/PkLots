@@ -4,6 +4,7 @@ class Formatadores {
   static final _moeda = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
   static final _hora = DateFormat('HH:mm', 'pt_BR');
   static final _dataHora = DateFormat("dd/MM 'às' HH:mm", 'pt_BR');
+  static final _dataHoraCompleta = DateFormat('dd/MM/yyyy HH:mm', 'pt_BR');
   static final _dataCurta = DateFormat('dd/MMM', 'pt_BR');
   static final _percentual = NumberFormat.decimalPattern('pt_BR');
 
@@ -12,6 +13,8 @@ class Formatadores {
   static String hora(DateTime data) => _hora.format(data.toLocal());
 
   static String dataHora(DateTime data) => _dataHora.format(data.toLocal());
+
+  static String dataHoraCompleta(DateTime data) => _dataHoraCompleta.format(data.toLocal());
 
   static String dataCurta(DateTime data) => _dataCurta.format(data.toLocal());
 

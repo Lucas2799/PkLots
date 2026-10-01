@@ -22,6 +22,21 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.AlterarQuantidadeVagasAsync(usuario.ObterUsuarioId(), requisicao.Total, ct)))
                 .WithSummary("Altera a quantidade de vagas (não remove vagas ocupadas)");
 
+            grupo.MapGet("/impressao", async (ServicoImpressao servico, CancellationToken ct) =>
+                Results.Ok(await servico.ObterConfiguracaoAsync(ct)))
+                .WithSummary("Configuração de impressão do ticket de entrada");
+
+            grupo.MapPut("/impressao", async (ConfiguracaoImpressaoDto requisicao, ClaimsPrincipal usuario, ServicoImpressao servico, CancellationToken ct) =>
+                Results.Ok(await servico.AtualizarConfiguracaoAsync(usuario.ObterUsuarioId(), requisicao, ct)))
+                .WithSummary("Modo (desativada, rede, navegador), impressora, papel (58/80 mm) e impressão automática");
+
+            grupo.MapPost("/impressao/teste", async (ServicoImpressao servico, CancellationToken ct) =>
+                {
+                    await servico.ImprimirTesteAsync(ct);
+                    return Results.NoContent();
+                })
+                .WithSummary("Envia uma página de teste para a impressora de rede");
+
             grupo.MapGet("/usuarios", async (ServicoAdministracao servico, CancellationToken ct) =>
                 Results.Ok(await servico.ListarUsuariosAsync(ct)))
                 .WithSummary("Lista os usuários do pátio");

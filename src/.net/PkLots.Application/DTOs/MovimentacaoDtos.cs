@@ -15,7 +15,8 @@ namespace PkLots.Application.DTOs
         decimal Confianca,
         Guid? VagaId,
         string? NumeroVaga,
-        string Situacao);
+        string Situacao,
+        string? Impressao = null); // impresso, falhou, navegador ou null (sem impressão automática)
 
     public record SaidaDto(
         Guid Id,
@@ -31,7 +32,8 @@ namespace PkLots.Application.DTOs
         decimal ValorTotal,
         string Moeda,
         string SituacaoPagamento,
-        string? NumeroVaga);
+        string? NumeroVaga,
+        string NomePatio = "");
 
     public record HistoricoVeiculoDto(
         Guid EntradaId,

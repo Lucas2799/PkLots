@@ -77,6 +77,22 @@ class ClienteApi {
   Future<Saida> registrarSaidaPorImagem(List<int> bytes, String nomeArquivo) async =>
       Saida.deJson(await _enviarImagem('/api/saidas/imagem', bytes, nomeArquivo));
 
+  // ---------- Impressão ----------
+
+  Future<TicketEntrada> ticketEntrada(String entradaId) async =>
+      TicketEntrada.deJson(await _get('/api/entradas/$entradaId/ticket'));
+
+  /// Imprime na impressora de rede (409 se não houver impressora de rede configurada)
+  Future<void> imprimirTicketEntrada(String entradaId) => _post('/api/entradas/$entradaId/imprimir', null);
+
+  Future<ConfiguracaoImpressao> configuracaoImpressao() async =>
+      ConfiguracaoImpressao.deJson(await _get('/api/admin/impressao'));
+
+  Future<ConfiguracaoImpressao> salvarConfiguracaoImpressao(ConfiguracaoImpressao configuracao) async =>
+      ConfiguracaoImpressao.deJson(await _enviar('PUT', '/api/admin/impressao', configuracao.paraJson()));
+
+  Future<void> imprimirTeste() => _post('/api/admin/impressao/teste', null);
+
   // ---------- Administração (somente admin) ----------
 
   Future<ConfiguracaoPatio> configuracao() async => ConfiguracaoPatio.deJson(await _get('/api/admin/configuracao'));

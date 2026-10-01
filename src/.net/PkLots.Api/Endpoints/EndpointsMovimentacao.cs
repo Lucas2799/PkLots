@@ -9,21 +9,34 @@ namespace PkLots.Api.Endpoints
         {
             var entradas = app.MapGroup("/api/entradas").WithTags("Entradas").RequireAuthorization(Autorizacao.Gestao);
 
-            entradas.MapPost("/", async (RegistrarEntradaRequisicao requisicao, ServicoEntrada servico, CancellationToken ct) =>
+            entradas.MapPost("/", async (RegistrarEntradaRequisicao requisicao, ServicoEntrada servico, ServicoImpressao impressao, CancellationToken ct) =>
                 {
                     var entrada = await servico.RegistrarAsync(requisicao, ct);
+                    entrada = entrada with { Impressao = await impressao.AposEntradaAsync(entrada.Id, ct) };
                     return Results.Created($"/api/entradas/{entrada.Id}", entrada);
                 })
-                .WithSummary("Registra entrada com placa já reconhecida");
+                .WithSummary("Registra entrada com placa já reconhecida (imprime o ticket se configurado)");
 
-            entradas.MapPost("/imagem", async (IFormFile imagem, ServicoEntrada servico, CancellationToken ct) =>
+            entradas.MapPost("/imagem", async (IFormFile imagem, ServicoEntrada servico, ServicoImpressao impressao, CancellationToken ct) =>
                 {
                     await using var fluxo = imagem.OpenReadStream();
                     var entrada = await servico.RegistrarPorImagemAsync(fluxo, imagem.FileName, ct);
+                    entrada = entrada with { Impressao = await impressao.AposEntradaAsync(entrada.Id, ct) };
                     return Results.Created($"/api/entradas/{entrada.Id}", entrada);
                 })
                 .DisableAntiforgery()
                 .WithSummary("Registra entrada a partir da foto da câmera (LPR)");
+
+            entradas.MapGet("/{id:guid}/ticket", async (Guid id, ServicoImpressao impressao, CancellationToken ct) =>
+                    Results.Ok(await impressao.ObterTicketEntradaAsync(id, ct)))
+                .WithSummary("Dados do ticket de entrada (para gerar o PDF no navegador)");
+
+            entradas.MapPost("/{id:guid}/imprimir", async (Guid id, ServicoImpressao impressao, CancellationToken ct) =>
+                {
+                    await impressao.ImprimirEntradaAsync(id, ct);
+                    return Results.NoContent();
+                })
+                .WithSummary("Imprime (ou reimprime) o ticket na impressora de rede");
 
             var saidas = app.MapGroup("/api/saidas").WithTags("Saídas").RequireAuthorization(Autorizacao.Gestao);
 

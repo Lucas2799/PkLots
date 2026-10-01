@@ -9,6 +9,13 @@ namespace PkLots.Core.Entities
         public int MaximoVagas { get; set; } = 30;
         public decimal ValorHora { get; set; } = 15.00m;
         public int MinutosTolerancia { get; set; } = 0; // saída dentro da tolerância não paga
+
+        // Impressão do ticket de entrada
+        public string ModoImpressao { get; set; } = "desativada"; // desativada, rede, navegador
+        public string? ImpressoraHost { get; set; } // IP/nome da impressora térmica (modo rede)
+        public int ImpressoraPorta { get; set; } = 9100;
+        public int LarguraPapelMm { get; set; } = 80; // 58 ou 80
+        public bool ImprimirEntradaAutomaticamente { get; set; } = true;
         public bool Ativo { get; set; } = true;
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
         public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;

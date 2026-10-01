@@ -127,11 +127,27 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("Descricao")
                         .HasColumnType("text");
 
+                    b.Property<string>("ImpressoraHost")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ImpressoraPorta")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ImprimirEntradaAutomaticamente")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("LarguraPapelMm")
+                        .HasColumnType("integer");
+
                     b.Property<int>("MaximoVagas")
                         .HasColumnType("integer");
 
                     b.Property<int>("MinutosTolerancia")
                         .HasColumnType("integer");
+
+                    b.Property<string>("ModoImpressao")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Nome")
                         .IsRequired()

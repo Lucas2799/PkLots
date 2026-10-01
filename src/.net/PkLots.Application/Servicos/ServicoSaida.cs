@@ -116,7 +116,7 @@ namespace PkLots.Application.Servicos
 
             return new SaidaDto(saida.Id, entrada.Id, entrada.Placa, entrada.DataHoraEntrada, agora, urlFoto,
                 tarifa.DuracaoSegundos, tarifa.DuracaoFormatada, tarifa.DuracaoHoras, patio.ValorHora,
-                tarifa.ValorTotal, saida.Moeda, saida.SituacaoPagamento, vaga?.Numero);
+                tarifa.ValorTotal, saida.Moeda, saida.SituacaoPagamento, vaga?.Numero, patio.Nome);
         }
     }
 }

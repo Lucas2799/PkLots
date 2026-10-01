@@ -45,6 +45,9 @@ namespace PkLots.Application.Tests
         public ServicoVeiculos Veiculos => new(Db, ContextoPatio);
         public ServicoMotorista Motorista => new(Db, ContextoPatio, Veiculos, Saida, Relogio);
         public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Relogio);
+        public ImpressoraFalsa Impressora { get; } = new();
+        public ServicoImpressao Impressao =>
+            new(Db, ContextoPatio, Impressora, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);
         public ServicoAdministracao Administracao => new(Db, ContextoPatio, Cache, HashSenha, Relogio);
         public ServicoAutenticacao Autenticacao => new(Db, HashSenha, new GeradorTokenFalso(), ContextoPatio, Relogio);
 
@@ -84,6 +87,20 @@ namespace PkLots.Application.Tests
 
         public Task<ResultadoLprDto> AnalisarAsync(Stream imagem, string nomeArquivo, CancellationToken ct = default) =>
             Task.FromResult(Resultado);
+    }
+
+    public class ImpressoraFalsa : IImpressoraTickets
+    {
+        public List<(string Host, int Porta, byte[] Dados)> Enviados { get; } = [];
+        public bool Falhar { get; set; }
+
+        public Task EnviarAsync(string host, int porta, byte[] dados, CancellationToken ct = default)
+        {
+            if (Falhar)
+                throw new System.Net.Sockets.SocketException(111); // conexão recusada
+            Enviados.Add((host, porta, dados));
+            return Task.CompletedTask;
+        }
     }
 
     public class HashSenhaFalso : IHashSenha

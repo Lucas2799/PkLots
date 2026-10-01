@@ -48,11 +48,13 @@ class TituloSecao extends StatelessWidget {
 }
 
 /// Mostra uma mensagem rápida no rodapé
-void mostrarAviso(BuildContext context, String mensagem, {bool erro = false}) {
+void mostrarAviso(BuildContext context, String mensagem, {bool erro = false, SnackBarAction? acao}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
       content: Text(mensagem),
       backgroundColor: erro ? CoresPkLots.erro : CoresPkLots.azulMarinho,
+      action: acao,
+      duration: Duration(seconds: acao == null ? 4 : 8),
     ));
 }

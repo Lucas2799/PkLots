@@ -81,7 +81,7 @@ void main() {
             {'hora': '2026-09-30T13:00:00Z', 'ocupadas': 26, 'percentual': 86.7}
           ],
           'estacionados': [
-            {'placa': 'ABC1234', 'dataHoraEntrada': '2026-09-30T10:30:45Z', 'duracao': '4h 15m', 'numeroVaga': 'A1'}
+            {'entradaId': 'e1', 'placa': 'ABC1234', 'dataHoraEntrada': '2026-09-30T10:30:45Z', 'duracao': '4h 15m', 'numeroVaga': 'A1'}
           ],
         }));
 

@@ -166,7 +166,17 @@ class Entrada {
   final String? numeroVaga;
   final double confianca;
 
-  Entrada({required this.id, required this.placa, required this.dataHoraEntrada, this.numeroVaga, required this.confianca});
+  /// Resultado da impressão automática: impresso, falhou, navegador ou null
+  final String? impressao;
+
+  Entrada({
+    required this.id,
+    required this.placa,
+    required this.dataHoraEntrada,
+    this.numeroVaga,
+    required this.confianca,
+    this.impressao,
+  });
 
   factory Entrada.deJson(Map<String, dynamic> json) => Entrada(
         id: json['id'] as String,
@@ -174,6 +184,7 @@ class Entrada {
         dataHoraEntrada: _data(json['dataHoraEntrada']),
         numeroVaga: json['numeroVaga'] as String?,
         confianca: _numero(json['confianca']),
+        impressao: json['impressao'] as String?,
       );
 }
 
@@ -187,6 +198,7 @@ class Saida {
   final double valorTotal;
   final String situacaoPagamento;
   final String? numeroVaga;
+  final String nomePatio;
 
   /// Saída dentro da tolerância gratuita
   bool get isento => situacaoPagamento == 'isento';
@@ -201,6 +213,7 @@ class Saida {
     required this.valorTotal,
     this.situacaoPagamento = 'calculado',
     this.numeroVaga,
+    this.nomePatio = '',
   });
 
   factory Saida.deJson(Map<String, dynamic> json) => Saida(
@@ -213,6 +226,7 @@ class Saida {
         valorTotal: _numero(json['valorTotal']),
         situacaoPagamento: (json['situacaoPagamento'] as String?) ?? 'calculado',
         numeroVaga: json['numeroVaga'] as String?,
+        nomePatio: (json['nomePatio'] as String?) ?? '',
       );
 }
 
@@ -247,14 +261,16 @@ class OcupacaoHora {
 }
 
 class VeiculoEstacionado {
+  final String entradaId;
   final String placa;
   final DateTime dataHoraEntrada;
   final String duracao;
   final String? numeroVaga;
 
-  VeiculoEstacionado({required this.placa, required this.dataHoraEntrada, required this.duracao, this.numeroVaga});
+  VeiculoEstacionado({required this.entradaId, required this.placa, required this.dataHoraEntrada, required this.duracao, this.numeroVaga});
 
   factory VeiculoEstacionado.deJson(Map<String, dynamic> json) => VeiculoEstacionado(
+        entradaId: json['entradaId'] as String,
         placa: json['placa'] as String,
         dataHoraEntrada: _data(json['dataHoraEntrada']),
         duracao: json['duracao'] as String,
@@ -341,4 +357,79 @@ class UsuarioAdmin {
         ativo: json['ativo'] as bool,
         ultimoLogin: _dataOpcional(json['ultimoLogin']),
       );
+}
+
+class TicketEntrada {
+  final String entradaId;
+  final String codigo;
+  final String nomePatio;
+  final String placa;
+  final String? numeroVaga;
+  final DateTime dataHoraEntrada;
+  final double valorHora;
+  final int minutosTolerancia;
+  final int larguraPapelMm;
+  final String conteudoQrCode;
+
+  TicketEntrada({
+    required this.entradaId,
+    required this.codigo,
+    required this.nomePatio,
+    required this.placa,
+    this.numeroVaga,
+    required this.dataHoraEntrada,
+    required this.valorHora,
+    required this.minutosTolerancia,
+    required this.larguraPapelMm,
+    required this.conteudoQrCode,
+  });
+
+  factory TicketEntrada.deJson(Map<String, dynamic> json) => TicketEntrada(
+        entradaId: json['entradaId'] as String,
+        codigo: json['codigo'] as String,
+        nomePatio: json['nomePatio'] as String,
+        placa: json['placa'] as String,
+        numeroVaga: json['numeroVaga'] as String?,
+        dataHoraEntrada: _data(json['dataHoraEntrada']),
+        valorHora: _numero(json['valorHora']),
+        minutosTolerancia: json['minutosTolerancia'] as int,
+        larguraPapelMm: json['larguraPapelMm'] as int,
+        conteudoQrCode: json['conteudoQrCode'] as String,
+      );
+}
+
+class ConfiguracaoImpressao {
+  static const desativada = 'desativada';
+  static const rede = 'rede';
+  static const navegador = 'navegador';
+
+  final String modo;
+  final String? impressoraHost;
+  final int impressoraPorta;
+  final int larguraPapelMm;
+  final bool imprimirEntradaAutomaticamente;
+
+  ConfiguracaoImpressao({
+    required this.modo,
+    this.impressoraHost,
+    this.impressoraPorta = 9100,
+    this.larguraPapelMm = 80,
+    this.imprimirEntradaAutomaticamente = true,
+  });
+
+  factory ConfiguracaoImpressao.deJson(Map<String, dynamic> json) => ConfiguracaoImpressao(
+        modo: json['modo'] as String,
+        impressoraHost: json['impressoraHost'] as String?,
+        impressoraPorta: json['impressoraPorta'] as int,
+        larguraPapelMm: json['larguraPapelMm'] as int,
+        imprimirEntradaAutomaticamente: json['imprimirEntradaAutomaticamente'] as bool,
+      );
+
+  Map<String, dynamic> paraJson() => {
+        'modo': modo,
+        'impressoraHost': impressoraHost,
+        'impressoraPorta': impressoraPorta,
+        'larguraPapelMm': larguraPapelMm,
+        'imprimirEntradaAutomaticamente': imprimirEntradaAutomaticamente,
+      };
 }

@@ -4,6 +4,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../estado/gestao_provider.dart';
+import '../../modelos/modelos.dart';
+import '../../servicos/cliente_api.dart';
+import '../../servicos/impressao_tickets.dart';
 import '../../servicos/excecao_api.dart';
 import '../../util/formatadores.dart';
 import '../../util/validadores.dart';
@@ -42,13 +45,38 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
     }
   }
 
+  /// Após a entrada: avisa o resultado da impressão automática ou imprime pelo navegador
+  Future<void> _aposEntrada(Entrada entrada, String mensagem) async {
+    final impressao = ImpressaoTickets(context.read<ClienteApi>());
+    switch (entrada.impressao) {
+      case 'impresso':
+        mostrarAviso(context, '$mensagem · ticket impresso');
+      case 'falhou':
+        mostrarAviso(
+          context,
+          '$mensagem, mas a impressora não respondeu.',
+          erro: true,
+          acao: SnackBarAction(
+            label: 'Tentar de novo',
+            textColor: Colors.white,
+            onPressed: () => impressao.reimprimir(entrada.id).catchError((_) => false),
+          ),
+        );
+      case 'navegador':
+        mostrarAviso(context, mensagem);
+        await impressao.imprimirPeloNavegador(entrada.id);
+      default:
+        mostrarAviso(context, mensagem);
+    }
+  }
+
   Future<void> _entradaManual() async {
     if (!_formulario.currentState!.validate()) return;
     await _executar(() async {
       final entrada = await _estado.registrarEntrada(Validadores.normalizarPlaca(_placa.text));
       _placa.clear();
       if (mounted) {
-        mostrarAviso(context, 'Entrada de ${Formatadores.placa(entrada.placa)} registrada na vaga ${entrada.numeroVaga}');
+        await _aposEntrada(entrada, 'Entrada de ${Formatadores.placa(entrada.placa)} registrada na vaga ${entrada.numeroVaga}');
       }
     });
   }
@@ -96,8 +124,7 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
       if (entrada) {
         final registro = await _estado.registrarEntradaPorImagem(bytes, foto.name);
         if (mounted) {
-          mostrarAviso(context,
-              'Placa ${Formatadores.placa(registro.placa)} reconhecida · vaga ${registro.numeroVaga}');
+          await _aposEntrada(registro, 'Placa ${Formatadores.placa(registro.placa)} reconhecida · vaga ${registro.numeroVaga}');
         }
       } else {
         final saida = await _estado.registrarSaidaPorImagem(bytes, foto.name);

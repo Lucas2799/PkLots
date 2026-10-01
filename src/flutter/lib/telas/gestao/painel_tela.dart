@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import '../../estado/gestao_provider.dart';
 import '../../estado/sessao_provider.dart';
 import '../../modelos/modelos.dart';
+import '../../servicos/cliente_api.dart';
+import '../../servicos/impressao_tickets.dart';
 import '../../servicos/excecao_api.dart';
 import '../../tema/cores.dart';
 import '../../util/formatadores.dart';
@@ -210,6 +212,15 @@ class _Estacionados extends StatelessWidget {
 
   final List<VeiculoEstacionado> veiculos;
 
+  Future<void> _reimprimir(BuildContext context, VeiculoEstacionado veiculo) async {
+    try {
+      final naRede = await ImpressaoTickets(context.read<ClienteApi>()).reimprimir(veiculo.entradaId);
+      if (naRede && context.mounted) mostrarAviso(context, 'Ticket de ${Formatadores.placa(veiculo.placa)} enviado à impressora');
+    } on ExcecaoApi catch (e) {
+      if (context.mounted) mostrarAviso(context, e.mensagem, erro: true);
+    }
+  }
+
   Future<void> _registrarSaida(BuildContext context, String placa) async {
     try {
       final saida = await context.read<GestaoProvider>().registrarSaida(placa);
@@ -241,11 +252,18 @@ class _Estacionados extends StatelessWidget {
                 title: Text(Formatadores.placa(v.placa),
                     style: const TextStyle(fontWeight: FontWeight.w700, color: CoresPkLots.azulMarinho)),
                 subtitle: Text('Entrada ${Formatadores.hora(v.dataHoraEntrada)} · ${v.duracao}'),
-                trailing: IconButton(
-                  tooltip: 'Registrar saída de ${v.placa}',
-                  icon: const Icon(Icons.logout),
-                  onPressed: () => _registrarSaida(context, v.placa),
-                ),
+                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                  IconButton(
+                    tooltip: 'Reimprimir ticket de ${v.placa}',
+                    icon: const Icon(Icons.print_outlined),
+                    onPressed: () => _reimprimir(context, v),
+                  ),
+                  IconButton(
+                    tooltip: 'Registrar saída de ${v.placa}',
+                    icon: const Icon(Icons.logout),
+                    onPressed: () => _registrarSaida(context, v.placa),
+                  ),
+                ]),
               ),
           ]),
         ),

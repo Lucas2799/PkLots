@@ -22,6 +22,23 @@ namespace PkLots.Core.Constantes
         public const string Erro = "erro";
     }
 
+    public static class ModoImpressao
+    {
+        public const string Desativada = "desativada";
+        public const string Rede = "rede";           // impressora térmica ESC/POS na rede (TCP)
+        public const string Navegador = "navegador"; // PDF no tamanho do papel, impresso pelo navegador
+
+        public static readonly string[] Todos = [Desativada, Rede, Navegador];
+    }
+
+    // Resultado da impressão automática informado ao app após uma entrada
+    public static class ResultadoImpressao
+    {
+        public const string Impresso = "impresso";
+        public const string Falhou = "falhou";
+        public const string Navegador = "navegador"; // o app deve imprimir pelo navegador
+    }
+
     public static class AcoesAuditoria
     {
         public const string EntradaSucesso = "entrada_sucesso";
@@ -36,6 +53,8 @@ namespace PkLots.Core.Constantes
         public const string UsuarioCriado = "usuario_criado";
         public const string UsuarioAlterado = "usuario_alterado";
         public const string SenhaRedefinida = "senha_redefinida";
+        public const string ConfiguracaoImpressaoAlterada = "configuracao_impressao_alterada";
+        public const string ImpressaoFalhou = "impressao_falhou";
     }
 
     public static class SituacaoAuditoria
