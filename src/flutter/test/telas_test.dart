@@ -165,7 +165,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Ocupadas'), findsWidgets);
     // Operador não vê a administração
-    expect(find.text('Administração'), findsNothing);
+    expect(find.byTooltip('Administração'), findsNothing);
 
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
@@ -189,7 +189,7 @@ void main() {
     await abrirApp(tester, perfil: 'admin');
     await entrar(tester, 'Senha@123');
 
-    await tester.tap(find.text('Administração'));
+    await tester.tap(find.byTooltip('Administração'));
     await tester.pumpAndSettle();
 
     expect(find.text('Pátio e preço'), findsOneWidget);
@@ -215,7 +215,7 @@ void main() {
   testWidgets('admin vê usuários e o próprio usuário marcado', (tester) async {
     await abrirApp(tester, perfil: 'admin');
     await entrar(tester, 'Senha@123');
-    await tester.tap(find.text('Administração'));
+    await tester.tap(find.byTooltip('Administração'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Usuários'));

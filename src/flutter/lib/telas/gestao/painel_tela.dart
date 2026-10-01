@@ -252,43 +252,20 @@ class _Estacionados extends StatelessWidget {
       );
 }
 
-/// Acesso à administração: com texto em telas largas, ícone destacado no celular
+/// Acesso à administração: ícone de engrenagem, com o nome ao passar o mouse
 class _BotaoAdministracao extends StatelessWidget {
   const _BotaoAdministracao({required this.aoVoltar});
 
   /// Preço, vagas ou nome do pátio podem ter mudado
   final Future<void> Function() aoVoltar;
 
-  Future<void> _abrir(BuildContext context) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdministracaoTela()));
-    await aoVoltar();
-  }
-
   @override
-  Widget build(BuildContext context) {
-    const icone = Icon(Icons.admin_panel_settings_outlined);
-
-    if (MediaQuery.sizeOf(context).width >= 600) {
-      return Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: FilledButton.tonalIcon(
-          style: FilledButton.styleFrom(
-            backgroundColor: CoresPkLots.ambar,
-            foregroundColor: CoresPkLots.azulMarinho,
-            minimumSize: const Size(0, 40),
-          ),
-          onPressed: () => _abrir(context),
-          icon: icone,
-          label: const Text('Administração'),
-        ),
+  Widget build(BuildContext context) => IconButton(
+        tooltip: 'Administração',
+        icon: const Icon(Icons.settings_outlined),
+        onPressed: () async {
+          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdministracaoTela()));
+          await aoVoltar();
+        },
       );
-    }
-
-    return IconButton(
-      tooltip: 'Administração',
-      style: IconButton.styleFrom(backgroundColor: CoresPkLots.ambar, foregroundColor: CoresPkLots.azulMarinho),
-      onPressed: () => _abrir(context),
-      icon: icone,
-    );
-  }
 }
