@@ -12,3 +12,8 @@ __pycache__/
 docker/data/
 
 logs/
+
+# Certificados e segredos locais
+docker/ssl/*.pem
+docker/ssl/*.key
+docker/.env

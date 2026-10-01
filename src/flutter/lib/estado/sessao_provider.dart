@@ -11,6 +11,12 @@ enum SituacaoSessao { carregando, deslogado, logado }
 class SessaoProvider extends ChangeNotifier {
   SessaoProvider(this._api, this._armazenamento) {
     _api.aoExpirarSessao = sair;
+    _api.aoExigirTrocaSenha = () {
+      if (!deveTrocarSenha) {
+        deveTrocarSenha = true;
+        notifyListeners();
+      }
+    };
   }
 
   final ClienteApi _api;
@@ -18,6 +24,9 @@ class SessaoProvider extends ChangeNotifier {
 
   SituacaoSessao situacao = SituacaoSessao.carregando;
   String? perfil;
+
+  /// Senha temporária/pública: a raiz do app mostra só a troca de senha
+  bool deveTrocarSenha = false;
   String? nomeUsuario;
   String? emailUsuario;
 
@@ -48,6 +57,11 @@ class SessaoProvider extends ChangeNotifier {
     await _iniciar(await _api.registrar(email.trim(), senha, nome.trim()));
   }
 
+  /// Troca a própria senha; recebe um token novo e libera o app
+  Future<void> trocarSenha(String senhaAtual, String novaSenha) async {
+    await _iniciar(await _api.trocarSenha(senhaAtual, novaSenha));
+  }
+
   Future<void> sair() async {
     await _armazenamento.limpar();
     _definirDeslogado();
@@ -56,6 +70,7 @@ class SessaoProvider extends ChangeNotifier {
   Future<void> _iniciar(Token token) async {
     final expiraEm = DateTime.now().add(Duration(seconds: token.expiraEm));
     await _armazenamento.salvar(DadosSessao(token: token.tokenAcesso, perfil: token.perfil, expiraEm: expiraEm));
+    deveTrocarSenha = token.deveTrocarSenha;
     _aplicar(token.tokenAcesso, token.perfil);
   }
 
@@ -73,6 +88,7 @@ class SessaoProvider extends ChangeNotifier {
     _api.token = null;
     _api.patioAtualId = null;
     perfil = null;
+    deveTrocarSenha = false;
     nomeUsuario = null;
     emailUsuario = null;
     situacao = SituacaoSessao.deslogado;

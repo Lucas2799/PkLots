@@ -37,10 +37,14 @@ RUN cd build/web/assets \
 # =========================================
 FROM docker.io/library/nginx:alpine AS final
 
-COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
+# Configuração: o script escolhe HTTP ou HTTPS conforme o certificado montado em /etc/nginx/ssl
+COPY docker/nginx/base.conf.inc docker/nginx/rotas.conf docker/nginx/cabecalhos-seguranca.conf /etc/nginx/pklots/
+COPY docker/nginx/http.conf.template docker/nginx/https.conf.template /etc/nginx/modelos/
+COPY --chmod=755 docker/nginx/15-pklots-https.sh /docker-entrypoint.d/15-pklots-https.sh
 COPY --from=build /app/build/web /usr/share/nginx/html
 
-ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 \
+    PORTA_HTTPS_PUBLICA=443
 
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
     CMD wget -qO- http://127.0.0.1/health >/dev/null || exit 1

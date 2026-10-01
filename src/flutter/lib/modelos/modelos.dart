@@ -9,12 +9,16 @@ class Token {
   final int expiraEm;
   final String perfil;
 
-  Token({required this.tokenAcesso, required this.expiraEm, required this.perfil});
+  /// Senha temporária ou pública: o app só permite trocar a senha
+  final bool deveTrocarSenha;
+
+  Token({required this.tokenAcesso, required this.expiraEm, required this.perfil, this.deveTrocarSenha = false});
 
   factory Token.deJson(Map<String, dynamic> json) => Token(
         tokenAcesso: json['tokenAcesso'] as String,
         expiraEm: json['expiraEm'] as int,
         perfil: json['perfil'] as String,
+        deveTrocarSenha: (json['deveTrocarSenha'] as bool?) ?? false,
       );
 }
 

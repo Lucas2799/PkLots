@@ -183,6 +183,7 @@ namespace PkLots.Application.Servicos
                 NomeCompleto = nome,
                 Perfil = perfil,
                 SenhaHash = hashSenha.Gerar(requisicao.Senha),
+                DeveTrocarSenha = true, // senha definida pelo admin: o usuário escolhe a dele no primeiro acesso
                 CriadoEm = agora,
                 AtualizadoEm = agora
             };
@@ -249,6 +250,9 @@ namespace PkLots.Application.Servicos
             var agora = relogio.GetUtcNow().UtcDateTime;
 
             usuario.SenhaHash = hashSenha.Gerar(senha);
+            usuario.DeveTrocarSenha = true;
+            usuario.FalhasLogin = 0;
+            usuario.BloqueadoAte = null; // redefinir também desbloqueia
             usuario.AtualizadoEm = agora;
 
             Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.SenhaRedefinida, SituacaoAuditoria.Sucesso, null, agora,

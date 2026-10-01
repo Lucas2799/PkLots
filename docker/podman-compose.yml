@@ -2,7 +2,7 @@
 # PkLots - ambiente completo em containers
 #
 # Uso (a partir da raiz do projeto):
-#   cp docker/.env.example docker/.env   # ajuste senhas e chave JWT
+#   cp docker/.env.example docker/.env   # OBRIGATÓRIO: defina POSTGRES_SENHA e JWT_CHAVE
 #   podman compose -f docker/podman-compose.yml up -d --build
 #
 # App web + API (via Nginx): http://localhost:${GATEWAY_PORTA:-8000}
@@ -17,7 +17,7 @@ services:
     container_name: pklots-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USUARIO:-pklots_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_SENHA:-SenhaForteAqui123!}
+      POSTGRES_PASSWORD: ${POSTGRES_SENHA:?Defina POSTGRES_SENHA no docker/.env}
       POSTGRES_DB: ${POSTGRES_BANCO:-pklots_core}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
@@ -86,11 +86,12 @@ services:
     container_name: pklots-dotnet-api
     environment:
       ASPNETCORE_ENVIRONMENT: ${AMBIENTE:-Production}
-      ConnectionStrings__DefaultConnection: "Host=pklots-db;Port=5432;Database=${POSTGRES_BANCO:-pklots_core};Username=${POSTGRES_USUARIO:-pklots_admin};Password=${POSTGRES_SENHA:-SenhaForteAqui123!};"
+      ConnectionStrings__DefaultConnection: "Host=pklots-db;Port=5432;Database=${POSTGRES_BANCO:-pklots_core};Username=${POSTGRES_USUARIO:-pklots_admin};Password=${POSTGRES_SENHA:?Defina POSTGRES_SENHA no docker/.env};"
       ConnectionStrings__RedisConnection: pklots-cache:6379
       Services__LprServiceUrl: http://pklots-lpr:5000
-      Swagger__Habilitado: ${SWAGGER_HABILITADO:-true}
-      Jwt__SecretKey: ${JWT_CHAVE:-sua_chave_secreta_super_segura_minimo_32_caracteres_aleatorios}
+      Swagger__Habilitado: ${SWAGGER_HABILITADO:-false}
+      Jwt__SecretKey: ${JWT_CHAVE:?Defina JWT_CHAVE no docker/.env (openssl rand -base64 48)}
+      Plataforma__CriarDadosDemonstracao: ${DADOS_DEMONSTRACAO:-false}
     ports:
       - "127.0.0.1:${API_PORTA:-8080}:8080"
     volumes:
@@ -119,9 +120,16 @@ services:
       dockerfile: docker/Dockerfile.gateway
     image: localhost/pklots-gateway:latest
     container_name: pklots-nginx
+    environment:
+      # Porta HTTPS vista pelo navegador (usada no redirecionamento HTTP → HTTPS)
+      PORTA_HTTPS_PUBLICA: ${GATEWAY_PORTA_HTTPS:-8443}
     ports:
-      # Porta alta: Podman rootless não publica portas < 1024
+      # Portas altas: Podman rootless não publica portas < 1024
       - "${GATEWAY_PORTA:-8000}:80"
+      - "${GATEWAY_PORTA_HTTPS:-8443}:443"
+    volumes:
+      # Com cert.pem e key.pem nesta pasta o gateway sobe em HTTPS (ver docker/ssl/LEIA-ME.md)
+      - ./ssl:/etc/nginx/ssl:ro,Z
     depends_on:
       pklots-backend:
         condition: service_healthy

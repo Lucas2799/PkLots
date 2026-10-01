@@ -14,6 +14,7 @@ import '../../widgets/estados_tela.dart';
 import '../../widgets/grafico_ocupacao.dart';
 import '../../widgets/logo_pklots.dart';
 import '../admin/administracao_tela.dart';
+import '../troca_senha_tela.dart';
 import 'caixa_tela.dart';
 import 'cobranca_dialogo.dart';
 import '../mensalistas/mensalistas_tela.dart';
@@ -86,7 +87,11 @@ class _PainelTelaState extends State<PainelTela> {
           ),
           IconButton(
               tooltip: 'Histórico por placa', icon: const Icon(Icons.manage_search), onPressed: () => mostrarBuscaPlaca(context)),
-          IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: estado.carregar),
+          IconButton(
+            tooltip: 'Alterar senha',
+            icon: const Icon(Icons.key_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrocaSenhaTela())),
+          ),
           IconButton(tooltip: 'Sair', icon: const Icon(Icons.logout), onPressed: sessao.sair),
         ],
       ),

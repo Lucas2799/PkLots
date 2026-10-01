@@ -1,0 +1,15 @@
+# =========================================
+# PkLots - Gateway em HTTP (sem certificado: ambiente local)
+# Template processado pelo entrypoint da imagem oficial do Nginx (envsubst)
+# =========================================
+
+# Re-resolve os nomes dos containers (o IP muda quando um container é recriado)
+resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+
+include /etc/nginx/pklots/base.conf.inc;
+
+server {
+    listen 80;
+    server_name _;
+    include /etc/nginx/pklots/rotas.conf;
+}

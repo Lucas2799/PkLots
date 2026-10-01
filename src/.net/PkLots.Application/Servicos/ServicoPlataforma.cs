@@ -48,6 +48,7 @@ namespace PkLots.Application.Servicos
                 NomeCompleto = nomeAdmin,
                 Perfil = Perfis.Admin,
                 SenhaHash = hashSenha.Gerar(requisicao.SenhaAdmin),
+                DeveTrocarSenha = true,
                 CriadoEm = agora,
                 AtualizadoEm = agora
             };

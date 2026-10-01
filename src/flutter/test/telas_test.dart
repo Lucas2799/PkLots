@@ -139,7 +139,16 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         {'id': 'u1', 'email': 'teste@pklots.local', 'nomeCompleto': 'Lucas Tavares', 'perfil': 'admin', 'ativo': true, 'patiosIds': []},
         {'id': 'u2', 'email': 'op@pklots.local', 'nomeCompleto': 'Operador Um', 'perfil': 'operador', 'ativo': false, 'patiosIds': ['p2']},
       ]);
+    case '/api/auth/trocar-senha':
+      final corpo = jsonDecode(req.body) as Map<String, dynamic>;
+      if (corpo['senhaAtual'] != 'Temporaria1') {
+        return json({'title': 'Requisição inválida', 'detail': 'A senha atual não confere.'}, 400);
+      }
+      return json({'tokenAcesso': tokenFalso(nome: 'Lucas Tavares', perfil: perfil), 'expiraEm': 86400, 'perfil': perfil, 'deveTrocarSenha': false});
     case '/api/auth/login':
+      if (req.body.contains('Temporaria1')) {
+        return json({'tokenAcesso': tokenFalso(nome: 'Lucas Tavares', perfil: perfil), 'expiraEm': 86400, 'perfil': perfil, 'deveTrocarSenha': true});
+      }
       final senhaCorreta = req.body.contains('Senha@123');
       return senhaCorreta
           ? json({'tokenAcesso': tokenFalso(nome: 'Lucas Tavares', perfil: perfil), 'expiraEm': 86400, 'perfil': perfil})
@@ -643,6 +652,34 @@ void main() {
 
     final corpo = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/admin/configuracao').body) as Map<String, dynamic>;
     expect((corpo['valorMensalidade'], corpo['vagasReservadasMensalistas']), (280.0, 8));
+  });
+
+  testWidgets('senha temporária obriga a trocar antes de usar o sistema', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Temporaria1');
+
+    expect(find.text('Defina sua senha'), findsOneWidget);
+    expect(find.text('Resumo de hoje'), findsNothing); // painel bloqueado
+
+    // Validação local: letras e números
+    await tester.enterText(find.widgetWithText(TextFormField, 'Senha atual'), 'Temporaria1');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nova senha'), 'somenteletras');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Confirmar nova senha'), 'somenteletras');
+    await tester.tap(find.text('SALVAR NOVA SENHA'));
+    await tester.pump();
+    expect(find.text('Use letras e números'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nova senha'), 'MinhaNova2026');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Confirmar nova senha'), 'MinhaNova2026');
+    await tester.tap(find.text('SALVAR NOVA SENHA'));
+    await tester.pumpAndSettle();
+
+    final corpo = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/auth/trocar-senha').body);
+    expect(corpo, {'senhaAtual': 'Temporaria1', 'novaSenha': 'MinhaNova2026'});
+    expect(find.text('Resumo de hoje'), findsOneWidget); // liberado
+
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
   });
 
   test('lê valores em reais com vírgula ou ponto', () {

@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PkLots.Application.Interfaces;
@@ -9,21 +10,95 @@ namespace PkLots.Infrastructure.Data
 {
     public class OpcoesPlataforma
     {
-        public string SuperAdminEmail { get; set; } = "superadmin@pklots.local";
-        public string? SuperAdminSenha { get; set; }
+        // Empresa/pátio/usuários de demonstração em banco vazio (somente desenvolvimento)
+        public bool CriarDadosDemonstracao { get; set; }
     }
 
-    // Dados iniciais: superadmin da plataforma e, em banco vazio, uma empresa de demonstração
-    // (pátio com 30 vagas, admin, operador e um motorista)
     public static class SemeadorDados
     {
-        private const string SenhaPadraoSuperAdmin = "SuperAdmin@123";
+        // Contas que já existiram com senhas públicas (demonstração/documentação)
+        private static readonly string[] EmailsDemonstracao =
+            ["superadmin@pklots.local", "admin@pklots.local", "operator@pklots.local", "driver@example.com"];
 
         public static async Task SemearAsync(PkLotsDbContext db, IHashSenha hashSenha, OpcoesPlataforma opcoes,
             ILogger? logger = null, CancellationToken ct = default)
         {
-            await GarantirSuperAdminAsync(db, hashSenha, opcoes, logger, ct);
+            if (opcoes.CriarDadosDemonstracao)
+                await SemearDemonstracaoAsync(db, hashSenha, logger, ct);
 
+            await MarcarSenhasConhecidasAsync(db, hashSenha, logger, ct);
+
+            if (!await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Perfil == Perfis.SuperAdmin && u.Ativo, ct))
+                logger?.LogWarning("Nenhum superusuário cadastrado. Crie com: PkLots.Api criar-superadmin --email voce@empresa.com");
+        }
+
+        // Cria o superusuário (ou redefine a senha, se já existir) com senha temporária aleatória.
+        // A senha é mostrada uma única vez e precisa ser trocada no primeiro acesso.
+        public static async Task<(string Senha, bool Criado)> CriarOuRedefinirSuperAdminAsync(PkLotsDbContext db, IHashSenha hashSenha,
+            string email, CancellationToken ct = default)
+        {
+            var emailNormalizado = RegrasUsuario.NormalizarEmail(email);
+            var senha = GerarSenhaTemporaria();
+            var agora = DateTime.UtcNow;
+
+            var usuario = await db.Usuarios.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == emailNormalizado, ct);
+            var criado = usuario is null;
+            if (usuario is null)
+            {
+                usuario = new Usuario { Email = emailNormalizado, NomeCompleto = "Administrador da Plataforma", Perfil = Perfis.SuperAdmin, CriadoEm = agora };
+                db.Usuarios.Add(usuario);
+            }
+            else if (usuario.Perfil != Perfis.SuperAdmin)
+            {
+                throw new InvalidOperationException($"O e-mail {emailNormalizado} já pertence a um usuário com perfil {usuario.Perfil}.");
+            }
+
+            usuario.SenhaHash = hashSenha.Gerar(senha);
+            usuario.DeveTrocarSenha = true;
+            usuario.Ativo = true;
+            usuario.FalhasLogin = 0;
+            usuario.BloqueadoAte = null;
+            usuario.AtualizadoEm = agora;
+
+            await db.SaveChangesAsync(ct);
+            return (senha, criado);
+        }
+
+        // 16 caracteres aleatórios (sem caracteres que se confundem), sempre com letras, números e símbolo
+        public static string GerarSenhaTemporaria()
+        {
+            const string letras = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ";
+            const string numeros = "23456789";
+            const string simbolos = "!@#$%*-_";
+            const string todos = letras + numeros + simbolos;
+
+            var senha = new char[16];
+            senha[0] = letras[RandomNumberGenerator.GetInt32(letras.Length)];
+            senha[1] = numeros[RandomNumberGenerator.GetInt32(numeros.Length)];
+            senha[2] = simbolos[RandomNumberGenerator.GetInt32(simbolos.Length)];
+            for (var i = 3; i < senha.Length; i++)
+                senha[i] = todos[RandomNumberGenerator.GetInt32(todos.Length)];
+            RandomNumberGenerator.Shuffle(senha.AsSpan());
+            return new string(senha);
+        }
+
+        // Contas de demonstração que ainda usam senha pública: troca obrigatória no próximo login
+        private static async Task MarcarSenhasConhecidasAsync(PkLotsDbContext db, IHashSenha hashSenha, ILogger? logger, CancellationToken ct)
+        {
+            var candidatos = await db.Usuarios.IgnoreQueryFilters()
+                .Where(u => !u.DeveTrocarSenha && (EmailsDemonstracao.Contains(u.Email) || u.Perfil == Perfis.SuperAdmin))
+                .ToListAsync(ct);
+
+            foreach (var usuario in candidatos.Where(u => RegrasUsuario.SenhasConhecidas.Any(s => hashSenha.Verificar(s, u.SenhaHash))))
+            {
+                usuario.DeveTrocarSenha = true;
+                logger?.LogWarning("A conta {Email} usa uma senha pública: troca obrigatória no próximo login.", usuario.Email);
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
+        private static async Task SemearDemonstracaoAsync(PkLotsDbContext db, IHashSenha hashSenha, ILogger? logger, CancellationToken ct)
+        {
             if (await db.Empresas.IgnoreQueryFilters().AnyAsync(ct))
                 return;
 
@@ -42,24 +117,7 @@ namespace PkLots.Infrastructure.Data
                 NovoUsuario(null, "driver@example.com", "Driver@123", "Motorista Exemplo", Perfis.Motorista, hashSenha));
 
             await db.SaveChangesAsync(ct);
-        }
-
-        private static async Task GarantirSuperAdminAsync(PkLotsDbContext db, IHashSenha hashSenha, OpcoesPlataforma opcoes,
-            ILogger? logger, CancellationToken ct)
-        {
-            if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Perfil == Perfis.SuperAdmin, ct))
-                return;
-
-            var senha = opcoes.SuperAdminSenha;
-            if (string.IsNullOrWhiteSpace(senha))
-            {
-                senha = SenhaPadraoSuperAdmin;
-                logger?.LogWarning("Superadmin criado com a senha padrão. Defina Plataforma__SuperAdminSenha e troque a senha.");
-            }
-
-            db.Usuarios.Add(NovoUsuario(null, opcoes.SuperAdminEmail.Trim().ToLowerInvariant(), senha, "Administrador da Plataforma",
-                Perfis.SuperAdmin, hashSenha));
-            await db.SaveChangesAsync(ct);
+            logger?.LogWarning("Dados de demonstração criados (senhas públicas, troca obrigatória). Não use em produção.");
         }
 
         private static Usuario NovoUsuario(Guid? empresaId, string email, string senha, string nome, string perfil, IHashSenha hashSenha) =>

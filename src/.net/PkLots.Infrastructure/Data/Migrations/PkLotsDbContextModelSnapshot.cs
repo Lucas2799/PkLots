@@ -603,8 +603,14 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<DateTime>("AtualizadoEm")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("BloqueadoAte")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("DeveTrocarSenha")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -612,6 +618,9 @@ namespace PkLots.Infrastructure.Data.Migrations
 
                     b.Property<Guid?>("EmpresaId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("FalhasLogin")
+                        .HasColumnType("integer");
 
                     b.Property<string>("NomeCompleto")
                         .IsRequired()

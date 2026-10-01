@@ -1,0 +1,39 @@
+# =========================================
+# PkLots - Gateway em HTTPS (ativado quando há /etc/nginx/ssl/cert.pem e key.pem)
+# =========================================
+
+resolver ${NGINX_LOCAL_RESOLVERS} valid=10s ipv6=off;
+
+include /etc/nginx/pklots/base.conf.inc;
+
+# HTTP: só o health check (usado pelo container) e redirecionamento para HTTPS
+server {
+    listen 80;
+    server_name _;
+    server_tokens off;
+
+    location = /health {
+        access_log off;
+        default_type text/plain;
+        return 200 "OK";
+    }
+
+    location / {
+        return 301 https://$host:${PORTA_HTTPS_PUBLICA}$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name _;
+
+    ssl_certificate /etc/nginx/ssl/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/key.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    include /etc/nginx/pklots/rotas.conf;
+}

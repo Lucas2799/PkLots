@@ -11,6 +11,7 @@ import '../../util/formatadores.dart';
 import '../../util/validadores.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/logo_pklots.dart';
+import '../troca_senha_tela.dart';
 
 /// Área do superadmin: empresas clientes da plataforma
 class PlataformaTela extends StatefulWidget {
@@ -85,6 +86,11 @@ class _PlataformaTelaState extends State<PlataformaTela> {
         ]),
         actions: [
           IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: _carregar),
+          IconButton(
+            tooltip: 'Alterar senha',
+            icon: const Icon(Icons.key_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrocaSenhaTela())),
+          ),
           IconButton(tooltip: 'Sair', icon: const Icon(Icons.logout), onPressed: sessao.sair),
         ],
       ),

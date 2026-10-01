@@ -16,11 +16,22 @@ namespace PkLots.Application.Servicos
             return normalizado;
         }
 
+        // Mínimo de 8 caracteres, com letras e números; senhas de demonstração do sistema não são aceitas
         public static void ValidarSenha(string? senha)
         {
             if (string.IsNullOrWhiteSpace(senha) || senha.Length < 8)
                 throw new ExcecaoNegocio("A senha deve ter pelo menos 8 caracteres.");
+            if (senha.Length > 128)
+                throw new ExcecaoNegocio("A senha deve ter no máximo 128 caracteres.");
+            if (!senha.Any(char.IsLetter) || !senha.Any(char.IsDigit))
+                throw new ExcecaoNegocio("A senha deve ter letras e números.");
+            if (SenhasConhecidas.Contains(senha))
+                throw new ExcecaoNegocio("Essa senha é conhecida (de demonstração). Escolha outra.");
         }
+
+        // Senhas que já circularam (dados de demonstração e documentação): nunca valem como senha real
+        public static readonly HashSet<string> SenhasConhecidas =
+            ["Admin@123", "Operator@123", "Driver@123", "SuperAdmin@123"];
 
         public static string ValidarNome(string? nome)
         {

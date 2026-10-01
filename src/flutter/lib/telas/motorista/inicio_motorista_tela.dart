@@ -10,6 +10,7 @@ import '../../widgets/estados_tela.dart';
 import '../../widgets/item_historico_tile.dart';
 import '../../widgets/logo_pklots.dart';
 import 'cadastro_veiculo_dialogo.dart';
+import '../troca_senha_tela.dart';
 import 'historico_tela.dart';
 
 /// Tela principal do motorista
@@ -51,6 +52,11 @@ class _InicioMotoristaTelaState extends State<InicioMotoristaTela> {
               padding: const EdgeInsets.only(right: 4),
               child: Center(child: Text('Olá, ${sessao.primeiroNome}', style: const TextStyle(fontWeight: FontWeight.w600))),
             ),
+          IconButton(
+            tooltip: 'Alterar senha',
+            icon: const Icon(Icons.key_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrocaSenhaTela())),
+          ),
           IconButton(tooltip: 'Sair', icon: const Icon(Icons.logout), onPressed: sessao.sair),
         ],
       ),

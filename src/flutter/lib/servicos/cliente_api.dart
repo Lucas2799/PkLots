@@ -25,10 +25,16 @@ class ClienteApi {
   /// Chamado quando a API responde 401 com um token presente (sessão expirada)
   void Function()? aoExpirarSessao;
 
+  /// Chamado quando a API exige a troca de senha (403 com código "troca_senha")
+  void Function()? aoExigirTrocaSenha;
+
   // ---------- Autenticação ----------
 
   Future<Token> login(String email, String senha) async =>
       Token.deJson(await _post('/api/auth/login', {'email': email, 'senha': senha}));
+
+  Future<Token> trocarSenha(String senhaAtual, String novaSenha) async =>
+      Token.deJson(await _post('/api/auth/trocar-senha', {'senhaAtual': senhaAtual, 'novaSenha': novaSenha}));
 
   Future<Token> registrar(String email, String senha, String nomeCompleto) async => Token.deJson(
       await _post('/api/auth/registrar', {'email': email, 'senha': senha, 'nomeCompleto': nomeCompleto}));
@@ -288,6 +294,9 @@ class ClienteApi {
     if (resposta.statusCode >= 200 && resposta.statusCode < 300) return corpo;
 
     if (resposta.statusCode == 401 && token != null) aoExpirarSessao?.call();
+    if (resposta.statusCode == 403 && corpo is Map<String, dynamic> && corpo['codigo'] == 'troca_senha') {
+      aoExigirTrocaSenha?.call();
+    }
 
     final mensagem = corpo is Map<String, dynamic>
         ? (corpo['detail'] ?? corpo['title'] ?? 'Erro inesperado.') as String

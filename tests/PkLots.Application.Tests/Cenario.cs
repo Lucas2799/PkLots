@@ -198,6 +198,6 @@ namespace PkLots.Application.Tests
 
     public class GeradorTokenFalso : IGeradorToken
     {
-        public TokenDto Gerar(Usuario usuario) => new($"token-{usuario.Id}", 86400, usuario.Perfil);
+        public TokenDto Gerar(Usuario usuario) => new($"token-{usuario.Id}", 86400, usuario.Perfil, usuario.DeveTrocarSenha);
     }
 }

@@ -1,5 +1,9 @@
+using System.Net;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -38,8 +42,8 @@ builder.Services.AddExceptionHandler<ManipuladorExcecoes>();
 builder.Services.AddProblemDetails();
 
 var jwt = builder.Configuration.GetSection("Jwt").Get<OpcoesJwt>() ?? new OpcoesJwt();
-if (Encoding.UTF8.GetByteCount(jwt.SecretKey) < 32)
-    throw new InvalidOperationException("Jwt:SecretKey deve ter pelo menos 32 bytes.");
+if (!EF.IsDesignTime)
+    ValidacaoConfiguracao.Validar(builder.Configuration, builder.Environment, jwt);
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -73,7 +77,7 @@ builder.Services
                 var db = contexto.HttpContext.RequestServices.GetRequiredService<IPkLotsDbContext>();
                 var usuario = await db.Usuarios.IgnoreQueryFilters().AsNoTracking()
                     .Where(u => u.Id == id)
-                    .Select(u => new { u.Ativo, u.Perfil, u.EmpresaId, EmpresaAtiva = u.Empresa == null || u.Empresa.Ativa })
+                    .Select(u => new { u.Ativo, u.Perfil, u.EmpresaId, u.DeveTrocarSenha, EmpresaAtiva = u.Empresa == null || u.Empresa.Ativa })
                     .FirstOrDefaultAsync(contexto.HttpContext.RequestAborted);
 
                 // Usuário/empresa desativados ou perfil/empresa alterados: o token deixa de valer na hora
@@ -81,18 +85,56 @@ builder.Services
                 if (usuario is null || !usuario.Ativo || usuario.Perfil != perfil || !usuario.EmpresaAtiva
                     || usuario.EmpresaId?.ToString() != empresaDoToken)
                     contexto.Fail("Usuário inativo ou com perfil alterado.");
+                else if (usuario.DeveTrocarSenha)
+                    // Senha temporária/pública: só a troca de senha é permitida (ver middleware abaixo)
+                    contexto.Principal!.AddIdentity(new ClaimsIdentity([new Claim(TrocaSenhaObrigatoria.Claim, "true")]));
             }
         };
     });
 builder.Services.AddAuthorization(Autorizacao.AdicionarPoliticas);
 
+// Força bruta: além do bloqueio por conta (5 erros = 15 min), limita tentativas por IP
+builder.Services.AddRateLimiter(opcoes =>
+{
+    opcoes.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    opcoes.AddPolicy("autenticacao", contexto => RateLimitPartition.GetFixedWindowLimiter(
+        contexto.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    opcoes.OnRejected = async (contexto, ct) =>
+    {
+        contexto.HttpContext.Response.ContentType = "application/problem+json";
+        await contexto.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            title = "Muitas tentativas",
+            status = 429,
+            detail = "Muitas tentativas em pouco tempo. Aguarde um minuto e tente novamente."
+        }, ct);
+    };
+});
+
+// Atrás do Nginx: usa o IP real do cliente (X-Forwarded-For) para o limite de tentativas e os logs
+builder.Services.Configure<ForwardedHeadersOptions>(opcoes =>
+{
+    opcoes.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    opcoes.ForwardLimit = 1;
+    opcoes.KnownNetworks.Clear();
+    opcoes.KnownProxies.Clear();
+    // Confia apenas no gateway, que chega por redes privadas (rede do compose)
+    foreach (var rede in new[] { "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8" })
+        opcoes.KnownNetworks.Add(Microsoft.AspNetCore.HttpOverrides.IPNetwork.Parse(rede));
+});
+
+// CORS: o app web é servido pela mesma origem (gateway) e o app mobile não usa CORS.
+// Em desenvolvimento libera tudo (flutter run em outra porta); em produção só as origens configuradas.
+var origensPermitidas = builder.Configuration.GetSection("Cors:OrigensPermitidas").Get<string[]>() ?? [];
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("Padrao", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        if (builder.Environment.IsDevelopment())
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        else
+            policy.WithOrigins(origensPermitidas).AllowAnyMethod().AllowAnyHeader();
     });
 });
 
@@ -115,6 +157,15 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
+// Comandos de administração no servidor (não sobem a API), ex.:
+//   PkLots.Api criar-superadmin --email voce@empresa.com
+if (args.Length > 0 && args[0] == "criar-superadmin")
+{
+    Environment.ExitCode = await ComandosServidor.CriarSuperAdminAsync(app.Services, args);
+    return;
+}
+
+app.UseForwardedHeaders();
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 
@@ -129,9 +180,10 @@ if (app.Environment.IsDevelopment() || app.Configuration.GetValue<bool>("Swagger
 if (app.Configuration.GetValue<bool>("RedirecionarHttps"))
     app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+app.UseCors("Padrao");
 app.UseAuthentication();
-
+app.UseMiddleware<TrocaSenhaObrigatoria>();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 // Health Check

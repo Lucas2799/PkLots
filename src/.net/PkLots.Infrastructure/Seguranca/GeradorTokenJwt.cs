@@ -46,7 +46,8 @@ namespace PkLots.Infrastructure.Seguranca
                 expires: expiraEm,
                 signingCredentials: new SigningCredentials(chave, SecurityAlgorithms.HmacSha256));
 
-            return new TokenDto(new JwtSecurityTokenHandler().WriteToken(token), config.ExpirationMinutes * 60, usuario.Perfil);
+            return new TokenDto(new JwtSecurityTokenHandler().WriteToken(token), config.ExpirationMinutes * 60, usuario.Perfil,
+                usuario.DeveTrocarSenha);
         }
     }
 }
