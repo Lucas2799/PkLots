@@ -21,8 +21,9 @@ podman compose -f docker/podman-compose.yml up -d --build
 # http://localhost:8000
 ```
 
-Usuários de teste: `admin@pklots.local` / `Admin@123`, `operator@pklots.local` / `Operator@123`,
-`driver@example.com` / `Driver@123`.
+Não há usuários padrão: crie o superadmin pelo servidor (ver o README da raiz).
+Usuários de teste só existem com `DADOS_DEMONSTRACAO=true` (ou ao rodar a API em `Development`),
+e as senhas públicas deles precisam ser trocadas no primeiro login.
 
 ### Desenvolvimento com Flutter instalado
 

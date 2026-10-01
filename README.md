@@ -1,1145 +1,354 @@
-# 🅿️ PkLots - Sistema de Gerenciamento de Estacionamentos
+<p align="center">
+  <img src="src/flutter/assets/imagens/logo.webp" alt="PkLots" width="260">
+</p>
 
-![Status](https://img.shields.io/badge/status-development-yellow)
+# PkLots: gestão de estacionamentos
+
 ![.NET](https://img.shields.io/badge/.NET-8.0-512bd4)
-![Python](https://img.shields.io/badge/Python-3.11-3776ab)
-![Flutter](https://img.shields.io/badge/Flutter-latest-02569B)
-![License](https://img.shields.io/badge/license-MIT-green)
+![Flutter](https://img.shields.io/badge/Flutter-web%20%7C%20Android-02569B)
+![Python](https://img.shields.io/badge/Python-LPR-3776ab)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
+![Podman](https://img.shields.io/badge/Podman-compose-892CA0)
 
-> **Um sistema completo, moderno e escalável para gerenciamento de estacionamentos com reconhecimento automático de placas via IA, integrando backend robusto, processamento de imagens inteligente e interface multiplataforma**
+O PkLots é um sistema **multiempresa (SaaS)** para administrar estacionamentos. Ele controla entrada e saída de veículos (pela placa digitada, pela foto com leitura automática ou pelo ticket com QR code), ocupação das vagas em tempo real, cobrança com caixa por operador e PIX, mensalistas e impressão de tickets. Tudo isso para vários pátios por empresa.
 
----
-
-## 📚 ENTENDENDO O PROJETO PKLOTS
- 
-### O Que É PkLots?
- 
-**PkLots** é uma solução empresarial para **automatizar completamente o gerenciamento de estacionamentos**. É um software que:
- 
-1. **Registra entrada de carros automaticamente** - Fotografa a placa, a IA identifica, sistema registra
-2. **Controla vagas em tempo real** - Mostra quantas vagas têm livres agora
-3. **Registra saída de carros** - Calcula tempo estacionado, emite recibo, autoriza saída
-4. **Funciona em múltiplas filiais** - Um sistema gerencia vários pátios simultaneamente
-5. **Oferece interface amigável** - App no celular, web, desktop - tudo sincronizado
-### O Problema que Resolve
- 
-**Imagine um cenário hoje, sem PkLots:**
- 
-```
-🚗 Motorista chega no estacionamento
-    ↓
-🤷 Precisa procurar vaga manualmente
-    ↓
-❌ Não sabe quantas vagas tem disponíveis
-    ↓
-🤷 Encontra vaga, estaciona
-    ↓
-📝 Recebe um tíquete de papel (ou nada)
-    ↓
-⏰ Fica estacionado, ninguém rastreia
-    ↓
-🚪 Volta para buscar carro
-    ↓
-🤷 Perde tíquete? Não sabe qual era seu carro
-    ↓
-💬 Vai na cabine, precisa falar com atendente
-    ↓
-⏱️ Atendente digita manualmente quanto tempo passou
-    ↓
-💰 Calcula valor, cobra, abre cancela
-    ↓
-😤 Processo lento, propenso a erros, sem rastreamento
-```
- 
-**Com PkLots, o fluxo é:**
- 
-```
-🚗 Motorista chega no estacionamento
-    ↓
-📸 Câmera fotografa placa automaticamente
-    ↓
-🤖 IA lê a placa (ABC1234)
-    ↓
-✅ Sistema registra entrada automática (sem intervenção humana)
-    ↓
-📱 App mostra vagas disponíveis em TEMPO REAL
-    ↓
-🎯 Motorista vai direto para vaga
-    ↓
-⏱️ Sistema rastreia tempo desde entrada
-    ↓
-🚪 Motorista volta para seu carro
-    ↓
-📸 Câmera fotografa placa novamente
-    ↓
-🤖 IA confirma que é o mesmo carro
-    ↓
-✅ Sistema registra saída automática
-    ↓
-💰 Calcula automaticamente: entrada 10:30, saída 14:45 = 4h15m
-    ↓
-💳 Gera recibo digital automaticamente
-    ↓
-🚪 Cancela abre, saída autorizada
-    ↓
-😊 Processo rápido, automático, seguro, rastreado
-```
- 
----
- 
-## 🎯 Casos de Uso Reais
- 
-### 1️⃣ Shopping Center
- 
-```
-Cenário: Estacionamento com 500 vagas
- 
-ANTES (sem PkLots):
-- Atendentes precisavam contar vagas manualmente
-- Fila na entrada esperando por tíquete de papel
-- Fila na saída esperando por atendente fazer conta
-- Perda de tíquetes = multas adicionais
-- Sem rastreamento de horários cheios
-- Sem dados para planejamento
- 
-DEPOIS (com PkLots):
-- App mostra 237 vagas disponíveis em TEMPO REAL
-- Motorista entra sozinho, câmera registra
-- Motorista sai sozinho, sistema calcula
-- Recibo digital no app
-- Histórico completo de ocupação por hora
-- Dados para saber quando está lotado
-- Relatórios de receita automáticos
-- Atendentes agora ajudam em problemas, não ficam digitando
- 
-ROI: 2 atendentes economizados = R$ 5.000/mês
-Tempo médio saída: 2 min (antes) → 10 seg (depois)
-```
- 
-### 2️⃣ Hospital
- 
-```
-Cenário: Estacionamento com 300 vagas, visitantes + funcionários
- 
-ANTES:
-- Visitantes perdidos procurando vaga
-- Funcionários sem prioridade
-- Emergências esperando para entrar
-- Sem controle de quem estacionou
- 
-DEPOIS (com PkLots):
-- Placa do carro rastreada desde entrada
-- Prioridade para ambulâncias (detecta tipos de vaga)
-- Segurança: sabe exatamente quem estacionou
-- Histórico de cada veículo
-- Integração com sistema hospitalar para agilizar entrada
- 
-BENEFÍCIO: Emergência ganha tempo (cancela abre instantâneo)
-```
- 
-### 3️⃣ Pátio de Construção / Logística
- 
-```
-Cenário: 200 vagas, caminhões e carros, múltiplas entradas
- 
-ANTES:
-- Porteiro precisa anotar cada veículo que entra
-- Sem controle de horários
-- Impossível auditar
- 
-DEPOIS (com PkLots):
-- Cada veículo fotografado automaticamente
-- Entrada: ABC1234 entrada às 08:30
-- Saída: ABC1234 saída às 17:15
-- Relatório completo para auditoria
-- Integração com software de frota da empresa
- 
-BENEFÍCIO: Conformidade legal, rastreamento de custos
-```
- 
-### 4️⃣ Locadora de Veículos
- 
-```
-Cenário: 150 vagas com veículos de aluguel
- 
-ANTES:
-- Conferir manualmente qual carro saiu
-- Sem saber se foi danificado na saída
-- Sem fotos de comparação
- 
-DEPOIS (com PkLots):
-- Foto de entrada: carro em perfeito estado
-- Foto de saída: detecta riscos, amassados, vidros quebrados
-- IA compara imagens
-- Alerta automático se diferenças detectadas
-- Documentação automática para cobrar danos
- 
-BENEFÍCIO: Reduz fraudes, documentação automatizada
-```
- 
----
- 
-## 🏗️ Como Funciona Tecnicamente
- 
-### Fluxo de um Carro Entrando
- 
-```
-┌─────────────────────────────────────────────────────┐
-│ 1. CARRO CHEGA NA ENTRADA                          │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 2. CÂMERA CAPTURA FOTO DA PLACA                    │
-│    (Qualidade: 1080p, com iluminação)              │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 3. IMAGEM ENVIADA PARA PYTHON (LPR ENGINE)        │
-│    POST http://pklots-lpr:5000/v1/lpr/analyze     │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 4. IA PROCESSA (EasyOCR + Claude Vision)           │
-│    - Detecta região de placa                        │
-│    - Extrai números/letras                          │
-│    - Valida formato brasileiro (ABC1234)            │
-│    - Retorna com confiança (95%)                    │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 5. API .NET RECEBE RESULTADO                       │
-│    POST /api/v1/entries                            │
-│    Payload: {                                       │
-│      "licensePlate": "ABC1234",                    │
-│      "photoUrl": "s3://bucket/abc1234_entry.jpg"   │
-│      "confidence": 0.95                            │
-│    }                                                │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 6. VALIDAÇÕES NO BANCO DE DADOS                    │
-│    - Carro já existe no banco?                      │
-│    - Se não, cria registro novo                     │
-│    - Registra entrada com timestamp                 │
-│    - Atualiza vagas: 500 → 499 livres               │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 7. ATUALIZA CACHE (Redis)                          │
-│    Key: "tenant:123:spots:available"               │
-│    Value: {                                         │
-│      "available": 499,                              │
-│      "occupied": 1,                                 │
-│      "total": 500                                   │
-│    }                                                │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 8. APLICAÇÃO FLUTTER ATUALIZA (WebSocket/Poll)    │
-│    Dashboard mostra: "499 vagas disponíveis"        │
-│    Motorista consegue ver em tempo real             │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 9. CANCELA SE ABRE AUTOMATICAMENTE                 │
-│    Motores recebem sinal de liberação               │
-│    Carro entra no pátio                            │
-└─────────────────────────────────────────────────────┘
-```
- 
-### Fluxo de um Carro Saindo
- 
-```
-┌─────────────────────────────────────────────────────┐
-│ 1. CARRO VAI EMBORA, CHEGA NA CANCELA DE SAÍDA    │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 2. CÂMERA CAPTURA FOTO NOVAMENTE                   │
-│    (Segunda foto: para auditoria)                   │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 3. IA LÊ PLACA (Mesmo processo de entrada)        │
-│    Resultado: ABC1234                              │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 4. API .NET PROCESSA SAÍDA                         │
-│    POST /api/v1/exits/{entryId}                    │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 5. CÁLCULOS AUTOMÁTICOS                            │
-│    - Entrada: 10:30 (do banco)                      │
-│    - Saída: 14:45 (agora)                          │
-│    - Duração: 4 horas 15 minutos                    │
-│    - Taxa: R$ 15/hora = R$ 63,75                   │
-│    - Gera recibo automático                         │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 6. ATUALIZA VAGAS (Redis + Banco)                  │
-│    - Vaga liberada: 499 → 500 vagas livres          │
-│    - Dashboard atualiza em tempo real               │
-└──────────────┬──────────────────────────────────────┘
-               │
-               ▼
-┌─────────────────────────────────────────────────────┐
-│ 7. AUTORIZA SAÍDA                                  │
-│    - Se pagamento confirmado: abre cancela         │
-│    - Carro sai                                      │
-│    - Registra saída no histórico                    │
-└─────────────────────────────────────────────────────┘
-```
- 
----
- 
-## 👥 Quem Usa PkLots?
- 
-### 🏪 Proprietários de Estacionamentos
-```
-Benefícios:
-✅ Aumenta receita (menos perda de dados)
-✅ Reduz custos (menos atendentes)
-✅ Dados para decisões (horários cheios, sazonalidade)
-✅ Segurança (rastreamento de veículos)
-```
- 
-### 🚗 Motoristas / Clientes
-```
-Benefícios:
-✅ Entrada/saída rápida (não precisa falar com ninguém)
-✅ Sabe quantas vagas têm antes de entrar
-✅ Recibo digital automático
-✅ Sem risco de perder tíquete
-```
- 
-### 👔 Gerentes de Facilities
-```
-Benefícios:
-✅ Relatórios detalhados de ocupação
-✅ Alertas de problemas
-✅ Rastreamento de receita
-✅ Dados para planejamento (precisa de mais vagas?)
-```
- 
-### 🔒 Segurança / Auditor
-```
-Benefícios:
-✅ Histórico completo (quem entrou, quando, placa)
-✅ Fotos de todos os carros
-✅ Rastreamento em tempo real
-✅ Integração com sistema de segurança
-```
- 
----
-
-## 🏗️ Arquitetura
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Flutter App (Web/Mobile/Desktop)          │
-│              (Login, Dashboard, Check-in/out, Histórico)    │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ (HTTPS/HTTP)
-┌──────────────────────▼──────────────────────────────────────┐
-│              Nginx - API Gateway / Reverse Proxy             │
-│                   (CORS, Rate Limiting)                      │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-       ┌───────────────┼───────────────┐
-       │               │               │
-       ▼               ▼               ▼
-  ┌─────────┐   ┌──────────┐   ┌──────────────┐
-  │  .NET   │   │ Python   │   │  PostgreSQL  │
-  │   API   │   │   LPR    │   │   Database   │
-  │ (8080)  │   │  (5000)  │   │   (5432)     │
-  └────┬────┘   └────┬─────┘   └──────┬───────┘
-       │             │                 │
-       └─────┬───────┴────────────┬────┘
-             │                    │
-             ▼                    ▼
-        ┌─────────────────┐   ┌─────────────┐
-        │  Redis Cache    │   │   Volumes   │
-        │  (Vagas)        │   │  Postgres   │
-        │  (6379)         │   │   Redis     │
-        └─────────────────┘   └─────────────┘
-```
-
-### Componentes
-
-| Camada | Tecnologia | Responsabilidade |
-|--------|-----------|------------------|
-| **Frontend** | Flutter 3.x | UI multiplataforma (web, mobile, desktop) |
-| **API Gateway** | Nginx + YARP | Roteamento, CORS, rate limiting |
-| **Backend** | .NET 8 (Minimal API) | Lógica de negócio, autenticação, multi-tenant |
-| **IA/Visão** | Python + OpenCV/EasyOCR | Reconhecimento de placas (LPR) |
-| **Cache** | Redis 7 | Ocupação de vagas em tempo real |
-| **Banco de Dados** | PostgreSQL 16 | Persistência de dados |
-| **Orquestração** | Podman Compose | Containerização e orchestração local |
+O fornecedor do sistema (você) opera a plataforma. Cada **empresa** cliente (dono do estacionamento) tem os seus pátios, usuários, preços e a **própria** chave PIX/contrato de pagamento.
 
 ---
 
-## 🛠️ Stack Tecnológico
+## Sumário
 
-### Backend (.NET)
-
-```csharp
-// Arquitetura Modular em 4 camadas
-PkLots.Core              → Domain (Entities, Enums, Interfaces)
-PkLots.Infrastructure    → Data Access (EF Core, Repositories, Services)
-PkLots.Application       → Business Logic (UseCases, DTOs, MediatR)
-PkLots.Api              → REST API (Controllers, Middleware, Configuration)
-```
-
-**Dependências principais:**
-- `Microsoft.EntityFrameworkCore` 8.0 - ORM
-- `Microsoft.EntityFrameworkCore.PostgreSQL` 8.0 - Driver PostgreSQL
-- `StackExchange.Redis` 2.7.10 - Client Redis
-- `MediatR` 12.1.1 - CQRS Pattern
-- `Serilog` 4.0 - Logging estruturado
-- `System.IdentityModel.Tokens.Jwt` - JWT Auth
-
-### Backend (Python)
-
-```python
-# Microsserviço de Visão Computacional (LPR)
-- Flask 3.0 - Framework web
-- OpenCV 4.8 - Processamento de imagens
-- EasyOCR 1.7 - Reconhecimento de placas
-- NumPy 1.24 - Computação numérica
-- Pydantic 2.3 - Validação de dados
-```
-
-### Frontend (Flutter)
-
-```yaml
-# Aplicação multiplataforma
-dependencies:
-  flutter:
-    sdk: flutter
-  http: ^1.1.0           # HTTP client
-  provider: ^6.0.0       # State management
-  jwt_decoder: ^2.0.0    # JWT parsing
-  camera: ^0.10.0        # Câmera para check-in
-  image_picker: ^1.0.0   # Seleção de imagens
-```
-
-### Infraestrutura
-
-```yaml
-services:
-  postgres:16-alpine     # Banco de dados relacional
-  redis:7-alpine         # Cache + Estado rápido
-  nginx:alpine           # Reverse proxy
-  podman                 # Container runtime (Fedora)
-```
+- [O que o sistema faz](#o-que-o-sistema-faz)
+- [Perfis de acesso](#perfis-de-acesso)
+- [Como funciona](#como-funciona)
+- [Arquitetura](#arquitetura)
+- [Deploy (produção / piloto)](#deploy-produção--piloto)
+- [Operação do dia a dia](#operação-do-dia-a-dia)
+- [Desenvolvimento](#desenvolvimento)
+- [Estrutura do repositório](#estrutura-do-repositório)
 
 ---
 
-## 📋 Requisitos
+## O que o sistema faz
 
-### Sistema Operacional
-- ✅ **Fedora** 38+ (recomendado)
-- ✅ Ubuntu 22.04+ (compatível)
-- ✅ Debian 12+ (compatível)
-- ⚠️ Windows com WSL2 + Podman (não recomendado para dev)
+| Área | Funcionalidades |
+|---|---|
+| **Entrada** | Pela placa digitada ou pela foto da placa (leitura automática, LPR). Aloca a vaga livre e gera o ticket com código e QR code. |
+| **Saída** | Pela placa, pela foto ou lendo o ticket (leitor USB ou câmera do celular). Calcula o valor e só libera o veículo após o pagamento. |
+| **Cobrança** | Valor por hora proporcional ao minuto e tolerância inicial gratuita. Dinheiro (com troco), PIX (QR "copia e cola" gerado pelo próprio sistema) ou cartão (maquininha do pátio). |
+| **Caixa** | Caixa por operador: abertura com troco inicial, sangria, suprimento e fechamento com conferência (esperado × contado). |
+| **Mensalistas** | Mensalidade por pátio, várias placas por mensalista, registro de pagamentos (estende a validade) e vagas reservadas. Mensalista em dia entra e sai sem cobrança; vencido é cobrado como avulso. |
+| **Painel** | Resumo do dia, gráfico de ocupação 24h, mapa de vagas (com manutenção), veículos estacionados e histórico por placa. |
+| **Impressão** | Ticket de entrada e recibo de saída em impressora térmica de rede (ESC/POS) ou em PDF pelo navegador. |
+| **Administração** | Pátios, preço e tolerância, quantidade de vagas, usuários e perfis, pagamentos (chave PIX, formas aceitas) e impressora. |
+| **Motorista** | O motorista vê as vagas disponíveis, o próprio estacionamento (tempo e valor estimado), os veículos e o histórico. |
+| **Plataforma** | O superadmin cria e ativa/desativa as empresas clientes e o primeiro admin de cada uma. |
 
-### Ferramentas Obrigatórias
+## Perfis de acesso
 
-| Ferramenta | Versão Mínima | Comando de Verificação |
-|-----------|---------------|----------------------|
-| **Podman** | 4.4+ | `podman --version` |
-| **.NET SDK** | 8.0+ | `dotnet --version` |
-| **Git** | 2.30+ | `git --version` |
-| **Python** | 3.10+ | `python3 --version` |
+| Perfil | Quem é | O que acessa |
+|---|---|---|
+| `superadmin` | Fornecedor do sistema | Tela da plataforma: empresas clientes |
+| `admin` | Dono/gerente de uma empresa | Todos os pátios da empresa, painel, caixa, mensalistas e **Administração** |
+| `operador` | Funcionário do pátio | Apenas os pátios a que foi vinculado: painel, entrada/saída, caixa e mensalistas |
+| `motorista` | Cliente final | App do motorista |
 
-### Ferramentas Opcionais
-
-- Docker (substituir Podman)
-- Postman/Insomnia (testar API)
-- DBeaver (gerenciar PostgreSQL)
-- VS Code (editor)
-- Rider (IDE .NET premium)
-
-### Hardware Mínimo Recomendado
-
-| Recurso | Mínimo | Recomendado |
-|---------|--------|------------|
-| CPU | 2 cores | 4+ cores |
-| RAM | 4GB | 8GB+ |
-| Disco | 10GB livres | 50GB+ |
-| Internet | 2Mbps | 10Mbps+ |
+Os dados de cada empresa são isolados no banco (filtro por empresa em todas as consultas). O pátio em uso vai em cada requisição (cabeçalho `X-Patio-Id`) e é validado contra as permissões do usuário.
 
 ---
 
-## 🚀 Quick Start (5 minutos)
+## Como funciona
 
-### 1️⃣ Pré-requisitos
+### Fluxo de entrada
+
+```
+Operador digita a placa / tira foto / ─▶ API valida a placa (Mercosul ou antiga)
+                                          │  foto? ─▶ serviço LPR lê a placa (local, sem custo por leitura)
+                                          ▼
+                       É mensalista? ─▶ em dia: entra sem cobrança · vencido: será cobrado como avulso
+                                          ▼
+                       Aloca uma vaga livre (respeitando as reservadas a mensalistas)
+                                          ▼
+                       Gera o ticket (código curto + QR) ─▶ impressora de rede ou PDF no navegador
+```
+
+### Fluxo de saída (em duas etapas)
+
+1. **Cobrança**: o operador informa a placa, a foto ou o ticket. O sistema calcula o valor e o **congela por 15 minutos**. Se a forma for PIX, mostra o QR "copia e cola" com a chave PIX da empresa.
+2. **Confirmação**: o operador registra o pagamento (dinheiro com troco, PIX ou cartão). Isso **exige o caixa aberto**. A vaga é liberada e o recibo pode ser impresso.
+
+Saídas com valor zero (dentro da tolerância ou mensalista em dia) são liberadas sem pagamento. **Não existe saída de veículo pagante sem pagamento registrado.**
+
+### Cálculo do valor
+
+- A duração é arredondada para cima ao minuto e cobrada proporcionalmente ao valor/hora do pátio. Exemplo: 4h 15m × R$ 15/h = R$ 63,75.
+- **Tolerância**: quem fica até N minutos não paga. Passou disso, paga o tempo todo.
+
+### Pagamentos
+
+O sistema **não intermedia dinheiro**. Cada empresa cadastra em *Administração → Pagamentos*:
+- a própria chave PIX, o nome e a cidade do recebedor (o QR PIX é gerado localmente, no padrão do Banco Central);
+- as formas aceitas (dinheiro, PIX e cartão na maquininha própria).
+
+A confirmação do PIX/cartão é feita pelo operador. O provedor atual é `pix_manual`, e a estrutura permite plugar provedores com confirmação automática no futuro.
+
+### Leitura de placas (LPR)
+
+Microsserviço Python com [fast-alpr](https://github.com/ankandrew/fast-alpr): detector YOLOv9 + OCR ONNX, rodando **localmente na CPU**, sem API paga.
+- Os modelos são baixados no build da imagem, com verificação de SHA-256.
+- Tenta rotações da imagem e só aceita leituras acima de um limiar de confiança.
+
+### Segurança
+
+- Senhas com BCrypt, política de senha forte e bloqueio de 15 min após 5 erros de login. O login também é limitado a 10 tentativas por minuto por IP.
+- O token JWT é revalidado a cada requisição: usuário ou empresa desativados, ou perfil alterado, perdem o acesso na hora.
+- Usuários com senha temporária são **obrigados a trocá-la** antes de usar o sistema.
+- Em produção, a API **não sobe** sem `POSTGRES_SENHA` e `JWT_CHAVE`, nem com valores de exemplo.
+- Swagger desligado e CORS restrito. Banco, Redis, API e LPR não ficam expostos para fora da máquina; só o gateway fica.
+- Gateway com cabeçalhos de segurança e HTTPS automático quando há certificado.
+
+---
+
+## Arquitetura
+
+```
+                    ┌──────────────────────────────────────────────┐
+  Navegador ───────▶│  pklots-gateway (Nginx)  :8000 / :8443        │
+  App Android ─────▶│   /        → app Flutter web                  │
+                    │   /api/*   → API .NET                         │
+                    └───────────────┬──────────────────────────────┘
+                                    ▼
+                    ┌──────────────────────────────┐      ┌──────────────────────┐
+                    │ pklots-backend (.NET 8 API)  │─────▶│ pklots-lpr (Python)  │
+                    │ regras, JWT, migrations      │      │ leitura de placas    │
+                    └───────┬───────────────┬──────┘      └──────────────────────┘
+                            ▼               ▼
+                 ┌────────────────┐  ┌───────────────┐
+                 │ PostgreSQL 16  │  │ Redis 7       │
+                 │ dados          │  │ cache de vagas│
+                 └────────────────┘  └───────────────┘
+```
+
+| Componente | Tecnologia | Container | Porta (host) |
+|---|---|---|---|
+| Gateway + app web | Nginx + Flutter web | `pklots-nginx` | `8000` (HTTP), `8443` (HTTPS), públicas |
+| API | .NET 8 Minimal API, EF Core, Serilog | `pklots-dotnet-api` | `127.0.0.1:8080` |
+| LPR | Python, Flask + gunicorn, fast-alpr | `pklots-python-lpr` | `127.0.0.1:5000` |
+| Banco | PostgreSQL 16 | `pklots-postgres` | `127.0.0.1:5432` |
+| Cache | Redis 7 | `pklots-redis` | (só rede interna) |
+
+A API segue camadas: `Core` (entidades), `Application` (regras/serviços), `Infrastructure` (EF, Redis, JWT, LPR, impressora) e `Api` (endpoints).
+
+---
+
+## Deploy (produção / piloto)
+
+### 1. Requisitos do servidor
+
+- Linux com **Podman** e `podman compose` (ou `podman-compose`). Docker + `docker compose` também funciona.
+- 2 vCPU e 4 GB de RAM recomendados (a leitura de placas usa CPU).
+- Portas liberadas no firewall: `8000` e `8443`, ou as que você definir.
+- Um domínio apontando para o servidor, se for usar HTTPS com certificado válido.
+
+### 2. Baixar o projeto e configurar os segredos
 
 ```bash
-# Verificar instalações
-podman --version        # ✅ 4.4+
-dotnet --version        # ✅ 8.0+
-git --version          # ✅ 2.30+
-python3 --version      # ✅ 3.10+
-
-# Se faltar podman-compose
-sudo dnf install podman-compose
+git clone <url-do-repositorio> pklots && cd pklots
+cp docker/.env.example docker/.env
+chmod 600 docker/.env
 ```
 
-### 2️⃣ Clonar/Preparar Projeto
+Edite `docker/.env` e preencha **obrigatoriamente**:
 
 ```bash
-# Opção A: Clone (quando repo existir)
-git clone https://github.com/seu-usuario/pklots.git
-cd PkLots
-
-# Opção B: Criar do zero com Claude Code
-# → Copie o PROMPT_COPIAR_COLAR.md para Claude Code
-# → Deixe executar até terminar (5 min)
+POSTGRES_SENHA=$(openssl rand -base64 24)   # cole o valor gerado
+JWT_CHAVE=$(openssl rand -base64 48)        # cole o valor gerado
 ```
 
-### 3️⃣ Iniciar Infraestrutura
+Outras opções do `.env`:
+
+| Variável | Padrão | Para quê |
+|---|---|---|
+| `GATEWAY_PORTA` / `GATEWAY_PORTA_HTTPS` | `8000` / `8443` | Portas públicas do sistema |
+| `SWAGGER_HABILITADO` | `false` | Documentação da API em `/swagger` (deixe `false` em produção) |
+| `DADOS_DEMONSTRACAO` | `false` | Cria empresa/pátio/usuários de teste com senhas públicas. **Nunca em produção.** |
+| `AMBIENTE` | `Production` | Ambiente da API |
+
+> O `docker/.env` não vai para o git. Guarde uma cópia segura: sem a `POSTGRES_SENHA` você não acessa o banco.
+
+### 3. HTTPS (recomendado)
+
+Coloque o certificado do domínio em `docker/ssl/`:
+
+```
+docker/ssl/cert.pem   # certificado + cadeia
+docker/ssl/key.pem    # chave privada
+```
+
+Com os dois arquivos, o gateway sobe em HTTPS e redireciona o HTTP; sem eles, fica só em HTTP. Use Let's Encrypt (certbot) ou o certificado do seu provedor/CDN. Detalhes e um certificado autoassinado para testes estão em [`docker/ssl/LEIA-ME.md`](docker/ssl/LEIA-ME.md).
+
+### 4. Subir
 
 ```bash
-# Subir PostgreSQL + Redis
-podman-compose up -d pklots-db pklots-cache
-
-# Verificar
-podman-compose ps
-podman exec -it pklots-postgres psql -U pklots_admin -d pklots_core -c "SELECT NOW();"
+podman compose -f docker/podman-compose.yml up -d --build
+podman ps        # todos devem ficar "healthy"
 ```
 
-### 4️⃣ Compilar .NET
+Na primeira subida a API cria o banco e aplica as migrations automaticamente. O build da primeira vez demora alguns minutos (compila o app Flutter e baixa os modelos de leitura de placas).
+
+### 5. Criar o superadmin (você)
+
+Não existe senha padrão. O superadmin é criado pelo servidor:
 
 ```bash
-cd src
-dotnet build PkLots.sln
-dotnet run --project PkLots.Api
+podman exec -it pklots-dotnet-api ./PkLots.Api criar-superadmin --email voce@empresa.com
 ```
 
-**Resultado esperado:**
-```
-Now listening on: http://localhost:8080
-Press CTRL+C to exit
-```
+O comando mostra uma **senha temporária**. No primeiro login o sistema exige a troca. Rodar o mesmo comando de novo **redefine** a senha, o que serve para recuperar o acesso.
 
-### 5️⃣ Testar API
+### 6. Cadastrar o primeiro cliente
+
+1. Entre em `https://seu-dominio:8443` (ou `http://IP:8000`) com o superadmin.
+2. Crie a **empresa** e o **admin** dela.
+3. O admin entra, troca a senha e configura em **Administração** (ícone de engrenagem):
+   - **Pátios**: nome, endereço, vagas e mensalidade.
+   - **Preço**: valor/hora e tolerância.
+   - **Usuários**: operadores, vinculados aos pátios.
+   - **Pagamentos**: chave PIX e formas aceitas.
+   - **Impressão**: impressora de rede (IP/porta, largura do papel) ou PDF pelo navegador.
+
+### 7. App Android
+
+Gere o APK apontando para o endereço público do servidor:
 
 ```bash
-# Terminal novo
-curl -X GET http://localhost:8080/health
+cd src/flutter
+flutter build apk --release --dart-define=API_URL=https://seu-dominio:8443
+# APK em build/app/outputs/flutter-apk/app-release.apk
+```
 
-# Resultado
-{"status":"healthy"}
+O APK de release só aceita **HTTPS**. Para testar na rede local em HTTP, use o modo debug (ver [Desenvolvimento](#desenvolvimento)).
+
+### Atualizar para uma nova versão
+
+```bash
+# 1) Backup antes (as migrations rodam sozinhas ao subir a nova API)
+podman exec pklots-postgres pg_dump -U pklots_admin -Fc pklots_core > backup-$(date +%F).dump
+
+# 2) Baixar e reconstruir
+git pull
+podman compose -f docker/podman-compose.yml down        # NÃO use -v: apagaria os dados
+podman compose -f docker/podman-compose.yml up -d --build
+```
+
+Quem estiver com o app web aberto precisa recarregar a página (F5) para pegar a versão nova.
+
+### Backup e restauração
+
+```bash
+# Backup (agende diariamente no cron/systemd timer e copie para fora do servidor)
+podman exec pklots-postgres pg_dump -U pklots_admin -Fc pklots_core > pklots-$(date +%F).dump
+
+# Restauração
+podman exec -i pklots-postgres pg_restore -U pklots_admin -d pklots_core --clean --if-exists < pklots-AAAA-MM-DD.dump
+```
+
+Os dados ficam nos volumes `postgres_data`, `redis_data` (cache) e `api_logs`.
+
+---
+
+## Operação do dia a dia
+
+| Tarefa | Comando |
+|---|---|
+| Ver situação dos serviços | `podman ps` |
+| Logs da API | `podman logs -f pklots-dotnet-api` (também em arquivo no volume `api_logs`) |
+| Logs do gateway / LPR | `podman logs -f pklots-nginx` · `podman logs -f pklots-python-lpr` |
+| Reiniciar tudo | `podman compose -f docker/podman-compose.yml restart` |
+| Recuperar acesso do superadmin | `podman exec -it pklots-dotnet-api ./PkLots.Api criar-superadmin --email ...` |
+| Testar a leitura de placas | Abrir `http://localhost:5000/` **no próprio servidor** (página de teste) |
+| Acessar o banco (DBeaver etc.) | `localhost:5432`, banco `pklots_core`, usuário `pklots_admin`, senha do `docker/.env`. Só a partir do servidor ou por túnel SSH: `ssh -L 5432:localhost:5432 usuario@servidor` |
+
+**No pátio**, o operador:
+1. Abre o **caixa** com o troco inicial.
+2. Registra entradas e saídas.
+3. Faz sangria/suprimento quando preciso.
+4. **Fecha o caixa** informando o dinheiro contado. O sistema mostra a diferença em relação ao esperado.
+
+No celular, as ações ficam na barra inferior (Painel, Caixa, Mensalistas e Mais). No computador, ficam no topo.
+
+---
+
+## Desenvolvimento
+
+### Requisitos
+
+- .NET SDK 8, Flutter (stable), Python 3.11+ e Podman.
+- Para Android: JDK 17+ (com `javac`) e Android SDK.
+
+### Subir só a infraestrutura e rodar a API localmente
+
+```bash
+podman compose -f docker/podman-compose.yml up -d pklots-db pklots-cache pklots-lpr
+cd src/.net
+dotnet run --project PkLots.Api      # usa appsettings.Development.json (chave JWT de dev + dados de demonstração)
+```
+
+Em `Development`, o Swagger fica em `http://localhost:<porta>/swagger`.
+
+### App Flutter
+
+```bash
+cd src/flutter
+flutter pub get
+flutter run -d chrome --dart-define=API_URL=http://localhost:8000
+
+# Celular Android na mesma rede (depuração USB ativada): use o IP da máquina
+flutter devices
+flutter run -d <id-do-aparelho> --dart-define=API_URL=http://192.168.x.x:8000
+```
+
+O endereço da API é definido no build por `--dart-define=API_URL=...`. HTTP sem TLS só é permitido no build de **debug**.
+
+### Migrations (EF Core)
+
+```bash
+cd src/.net
+dotnet ef migrations add NomeDaMigration --project PkLots.Infrastructure --startup-project PkLots.Api
+```
+
+Revise a migration gerada antes de aplicar (renomeações e colunas novas com dados existentes). Ela é aplicada automaticamente quando a API sobe.
+
+### Testes
+
+```bash
+dotnet test tests/PkLots.Application.Tests             # regras de negócio (.NET)
+cd src/flutter && flutter analyze && flutter test       # app
+cd src/python && pip install -r requirements-dev.txt && pytest   # validação de placas
 ```
 
 ---
 
-## 📁 Estrutura de Pastas
+## Estrutura do repositório
 
 ```
 PkLots/
-│
-├── src/
-│   ├── PkLots.Core/                      # Domain Layer
-│   │   ├── Entities/
-│   │   │   ├── Tenant.cs
-│   │   │   ├── User.cs
-│   │   │   ├── ParkingSpot.cs
-│   │   │   ├── Vehicle.cs
-│   │   │   ├── VehicleEntry.cs
-│   │   │   └── VehicleExit.cs
-│   │   ├── Enums/
-│   │   │   └── UserRole.cs
-│   │   └── Interfaces/
-│   │       └── IRepository.cs
-│   │
-│   ├── PkLots.Infrastructure/            # Data Access Layer
-│   │   ├── Data/
-│   │   │   ├── PkLotsDbContext.cs
-│   │   │   └── Migrations/
-│   │   ├── Repositories/
-│   │   │   ├── TenantRepository.cs
-│   │   │   ├── UserRepository.cs
-│   │   │   └── ParkingSpotRepository.cs
-│   │   └── Services/
-│   │       ├── AuthService.cs
-│   │       ├── LprService.cs
-│   │       └── CacheService.cs
-│   │
-│   ├── PkLots.Application/               # Business Logic Layer
-│   │   ├── UseCases/
-│   │   │   ├── Auth/
-│   │   │   ├── Tenants/
-│   │   │   ├── ParkingSpots/
-│   │   │   └── Vehicles/
-│   │   ├── DTOs/
-│   │   └── Mappings/
-│   │
-│   ├── PkLots.Api/                       # API Layer
-│   │   ├── Controllers/
-│   │   │   ├── AuthController.cs
-│   │   │   ├── SpotsController.cs
-│   │   │   └── VehiclesController.cs
-│   │   ├── Middleware/
-│   │   │   ├── TenantMiddleware.cs
-│   │   │   └── ExceptionMiddleware.cs
-│   │   ├── Configuration/
-│   │   ├── Program.cs
-│   │   ├── appsettings.json
-│   │   └── PkLots.Api.csproj
-│   │
-│   ├── PkLots.LprEngine/                 # Python LPR Microservice
-│   │   ├── app/
-│   │   │   ├── __init__.py
-│   │   │   ├── main.py
-│   │   │   ├── routes.py
-│   │   │   └── config.py
-│   │   ├── models/
-│   │   │   └── plate_recognizer.py
-│   │   ├── utils/
-│   │   │   └── image_processor.py
-│   │   ├── requirements.txt
-│   │   ├── Dockerfile
-│   │   └── wsgi.py
-│   │
-│   └── PkLots.sln
-│
-├── tests/
-│   ├── PkLots.Api.Tests/
-│   │   └── Controllers/
-│   └── PkLots.Infrastructure.Tests/
-│       └── Repositories/
-│
 ├── docker/
-│   ├── Dockerfile.api
-│   ├── Dockerfile.lpr
-│   └── nginx.conf
-│
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── API_REFERENCE.md
-│   └── DATABASE_SCHEMA.md
-│
-├── docker-compose.yml
-├── .gitignore
-├── README.md                             # ← Este arquivo
-├── CONTRIBUTING.md
-└── LICENSE
+│   ├── podman-compose.yml       # todos os serviços
+│   ├── .env.example             # modelo de configuração (copie para .env)
+│   ├── Dockerfile.api           # API .NET enxuta (self-contained, alpine)
+│   ├── Dockerfile.lpr           # serviço de leitura de placas
+│   ├── Dockerfile.gateway       # compila o Flutter web e serve com Nginx
+│   ├── nginx/                   # rotas, cabeçalhos de segurança, HTTP/HTTPS
+│   └── ssl/                     # certificado HTTPS (não versionado)
+├── src/
+│   ├── .net/
+│   │   ├── PkLots.Core/         # entidades e constantes
+│   │   ├── PkLots.Application/  # serviços e regras (tarifa, entrada, saída, caixa, mensalistas, PIX...)
+│   │   ├── PkLots.Infrastructure/ # EF Core + migrations, Redis, JWT, LPR, impressora TCP
+│   │   └── PkLots.Api/          # endpoints, autenticação, middlewares, comandos de servidor
+│   ├── python/                  # microsserviço LPR (Flask + fast-alpr)
+│   └── flutter/                 # app web/Android (motorista, gestão, administração, plataforma)
+├── tests/                       # testes .NET
+└── docs/                        # documentação do projeto
 ```
-
----
-
-## 🔐 Autenticação & Segurança
-
-### JWT Token Flow
-
-```
-┌──────────────┐
-│ Flutter App  │
-└──────┬───────┘
-       │ POST /api/v1/auth/login
-       │ {email, password}
-       ▼
-┌──────────────────┐
-│  .NET API        │
-├──────────────────┤
-│ Valida senha     │
-│ Gera JWT token   │
-│ Retorna token    │
-└──────┬───────────┘
-       │ {accessToken, expiresIn}
-       ▼
-┌──────────────┐
-│ Flutter App  │
-│ Salva token  │
-│ no SharedPref│
-└──────┬───────┘
-       │ GET /api/v1/spots
-       │ Authorization: Bearer {token}
-       ▼
-┌──────────────────┐
-│  .NET API        │
-├──────────────────┤
-│ Valida token     │
-│ Extrai TenantId  │
-│ Retorna dados    │
-└──────────────────┘
-```
-
-### Multi-Tenant Isolation
-
-Cada request tem seu `TenantId` extraído do JWT e aplicado:
-
-```csharp
-// DbContext filtra automaticamente por TenantId
-modelBuilder.Entity<ParkingSpot>()
-    .HasQueryFilter(p => p.TenantId == _currentTenantId);
-```
-
-### Credenciais Padrão (DEV apenas)
-
-```
-Email:    admin@pklots.local
-Senha:    Senha@123
-Tenant:   DefaultTenant
-```
-
-⚠️ **NUNCA usar em produção!** Mudar antes de deploy.
-
----
-
-## 🗄️ Banco de Dados
-
-### Schema Principal
-
-```sql
--- Tenants (Pátios)
-Tenants {
-  id (UUID PK)
-  name (string)
-  email (string UNIQUE)
-  total_spots (int)
-  created_at (datetime)
-  is_active (bool)
-}
-
--- Users
-Users {
-  id (UUID PK)
-  tenant_id (UUID FK)
-  email (string)
-  password_hash (string)
-  name (string)
-  role (enum: Admin, Manager, Attendant, User)
-  is_active (bool)
-  created_at (datetime)
-}
-
--- Parking Spots (Vagas)
-ParkingSpots {
-  id (UUID PK)
-  tenant_id (UUID FK)
-  spot_number (string) -- A1, A2, B1, etc
-  is_occupied (bool)
-  is_available (bool)
-  current_vehicle_id (UUID FK)
-  created_at (datetime)
-}
-
--- Vehicles (Veículos)
-Vehicles {
-  id (UUID PK)
-  tenant_id (UUID FK)
-  license_plate (string) -- ABC1234
-  color (string)
-  model (string)
-  created_at (datetime)
-}
-
--- Vehicle Entries (Entradas)
-VehicleEntries {
-  id (UUID PK)
-  tenant_id (UUID FK)
-  vehicle_id (UUID FK)
-  parking_spot_id (UUID FK)
-  entry_time (datetime)
-  entry_photo_url (string)
-  recognized_plate (string)
-  plate_confidence (decimal) -- 0.95
-  created_at (datetime)
-}
-
--- Vehicle Exits (Saídas)
-VehicleExits {
-  id (UUID PK)
-  tenant_id (UUID FK)
-  vehicle_entry_id (UUID FK)
-  exit_time (datetime)
-  exit_photo_url (string)
-  duration_minutes (int)
-  amount (decimal)
-  payment_status (enum: Pending, Paid, Cancelled)
-  created_at (datetime)
-}
-```
-
-### Índices Críticos
-
-```sql
--- Performance
-CREATE INDEX idx_spots_tenant_available ON parking_spots(tenant_id, is_available);
-CREATE INDEX idx_entries_tenant_time ON vehicle_entries(tenant_id, entry_time DESC);
-CREATE INDEX idx_vehicles_plate ON vehicles(license_plate);
-```
-
-### Cache Redis
-
-```
-Key Pattern: tenant:{tenantId}:spots:available
-Value: JSON {available: 45, occupied: 5, total: 50}
-TTL: 5 minutos (refresh automático)
-
-Key Pattern: session:{userId}:{sessionId}
-Value: {tenantId, role, email}
-TTL: 24 horas
-```
-
----
-
-## 📡 API Endpoints
-
-### Authentication
-```
-POST   /api/v1/auth/login           → Fazer login
-POST   /api/v1/auth/register        → Registrar usuário
-POST   /api/v1/auth/refresh-token   → Renovar token
-POST   /api/v1/auth/logout          → Logout
-```
-
-### Parking Spots
-```
-GET    /api/v1/spots                → Listar vagas (com filtro)
-GET    /api/v1/spots/{id}           → Detalhe de vaga
-POST   /api/v1/spots                → Criar vaga
-PUT    /api/v1/spots/{id}           → Atualizar vaga
-DELETE /api/v1/spots/{id}           → Deletar vaga
-```
-
-### Vehicle Entry/Exit
-```
-POST   /api/v1/entries              → Registrar entrada (enviar foto)
-GET    /api/v1/entries/{id}         → Detalhe de entrada
-POST   /api/v1/exits/{entryId}      → Registrar saída (enviar foto)
-GET    /api/v1/exits                → Listar saídas (com filtro de data)
-```
-
-### Tenants (Admin)
-```
-GET    /api/v1/tenants              → Listar pátios
-POST   /api/v1/tenants              → Criar pátio
-PUT    /api/v1/tenants/{id}         → Atualizar pátio
-```
-
-### Health Check
-```
-GET    /health                       → Status da API
-GET    /health/db                    → Status do banco
-GET    /health/redis                 → Status do cache
-```
-
-**Exemplo de Request:**
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@pklots.local",
-    "password": "Senha@123"
-  }'
-```
-
-**Exemplo de Response:**
-```json
-{
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresIn": 86400,
-  "refreshToken": "refresh_token_here"
-}
-```
-
----
-
-## 🐍 LPR Engine (Python)
-
-### Endpoint Principal
-
-```
-POST /v1/lpr/analyze
-Content-Type: multipart/form-data
-
-Request:
-  - image: <arquivo.jpg>
-  - expected_plate: "ABC1234" (opcional)
-
-Response:
-{
-  "success": true,
-  "plate": "ABC1234",
-  "confidence": 0.95,
-  "processing_time_ms": 245,
-  "error": null
-}
-```
-
-### Processamento
-
-```python
-1. Recebe imagem (JPEG/PNG)
-2. Pré-processa (resize, normaliza)
-3. Detecta região de placa (YOLOv8)
-4. Extrai texto (EasyOCR)
-5. Valida formato brasileiro (ABC-1234)
-6. Retorna resultado com confiança
-```
-
-### Exemplo de Uso no .NET
-
-```csharp
-public class LprService : ILprService
-{
-    public async Task<LprResult> AnalyzePlateAsync(byte[] imageBytes)
-    {
-        var content = new MultipartFormDataContent();
-        content.Add(new ByteArrayContent(imageBytes), "image", "photo.jpg");
-        
-        var response = await _httpClient.PostAsync(
-            "http://pklots-lpr:5000/v1/lpr/analyze",
-            content);
-        
-        var jsonResult = await response.Content.ReadAsStringAsync();
-        return JsonConvert.DeserializeObject<LprResult>(jsonResult);
-    }
-}
-```
-
----
-
-## 🎯 Roadmap (4 Semanas)
-
-### **Semana 1: Infraestrutura & Banco** 
-- [x] Estrutura de pastas
-- [x] Projetos .NET criados
-- [x] Docker Compose pronto
-- [ ] DbContext + Migrations
-- [ ] Tabelas criadas (PostgreSQL)
-- [ ] Testes de conectividade
-
-**Deliverable:** Database rodando com schema completo
-
-### **Semana 2: Autenticação & Endpoints Básicos**
-- [ ] JWT Auth implementado
-- [ ] Login/Register funcionando
-- [ ] Middleware Multi-Tenant
-- [ ] Controllers básicos (Spots, Vehicles)
-- [ ] Testes unitários (Auth)
-
-**Deliverable:** API respondendo com autenticação
-
-### **Semana 3: Integração com Python LPR**
-- [ ] Flask app estruturado
-- [ ] Endpoint `/v1/lpr/analyze` implementado
-- [ ] OpenCV + EasyOCR integrando
-- [ ] Integração .NET ↔ Python
-- [ ] Testes com imagens reais
-
-**Deliverable:** Reconhecimento de placas funcionando
-
-### **Semana 4: Flutter & Finalização**
-- [ ] Flutter Login Screen
-- [ ] Dashboard com dados de vagas
-- [ ] Check-in com câmera
-- [ ] Check-out e histórico
-- [ ] Testes E2E completos
-
-**Deliverable:** App multiplataforma pronto para use
-
----
-
-## 🧪 Testes
-
-### Executar Testes
-
-```bash
-# Testes unitários
-cd src
-dotnet test PkLots.sln
-
-# Testes com cobertura
-dotnet test PkLots.sln /p:CollectCoverage=true
-
-# Testes específicos
-dotnet test PkLots.Api.Tests --filter "AuthControllerTests"
-```
-
-### Exemplo de Teste Unitário
-
-```csharp
-[TestFixture]
-public class AuthServiceTests
-{
-    private IAuthService _authService;
-    private IUserRepository _userRepository;
-
-    [SetUp]
-    public void Setup()
-    {
-        _userRepository = Substitute.For<IUserRepository>();
-        _authService = new AuthService(_userRepository, _logger);
-    }
-
-    [Test]
-    public async Task LoginAsync_ValidCredentials_ReturnsToken()
-    {
-        // Arrange
-        var user = new User { Email = "test@pklots.local", PasswordHash = "hash" };
-        _userRepository.GetByEmailAsync("test@pklots.local").Returns(user);
-
-        // Act
-        var token = await _authService.LoginAsync("test@pklots.local", "password");
-
-        // Assert
-        Assert.That(token, Is.Not.Null);
-    }
-}
-```
-
----
-
-## 📚 Documentação Adicional
-
-| Documento | Descrição |
-|-----------|-----------|
-| [COMANDOS_INICIAIS.md](./COMANDOS_INICIAIS.md) | 10 seções passo-a-passo |
-| [ROADMAP_DETALHADO.md](./ROADMAP_DETALHADO.md) | Planejamento técnico 4 semanas |
-| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Padrões de design e decisões |
-| [API_REFERENCE.md](./docs/API_REFERENCE.md) | Documentação de endpoints |
-| [DATABASE_SCHEMA.md](./docs/DATABASE_SCHEMA.md) | Schema e relações |
-| [DEPLOYMENT.md](./docs/DEPLOYMENT.md) | Deploy em produção |
-
----
-
-## 🐛 Troubleshooting
-
-### Problema: PostgreSQL não conecta
-```bash
-# Verificar container
-podman logs pklots-postgres
-
-# Testar conexão manualmente
-podman exec -it pklots-postgres psql -U pklots_admin -d pklots_core
-```
-
-### Problema: Porta 5432 em uso
-```bash
-# Liberar porta ou mudar no docker-compose.yml
-sudo lsof -i :5432
-kill -9 <PID>
-
-# Ou trocar porta em docker-compose.yml
-ports:
-  - "5433:5432"  # localhost:5433 -> container:5432
-```
-
-### Problema: dotnet build falha
-```bash
-# Limpar cache
-rm -rf src/bin src/obj
-dotnet clean src/PkLots.sln
-
-# Restaurar e rebuild
-dotnet restore src/PkLots.sln
-dotnet build src/PkLots.sln
-```
-
-### Problema: Python LPR lento
-```bash
-# Usar GPU se disponível (comentado no Dockerfile)
-# Instalar CUDA / cuDNN para aceleração
-
-# Ou reduzir resolução de imagem:
-# image.resize((640, 480)) no image_processor.py
-```
-
----
-
-## 🤝 Contribuindo
-
-1. **Fork** o repositório
-2. **Crie** uma branch (`git checkout -b feature/nova-feature`)
-3. **Commit** suas mudanças (`git commit -am 'Add nova-feature'`)
-4. **Push** para a branch (`git push origin feature/nova-feature`)
-5. **Abra** um Pull Request
-
-### Padrões de Código
-
-- ✅ C#: PascalCase para classes/métodos, camelCase para variáveis
-- ✅ Python: snake_case para tudo (PEP 8)
-- ✅ Commits: feat(module): descrição | fix: | docs: | test:
-- ✅ PRs: Descrever mudanças e tester localmente
-
----
-
-## 📝 Licença
-
-Este projeto está sob a licença **MIT**. Veja [LICENSE](./LICENSE) para detalhes.
-
----
-
-## 👤 Desenvolvedor
-
-**Lucas do Nascimento Tavares**
-- 🏙️ Salvador, Bahia - Brasil
-- 💼 Desenvolvedor .NET Pleno (5+ anos)
-- 🔗 [LinkedIn](https://linkedin.com/in/lucas-tavares)
-- 📧 [Email](mailto:lucas@example.com)
-
----
-
-## 📞 Suporte
-
-### Tendo problemas?
-
-1. Leia [COMANDOS_INICIAIS.md](./COMANDOS_INICIAIS.md) seção "Troubleshooting"
-2. Verifique os logs: `podman logs <container_name>`
-3. Abra uma [Issue](https://github.com/seu-usuario/pklots/issues)
-4. Consulte a [Discussão](https://github.com/seu-usuario/pklots/discussions)
-
----
-
-## 🎉 Agradecimentos
-
-- Microsoft pelo framework .NET
-- OpenCV e comunidade de visão computacional
-- Flutter team by Google
-- Comunidade Fedora/Podman
-
----
-
-## 📌 Status do Projeto
-
-- **Versão:** 0.1.0 (Alpha)
-- **Última Atualização:** 2026-09-26
-- **Próxima Release:** 0.2.0 (Semana 2)
-
-```
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║  🚀 PkLots: Pronto para ser desenvolvido!                   ║
-║                                                               ║
-║  Estrutura ✅  |  Documentação ✅  |  Infraestrutura ✅       ║
-║                                                               ║
-║  Próximo passo: Execute o PROMPT_COPIAR_COLAR.md no         ║
-║  Claude Code e deixe a automação criar tudo!               ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
-```
-
----
-
-**Made with ❤️ by Lucas Tavares | 2026**
