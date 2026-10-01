@@ -12,6 +12,7 @@ import 'package:pklots/estado/motorista_provider.dart';
 import 'package:pklots/estado/sessao_provider.dart';
 import 'package:pklots/servicos/armazenamento_sessao.dart';
 import 'package:pklots/servicos/cliente_api.dart';
+import 'package:pklots/telas/admin/administracao_tela.dart';
 import 'package:pklots/telas/admin/aba_preco.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -225,8 +226,8 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
   return json({'title': 'Não encontrado'}, 404);
 }
 
-Future<void> abrirApp(WidgetTester tester, {required String perfil}) async {
-  tester.view.physicalSize = const Size(1400, 2400);
+Future<void> abrirApp(WidgetTester tester, {required String perfil, Size tela = const Size(1400, 2400)}) async {
+  tester.view.physicalSize = tela;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
 
@@ -299,6 +300,48 @@ void main() {
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
     expect(find.text('ENTRAR'), findsOneWidget);
+  });
+
+  testWidgets('no celular as ações ficam na barra inferior e o restante no "Mais"', (tester) async {
+    await abrirApp(tester, perfil: 'admin', tela: const Size(400, 860));
+    await entrar(tester, 'Senha@123');
+
+    // Topo sem os ícones; barra inferior com as ações principais
+    expect(find.byTooltip('Administração'), findsNothing);
+    expect(find.byTooltip('Sair'), findsNothing);
+    final barra = find.byType(NavigationBar);
+    for (final rotulo in ['Painel', 'Caixa', 'Mensalistas', 'Mais']) {
+      expect(find.descendant(of: barra, matching: find.text(rotulo)), findsOneWidget);
+    }
+
+    // "Mais" reúne administração, histórico, senha e sair
+    await tester.tap(find.descendant(of: barra, matching: find.text('Mais')));
+    await tester.pumpAndSettle();
+    for (final opcao in ['Administração', 'Histórico por placa', 'Alterar senha', 'Sair']) {
+      expect(find.widgetWithText(ListTile, opcao), findsOneWidget);
+    }
+    await tester.tap(find.widgetWithText(ListTile, 'Administração'));
+    await tester.pumpAndSettle();
+    expect(find.byType(AdministracaoTela), findsOneWidget);
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.descendant(of: barra, matching: find.text('Mais')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, 'Sair'));
+    await tester.pumpAndSettle();
+    expect(find.text('ENTRAR'), findsOneWidget);
+  });
+
+  testWidgets('operador no celular não vê a administração no "Mais"', (tester) async {
+    await abrirApp(tester, perfil: 'operador', tela: const Size(400, 860));
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.descendant(of: find.byType(NavigationBar), matching: find.text('Mais')));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(ListTile, 'Administração'), findsNothing);
+    await tester.tap(find.widgetWithText(ListTile, 'Sair'));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('operador vê o painel de gestão', (tester) async {

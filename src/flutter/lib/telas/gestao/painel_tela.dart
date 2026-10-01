@@ -22,6 +22,9 @@ import 'busca_placa_dialogo.dart';
 import 'mapa_vagas_cartao.dart';
 import 'movimentacao_cartao.dart';
 
+/// Abaixo desta largura as ações ficam numa barra inferior (celular)
+const larguraBarraInferior = 720.0;
+
 /// Painel do gerente/operador
 class PainelTela extends StatefulWidget {
   const PainelTela({super.key});
@@ -47,11 +50,55 @@ class _PainelTelaState extends State<PainelTela> {
     super.dispose();
   }
 
+  Future<void> _abrirAdministracao() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdministracaoTela()));
+    // Pátios podem ter sido criados/renomeados; preço e vagas podem ter mudado
+    await _estado.carregarPatios();
+    await _estado.carregar(silencioso: true);
+  }
+
+  Future<void> _abrirCaixa() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CaixaTela()));
+    await _estado.carregar(silencioso: true);
+  }
+
+  void _abrirTrocaSenha() =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrocaSenhaTela()));
+
+  /// Ações menos usadas da barra inferior
+  Future<void> _mostrarMais(SessaoProvider sessao) async {
+    final acao = await showModalBottomSheet<VoidCallback>(
+      context: context,
+      showDragHandle: true,
+      builder: (contexto) {
+        ListTile opcao(IconData icone, String titulo, VoidCallback aoTocar) => ListTile(
+              leading: Icon(icone),
+              title: Text(titulo),
+              onTap: () => Navigator.of(contexto).pop(aoTocar),
+            );
+        return SafeArea(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (sessao.ehAdmin) opcao(Icons.settings_outlined, 'Administração', _abrirAdministracao),
+            opcao(Icons.manage_search, 'Histórico por placa', () => mostrarBuscaPlaca(context)),
+            opcao(Icons.key_outlined, 'Alterar senha', _abrirTrocaSenha),
+            const Divider(height: 1),
+            opcao(Icons.logout, 'Sair', sessao.sair),
+          ]),
+        );
+      },
+    );
+    // Executa depois de fechar a folha, com o contexto da tela
+    if (acao != null && mounted) acao();
+  }
+
   @override
   Widget build(BuildContext context) {
     final estado = context.watch<GestaoProvider>();
     final sessao = context.watch<SessaoProvider>();
     final dashboard = estado.dashboard;
+
+    // Celular: as ações vão para a barra inferior; telas largas mantêm os ícones no topo
+    final estreito = MediaQuery.sizeOf(context).width < larguraBarraInferior;
 
     return Scaffold(
       appBar: AppBar(
@@ -60,41 +107,56 @@ class _PainelTelaState extends State<PainelTela> {
           const SizedBox(width: 12),
           Flexible(child: _SeletorPatio(estado: estado)),
         ]),
-        actions: [
-          if (sessao.ehAdmin)
-            _BotaoAdministracao(aoVoltar: () async {
-              // Pátios podem ter sido criados/renomeados; preço e vagas podem ter mudado
-              await estado.carregarPatios();
-              await estado.carregar(silencioso: true);
-            }),
-          IconButton(
-            tooltip: estado.caixa == null ? 'Caixa (fechado)' : 'Caixa (aberto)',
-            icon: Badge(
-              isLabelVisible: estado.caixa != null,
-              backgroundColor: CoresPkLots.disponivel,
-              smallSize: 8,
-              child: const Icon(Icons.point_of_sale),
-            ),
-            onPressed: () async {
-              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CaixaTela()));
-              await estado.carregar(silencioso: true);
-            },
-          ),
-          IconButton(
-            tooltip: 'Mensalistas',
-            icon: const Icon(Icons.card_membership_outlined),
-            onPressed: () => _abrirMensalistas(context, estado),
-          ),
-          IconButton(
-              tooltip: 'Histórico por placa', icon: const Icon(Icons.manage_search), onPressed: () => mostrarBuscaPlaca(context)),
-          IconButton(
-            tooltip: 'Alterar senha',
-            icon: const Icon(Icons.key_outlined),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TrocaSenhaTela())),
-          ),
-          IconButton(tooltip: 'Sair', icon: const Icon(Icons.logout), onPressed: sessao.sair),
-        ],
+        actions: estreito
+            ? null
+            : [
+                if (sessao.ehAdmin)
+                  IconButton(
+                    tooltip: 'Administração',
+                    icon: const Icon(Icons.settings_outlined),
+                    onPressed: _abrirAdministracao,
+                  ),
+                IconButton(
+                  tooltip: estado.caixa == null ? 'Caixa (fechado)' : 'Caixa (aberto)',
+                  icon: _IconeCaixa(aberto: estado.caixa != null),
+                  onPressed: _abrirCaixa,
+                ),
+                IconButton(
+                  tooltip: 'Mensalistas',
+                  icon: const Icon(Icons.card_membership_outlined),
+                  onPressed: () => _abrirMensalistas(context, estado),
+                ),
+                IconButton(
+                    tooltip: 'Histórico por placa',
+                    icon: const Icon(Icons.manage_search),
+                    onPressed: () => mostrarBuscaPlaca(context)),
+                IconButton(tooltip: 'Alterar senha', icon: const Icon(Icons.key_outlined), onPressed: _abrirTrocaSenha),
+                IconButton(tooltip: 'Sair', icon: const Icon(Icons.logout), onPressed: sessao.sair),
+              ],
       ),
+      bottomNavigationBar: estreito
+          ? NavigationBar(
+              selectedIndex: 0,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              onDestinationSelected: (indice) => switch (indice) {
+                1 => _abrirCaixa(),
+                2 => _abrirMensalistas(context, estado),
+                3 => _mostrarMais(sessao),
+                _ => estado.carregar(),
+              },
+              destinations: [
+                const NavigationDestination(
+                    icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Painel'),
+                NavigationDestination(
+                  icon: _IconeCaixa(aberto: estado.caixa != null),
+                  label: 'Caixa',
+                  tooltip: estado.caixa == null ? 'Caixa (fechado)' : 'Caixa (aberto)',
+                ),
+                const NavigationDestination(icon: Icon(Icons.card_membership_outlined), label: 'Mensalistas'),
+                const NavigationDestination(icon: Icon(Icons.menu), label: 'Mais'),
+              ],
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: estado.carregar,
         child: LayoutBuilder(builder: (context, restricoes) {
@@ -293,20 +355,18 @@ class _Estacionados extends StatelessWidget {
 }
 
 /// Acesso à administração: ícone de engrenagem, com o nome ao passar o mouse
-class _BotaoAdministracao extends StatelessWidget {
-  const _BotaoAdministracao({required this.aoVoltar});
+/// Ícone do caixa com um ponto verde quando aberto
+class _IconeCaixa extends StatelessWidget {
+  const _IconeCaixa({required this.aberto});
 
-  /// Preço, vagas ou nome do pátio podem ter mudado
-  final Future<void> Function() aoVoltar;
+  final bool aberto;
 
   @override
-  Widget build(BuildContext context) => IconButton(
-        tooltip: 'Administração',
-        icon: const Icon(Icons.settings_outlined),
-        onPressed: () async {
-          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdministracaoTela()));
-          await aoVoltar();
-        },
+  Widget build(BuildContext context) => Badge(
+        isLabelVisible: aberto,
+        backgroundColor: CoresPkLots.disponivel,
+        smallSize: 8,
+        child: const Icon(Icons.point_of_sale),
       );
 }
 
