@@ -80,6 +80,7 @@ namespace PkLots.Application.Servicos
                 .Select(e => new
                 {
                     e.Id,
+                    e.CodigoTicket,
                     e.Placa,
                     e.DataHoraEntrada,
                     NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null,
@@ -93,7 +94,7 @@ namespace PkLots.Application.Servicos
 
             return new TicketEntradaDto(
                 dados.Id,
-                Codigo(dados.Id),
+                CodigoTicket.Formatar(dados.CodigoTicket ?? Codigo(dados.Id)),
                 dados.Nome,
                 dados.Placa,
                 dados.NumeroVaga,
@@ -101,7 +102,7 @@ namespace PkLots.Application.Servicos
                 dados.ValorHora,
                 dados.MinutosTolerancia,
                 dados.LarguraPapelMm,
-                $"PKLOTS:{dados.Id}");
+                CodigoTicket.ConteudoQrCode(dados.CodigoTicket ?? Codigo(dados.Id)));
         }
 
         // Chamado após registrar a entrada. Falha na impressora nunca desfaz a entrada.
@@ -139,6 +140,7 @@ namespace PkLots.Application.Servicos
 
         // ---------- Auxiliares ----------
 
+        // Entradas anteriores ao código de ticket: os 8 primeiros caracteres do Id (o que os tickets antigos mostravam)
         public static string Codigo(Guid entradaId) => entradaId.ToString("N")[..8].ToUpperInvariant();
 
         private static void ExigirImpressoraDeRede(Patio patio)

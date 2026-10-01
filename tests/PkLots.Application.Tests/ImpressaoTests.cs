@@ -168,8 +168,9 @@ namespace PkLots.Application.Tests
             Assert.Equal("Pátio Teste", ticket.NomePatio);
             Assert.Equal("A1", ticket.NumeroVaga);
             Assert.Equal(15m, ticket.ValorHora);
-            Assert.Equal(8, ticket.Codigo.Length);
-            Assert.Equal($"PKLOTS:{entrada.Id}", ticket.ConteudoQrCode);
+            var codigo = (await cenario.Db.EntradasVeiculos.SingleAsync()).CodigoTicket!;
+            Assert.Equal($"{codigo[..4]}-{codigo[4..]}", ticket.Codigo);
+            Assert.Equal($"PKLOTS:{codigo}", ticket.ConteudoQrCode);
         }
 
         [Theory]

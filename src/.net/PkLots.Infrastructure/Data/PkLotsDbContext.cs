@@ -80,6 +80,15 @@ namespace PkLots.Infrastructure.Data
             modelBuilder.Entity<SaidaVeiculo>()
                 .HasIndex(s => s.EntradaVeiculoId).IsUnique();
 
+            modelBuilder.Entity<EntradaVeiculo>()
+                .HasIndex(e => new { e.PatioId, e.CodigoTicket })
+                .IsUnique()
+                .HasFilter("\"CodigoTicket\" IS NOT NULL");
+
+            modelBuilder.Entity<EntradaVeiculo>()
+                .Property(e => e.CodigoTicket)
+                .HasMaxLength(8);
+
             modelBuilder.Entity<LogAuditoria>()
                 .HasIndex(l => new { l.PatioId, l.CriadoEm });
 

@@ -61,7 +61,7 @@ namespace PkLots.Application.Impressao
                 .Linha($"Papel: {larguraPapelMm} mm ({colunas} colunas)")
                 .Linha(agora.ToString("dd/MM/yyyy HH:mm:ss", CultureInfo.InvariantCulture))
                 .Linha(new string('=', colunas))
-                .QrCode("PKLOTS:TESTE", 5)
+                .QrCode(CodigoTicket.ConteudoQrCode("TESTE234"), 5)
                 .Bytes(AvancarECortar)
                 .Gerar();
         }

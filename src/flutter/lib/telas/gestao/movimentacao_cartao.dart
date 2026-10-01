@@ -12,6 +12,7 @@ import '../../util/formatadores.dart';
 import '../../util/validadores.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/recibo_dialogo.dart';
+import 'leitor_ticket_tela.dart';
 
 /// Registro de entrada/saída: digitando a placa ou enviando a foto (LPR)
 class MovimentacaoCartao extends StatefulWidget {
@@ -24,22 +25,44 @@ class MovimentacaoCartao extends StatefulWidget {
 class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
   final _formulario = GlobalKey<FormState>();
   final _placa = TextEditingController();
+  final _ticket = TextEditingController();
+  final _focoTicket = FocusNode();
   bool _enviando = false;
 
   @override
   void dispose() {
     _placa.dispose();
+    _ticket.dispose();
+    _focoTicket.dispose();
     super.dispose();
+  }
+
+  /// Leitor USB "digita" o conteúdo do QR e envia Enter; a câmera devolve o mesmo texto
+  Future<void> _saidaPorTicket(String lido) async {
+    if (lido.trim().isEmpty) return;
+    final saida = await _executar(() => _estado.registrarSaidaPorTicket(lido.trim()));
+    _ticket.clear();
+    if (saida != null && mounted) await mostrarRecibo(context, saida);
+    // Pronto para o próximo ticket
+    if (mounted) _focoTicket.requestFocus();
+  }
+
+  Future<void> _lerTicketPelaCamera() async {
+    final lido = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => const LeitorTicketTela()));
+    if (lido != null && mounted) await _saidaPorTicket(lido);
   }
 
   GestaoProvider get _estado => context.read<GestaoProvider>();
 
-  Future<void> _executar(Future<void> Function() acao) async {
+  /// Executa a chamada com indicador de progresso; em erro mostra o aviso e retorna null.
+  /// Diálogos (recibo, impressão) são abertos depois, com o progresso já encerrado.
+  Future<T?> _executar<T>(Future<T> Function() acao) async {
     setState(() => _enviando = true);
     try {
-      await acao();
+      return await acao();
     } on ExcecaoApi catch (e) {
       if (mounted) mostrarAviso(context, e.mensagem, erro: true);
+      return null;
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
@@ -72,22 +95,18 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
 
   Future<void> _entradaManual() async {
     if (!_formulario.currentState!.validate()) return;
-    await _executar(() async {
-      final entrada = await _estado.registrarEntrada(Validadores.normalizarPlaca(_placa.text));
-      _placa.clear();
-      if (mounted) {
-        await _aposEntrada(entrada, 'Entrada de ${Formatadores.placa(entrada.placa)} registrada na vaga ${entrada.numeroVaga}');
-      }
-    });
+    final entrada = await _executar(() => _estado.registrarEntrada(Validadores.normalizarPlaca(_placa.text)));
+    if (entrada == null || !mounted) return;
+    _placa.clear();
+    await _aposEntrada(entrada, 'Entrada de ${Formatadores.placa(entrada.placa)} registrada na vaga ${entrada.numeroVaga}');
   }
 
   Future<void> _saidaManual() async {
     if (!_formulario.currentState!.validate()) return;
-    await _executar(() async {
-      final saida = await _estado.registrarSaida(Validadores.normalizarPlaca(_placa.text));
-      _placa.clear();
-      if (mounted) await mostrarRecibo(context, saida);
-    });
+    final saida = await _executar(() => _estado.registrarSaida(Validadores.normalizarPlaca(_placa.text)));
+    if (saida == null || !mounted) return;
+    _placa.clear();
+    await mostrarRecibo(context, saida);
   }
 
   Future<XFile?> _escolherFoto() async {
@@ -120,17 +139,16 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
     final foto = await _escolherFoto();
     if (foto == null) return;
     final bytes = await foto.readAsBytes();
-    await _executar(() async {
-      if (entrada) {
-        final registro = await _estado.registrarEntradaPorImagem(bytes, foto.name);
-        if (mounted) {
-          await _aposEntrada(registro, 'Placa ${Formatadores.placa(registro.placa)} reconhecida · vaga ${registro.numeroVaga}');
-        }
-      } else {
-        final saida = await _estado.registrarSaidaPorImagem(bytes, foto.name);
-        if (mounted) await mostrarRecibo(context, saida);
+    if (!mounted) return;
+    if (entrada) {
+      final registro = await _executar(() => _estado.registrarEntradaPorImagem(bytes, foto.name));
+      if (registro != null && mounted) {
+        await _aposEntrada(registro, 'Placa ${Formatadores.placa(registro.placa)} reconhecida · vaga ${registro.numeroVaga}');
       }
-    });
+    } else {
+      final saida = await _executar(() => _estado.registrarSaidaPorImagem(bytes, foto.name));
+      if (saida != null && mounted) await mostrarRecibo(context, saida);
+    }
   }
 
   @override
@@ -192,6 +210,34 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
                   ),
                 ),
               ]),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Row(children: [
+                  Expanded(child: Divider()),
+                  Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('ou saída pelo ticket')),
+                  Expanded(child: Divider()),
+                ]),
+              ),
+              TextField(
+                controller: _ticket,
+                focusNode: _focoTicket,
+                enabled: !_enviando,
+                textCapitalization: TextCapitalization.characters,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  labelText: 'Ler ticket',
+                  hintText: 'Passe o leitor ou digite o código (ex.: K7M2-Q9XD)',
+                  prefixIcon: const Icon(Icons.qr_code_scanner),
+                  suffixIcon: kIsWeb
+                      ? null
+                      : IconButton(
+                          tooltip: 'Ler com a câmera',
+                          icon: const Icon(Icons.photo_camera_outlined),
+                          onPressed: _enviando ? null : _lerTicketPelaCamera,
+                        ),
+                ),
+                onSubmitted: _saidaPorTicket,
+              ),
               if (_enviando) ...[const SizedBox(height: 12), const LinearProgressIndicator()],
             ]),
           ),

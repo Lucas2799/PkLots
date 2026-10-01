@@ -48,6 +48,8 @@ class GestaoProvider extends ChangeNotifier {
 
   Future<Saida> registrarSaida(String placa) => _eAtualizar(() => _api.registrarSaida(placa));
 
+  Future<Saida> registrarSaidaPorTicket(String codigo) => _eAtualizar(() => _api.registrarSaidaPorTicket(codigo));
+
   Future<Entrada> registrarEntradaPorImagem(List<int> bytes, String nome) =>
       _eAtualizar(() => _api.registrarEntradaPorImagem(bytes, nome));
 

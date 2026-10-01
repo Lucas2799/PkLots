@@ -43,6 +43,33 @@ namespace PkLots.Application.Servicos
             return await FinalizarAsync(entrada, requisicao.UrlFoto, requisicao.Confianca, ct);
         }
 
+        // Saída pela leitura do ticket (leitor USB, câmera ou código digitado)
+        public async Task<SaidaDto> RegistrarPorTicketAsync(string? lido, CancellationToken ct = default)
+        {
+            var codigo = CodigoTicket.Normalizar(lido)
+                ?? throw new ExcecaoNegocio("Código de ticket inválido. Use o código de 8 caracteres impresso no ticket.");
+            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+
+            var entrada = await db.EntradasVeiculos
+                .Include(e => e.Vaga)
+                .FirstOrDefaultAsync(e => e.PatioId == patioId && e.CodigoTicket == codigo, ct)
+                ?? throw new ExcecaoNaoEncontrado($"Ticket {CodigoTicket.Formatar(codigo)} não encontrado.");
+
+            if (entrada.Situacao != SituacaoEntrada.Ativa)
+            {
+                var saidaAnterior = await db.SaidasVeiculos
+                    .Where(s => s.EntradaVeiculoId == entrada.Id)
+                    .Select(s => (DateTime?)s.DataHoraSaida)
+                    .FirstOrDefaultAsync(ct);
+                var quando = saidaAnterior is null
+                    ? ""
+                    : $" em {TimeZoneInfo.ConvertTimeFromUtc(saidaAnterior.Value, FusoHorario.Brasil):dd/MM 'às' HH:mm}";
+                throw new ExcecaoConflito($"Este ticket já foi usado: a saída de {entrada.Placa} foi registrada{quando}.");
+            }
+
+            return await FinalizarAsync(entrada, null, null, ct, origem: "ticket");
+        }
+
         // Saída iniciada pelo próprio motorista no app
         public async Task<SaidaDto> RegistrarPorEntradaAsync(Guid entradaId, CancellationToken ct = default)
         {
@@ -51,10 +78,10 @@ namespace PkLots.Application.Servicos
                 .FirstOrDefaultAsync(e => e.Id == entradaId && e.Situacao == SituacaoEntrada.Ativa, ct)
                 ?? throw new ExcecaoNaoEncontrado("Entrada ativa não encontrada.");
 
-            return await FinalizarAsync(entrada, null, null, ct);
+            return await FinalizarAsync(entrada, null, null, ct, origem: "app_motorista");
         }
 
-        private async Task<SaidaDto> FinalizarAsync(EntradaVeiculo entrada, string? urlFoto, decimal? confianca, CancellationToken ct)
+        private async Task<SaidaDto> FinalizarAsync(EntradaVeiculo entrada, string? urlFoto, decimal? confianca, CancellationToken ct, string origem = "placa")
         {
             var agora = relogio.GetUtcNow().UtcDateTime;
             var patio = await db.Patios.FirstAsync(p => p.Id == entrada.PatioId, ct);
@@ -95,7 +122,8 @@ namespace PkLots.Application.Servicos
             {
                 ["vaga"] = vaga?.Numero ?? "",
                 ["duracao"] = tarifa.DuracaoFormatada,
-                ["valor"] = tarifa.ValorTotal
+                ["valor"] = tarifa.ValorTotal,
+                ["origem"] = origem
             };
             if (confianca is not null)
                 detalhes["confianca"] = confianca;

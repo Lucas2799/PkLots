@@ -44,6 +44,10 @@ namespace PkLots.Api.Endpoints
                     Results.Ok(await servico.RegistrarAsync(requisicao, ct)))
                 .WithSummary("Registra saída e calcula o valor");
 
+            saidas.MapPost("/ticket", async (SaidaPorTicketRequisicao requisicao, ServicoSaida servico, CancellationToken ct) =>
+                    Results.Ok(await servico.RegistrarPorTicketAsync(requisicao.Codigo, ct)))
+                .WithSummary("Registra a saída pela leitura do ticket (QR Code ou código impresso)");
+
             saidas.MapPost("/imagem", async (IFormFile imagem, ServicoSaida servico, CancellationToken ct) =>
                 {
                     await using var fluxo = imagem.OpenReadStream();

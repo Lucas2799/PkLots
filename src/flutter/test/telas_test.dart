@@ -83,6 +83,24 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'situacao': 'ativa',
         'impressao': 'impresso',
       }, 201);
+    case '/api/saidas/ticket':
+      final codigo = (jsonDecode(req.body) as Map<String, dynamic>)['codigo'] as String;
+      if (codigo.contains('USADO')) {
+        return json({'title': 'Conflito', 'detail': 'Este ticket já foi usado: a saída de ABC1234 foi registrada em 30/09 às 14:45.'}, 409);
+      }
+      return json({
+        'id': 's1',
+        'entradaVeiculoId': 'e1',
+        'placa': 'ABC1234',
+        'dataHoraEntrada': '2026-09-30T13:30:45Z',
+        'dataHoraSaida': '2026-09-30T17:45:30Z',
+        'duracaoFormatada': '4h 15m',
+        'valorHora': 15.0,
+        'valorTotal': 63.75,
+        'situacaoPagamento': 'calculado',
+        'numeroVaga': 'A1',
+        'nomePatio': 'Pátio Padrão',
+      });
     case '/api/admin/impressao':
       final corpo = req.method == 'PUT' ? jsonDecode(req.body) as Map<String, dynamic> : null;
       return json(corpo ??
@@ -257,6 +275,33 @@ void main() {
 
     expect(find.textContaining('ticket impresso'), findsOneWidget);
     expect(find.byTooltip('Reimprimir ticket de ABC1234'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('leitor de ticket registra a saída e mostra o recibo', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+
+    // Leitor USB: "digita" o conteúdo do QR e envia Enter
+    await tester.enterText(find.widgetWithText(TextField, 'Ler ticket'), 'PKLOTS:K7M2Q9XD');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    final post = enviadas.singleWhere((r) => r.url.path == '/api/saidas/ticket');
+    expect(jsonDecode(post.body), {'codigo': 'PKLOTS:K7M2Q9XD'});
+    expect(find.text('Saída registrada'), findsOneWidget);
+    expect(find.text('R\$\u00a063,75'), findsOneWidget);
+    expect(find.text('Baixar PDF'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+
+    // Ticket já usado: aviso com a explicação da API
+    await tester.enterText(find.widgetWithText(TextField, 'Ler ticket'), 'USADO123');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('já foi usado'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();

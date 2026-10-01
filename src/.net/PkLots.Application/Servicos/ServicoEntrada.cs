@@ -57,6 +57,7 @@ namespace PkLots.Application.Servicos
             var entrada = new EntradaVeiculo
             {
                 PatioId = patioId,
+                CodigoTicket = await GerarCodigoTicketAsync(patioId, ct),
                 VeiculoId = veiculo.Id,
                 Placa = placa,
                 VagaId = vaga.Id,
@@ -97,6 +98,18 @@ namespace PkLots.Application.Servicos
 
             return new EntradaDto(entrada.Id, placa, agora, entrada.UrlFotoEntrada, entrada.MetodoReconhecimento,
                 entrada.Confianca, vaga.Id, vaga.Numero, entrada.Situacao);
+        }
+
+        private async Task<string> GerarCodigoTicketAsync(Guid patioId, CancellationToken ct)
+        {
+            // ~1 trilhão de combinações: colisão é improvável, mas confere mesmo assim
+            for (var tentativa = 0; tentativa < 5; tentativa++)
+            {
+                var codigo = CodigoTicket.Gerar();
+                if (!await db.EntradasVeiculos.AnyAsync(e => e.PatioId == patioId && e.CodigoTicket == codigo, ct))
+                    return codigo;
+            }
+            throw new InvalidOperationException("Não foi possível gerar um código de ticket único.");
         }
 
         private async Task RecusarAsync(Guid patioId, string placa, DateTime agora, string motivo, CancellationToken ct)

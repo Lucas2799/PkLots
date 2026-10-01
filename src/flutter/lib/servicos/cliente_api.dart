@@ -71,6 +71,10 @@ class ClienteApi {
 
   Future<Saida> registrarSaida(String placa) async => Saida.deJson(await _post('/api/saidas/', {'placa': placa}));
 
+  /// Saída pela leitura do ticket: aceita "PKLOTS:K7M2Q9XD", "K7M2-Q9XD" etc.
+  Future<Saida> registrarSaidaPorTicket(String codigo) async =>
+      Saida.deJson(await _post('/api/saidas/ticket', {'codigo': codigo}));
+
   Future<Entrada> registrarEntradaPorImagem(List<int> bytes, String nomeArquivo) async =>
       Entrada.deJson(await _enviarImagem('/api/entradas/imagem', bytes, nomeArquivo));
 

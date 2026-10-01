@@ -28,6 +28,10 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("CodigoTicket")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
                     b.Property<decimal>("Confianca")
                         .HasColumnType("numeric");
 
@@ -65,6 +69,10 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.HasIndex("VagaId");
 
                     b.HasIndex("VeiculoId");
+
+                    b.HasIndex("PatioId", "CodigoTicket")
+                        .IsUnique()
+                        .HasFilter("\"CodigoTicket\" IS NOT NULL");
 
                     b.HasIndex("PatioId", "DataHoraEntrada");
 
