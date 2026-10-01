@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
 using PkLots.Application.DTOs;
@@ -9,25 +11,38 @@ using PkLots.Infrastructure.Data;
 
 namespace PkLots.Application.Tests
 {
-    // Monta banco em memória com um pátio de 30 vagas e os serviços da aplicação
+    // Monta banco em memória com uma empresa, um pátio de 30 vagas e os serviços da aplicação.
+    // Por padrão os serviços rodam como admin dessa empresa, no pátio criado.
     public sealed class Cenario : IDisposable
     {
+        private readonly DbContextOptions<PkLotsDbContext> _opcoes;
+
         public static readonly DateTimeOffset Inicio = new(2026, 9, 30, 13, 30, 45, TimeSpan.Zero);
 
         public PkLotsDbContext Db { get; }
         public FakeTimeProvider Relogio { get; } = new(Inicio);
+        public Empresa Empresa { get; }
         public Patio Patio { get; }
+
+        // Quem está usando os serviços (ajustável por teste)
+        public string PerfilAtual { get; set; } = Perfis.Admin;
+        public Guid UsuarioAtualId { get; set; } = Guid.NewGuid();
+        public Guid? PatioEscolhidoId { get; set; }
         public LprFalso Lpr { get; } = new();
         public HashSenhaFalso HashSenha { get; } = new();
 
         public Cenario(int vagasPorFileira = 10)
         {
-            var opcoes = new DbContextOptionsBuilder<PkLotsDbContext>()
+            _opcoes = new DbContextOptionsBuilder<PkLotsDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
-            Db = new PkLotsDbContext(opcoes);
+            Db = new PkLotsDbContext(_opcoes);
 
-            Patio = new Patio { Nome = "Pátio Teste", ValorHora = 15.00m };
+            // Criados "antes" do relógio simulado, como dados já existentes
+            var criacao = Inicio.UtcDateTime.AddDays(-1);
+            Empresa = new Empresa { Nome = "Empresa Teste", CriadoEm = criacao };
+            Patio = new Patio { EmpresaId = Empresa.Id, Nome = "Pátio Teste", ValorHora = 15.00m, CriadoEm = criacao };
+            Db.Empresas.Add(Empresa);
             Db.Patios.Add(Patio);
             foreach (var fileira in new[] { 'A', 'B', 'C' })
                 for (var i = 1; i <= vagasPorFileira; i++)
@@ -35,7 +50,27 @@ namespace PkLots.Application.Tests
             Db.SaveChanges();
         }
 
-        public IContextoPatio ContextoPatio => new ContextoPatioFixo(Patio.Id);
+        public IContextoPatio ContextoPatio =>
+            new ContextoPatioTeste(Db, PerfilAtual is Perfis.Admin or Perfis.Operador ? Empresa.Id : null, UsuarioAtualId, PerfilAtual, PatioEscolhidoId);
+
+        // DbContext como numa requisição de um usuário da empresa informada (filtros multi-tenant ativos)
+        public PkLotsDbContext DbDaEmpresa(Guid empresaId)
+        {
+            var usuario = new ClaimsPrincipal(new ClaimsIdentity([new Claim(PkLotsDbContext.ClaimEmpresa, empresaId.ToString())], "teste"));
+            var acessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = usuario } };
+            return new PkLotsDbContext(_opcoes, acessor);
+        }
+
+        // Outra empresa com um pátio (para testes de isolamento)
+        public (Empresa Empresa, Patio Patio) CriarOutraEmpresa(string nome = "Outra Empresa")
+        {
+            var empresa = new Empresa { Nome = nome };
+            var patio = ServicoPatios.NovoPatio(empresa.Id, $"Pátio {nome}", 5, DateTime.UtcNow);
+            Db.Empresas.Add(empresa);
+            Db.Patios.Add(patio);
+            Db.SaveChanges();
+            return (empresa, patio);
+        }
         public ICacheVagas Cache => new CacheFalso();
 
         public ReconhecedorPlaca Reconhecedor => new(Lpr, Db, ContextoPatio, Relogio);
@@ -43,24 +78,30 @@ namespace PkLots.Application.Tests
         public ServicoSaida Saida => new(Db, ContextoPatio, Cache, Reconhecedor, Relogio);
         public ServicoVagas Vagas => new(Db, ContextoPatio, Cache, Relogio);
         public ServicoVeiculos Veiculos => new(Db, ContextoPatio);
-        public ServicoMotorista Motorista => new(Db, ContextoPatio, Veiculos, Saida, Relogio);
+        public ServicoMotorista Motorista => new(Db, Veiculos, Saida, Vagas, Relogio);
+        public ServicoPatios Patios => new(Db, ContextoPatio, Relogio);
+        public ServicoPlataforma Plataforma => new(Db, HashSenha, Relogio);
         public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Relogio);
         public ImpressoraFalsa Impressora { get; } = new();
         public ServicoImpressao Impressao =>
             new(Db, ContextoPatio, Impressora, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);
         public ServicoAdministracao Administracao => new(Db, ContextoPatio, Cache, HashSenha, Relogio);
-        public ServicoAutenticacao Autenticacao => new(Db, HashSenha, new GeradorTokenFalso(), ContextoPatio, Relogio);
+        public ServicoAutenticacao Autenticacao => new(Db, HashSenha, new GeradorTokenFalso(), Relogio);
 
+        // admin/operador pertencem à empresa (operador vinculado ao pátio); motorista é conta da plataforma
         public Usuario CriarUsuario(string email, string senha, string perfil = Perfis.Motorista)
         {
+            var daEmpresa = perfil is Perfis.Admin or Perfis.Operador;
             var usuario = new Usuario
             {
-                PatioId = Patio.Id,
+                EmpresaId = daEmpresa ? Empresa.Id : null,
                 Email = email,
                 SenhaHash = HashSenha.Gerar(senha),
                 NomeCompleto = "Usuário Teste",
                 Perfil = perfil
             };
+            if (perfil == Perfis.Operador)
+                usuario.Patios.Add(new UsuarioPatio { PatioId = Patio.Id });
             Db.Usuarios.Add(usuario);
             Db.SaveChanges();
             return usuario;
@@ -69,9 +110,32 @@ namespace PkLots.Application.Tests
         public void Dispose() => Db.Dispose();
     }
 
-    public class ContextoPatioFixo(Guid patioId) : IContextoPatio
+    // Mesmas regras do ContextoPatio real (admin: pátios da empresa; operador: vinculados), sem HTTP
+    public class ContextoPatioTeste(PkLotsDbContext db, Guid? empresaId, Guid? usuarioId, string? perfil, Guid? patioEscolhido) : IContextoPatio
     {
-        public Task<Guid> ObterPatioIdAsync(CancellationToken ct = default) => Task.FromResult(patioId);
+        public Guid? EmpresaId => empresaId;
+        public Guid? UsuarioId => usuarioId;
+        public string? Perfil => perfil;
+
+        public async Task<Guid> ObterPatioIdAsync(CancellationToken ct = default)
+        {
+            var permitidos = await ObterPatiosPermitidosAsync(ct);
+            if (patioEscolhido is not null)
+                return permitidos.Contains(patioEscolhido.Value)
+                    ? patioEscolhido.Value
+                    : throw new PkLots.Application.Excecoes.ExcecaoProibido("Você não tem acesso a este pátio.");
+            return permitidos.Count > 0 ? permitidos[0] : throw new PkLots.Application.Excecoes.ExcecaoNaoEncontrado("Nenhum pátio disponível.");
+        }
+
+        public async Task<IReadOnlyList<Guid>> ObterPatiosPermitidosAsync(CancellationToken ct = default)
+        {
+            if (empresaId is null)
+                return [];
+            var consulta = db.Patios.Where(p => p.EmpresaId == empresaId && p.Ativo);
+            if (perfil == Perfis.Operador)
+                consulta = consulta.Where(p => db.UsuariosPatios.Any(up => up.UsuarioId == usuarioId && up.PatioId == p.Id));
+            return await consulta.OrderBy(p => p.CriadoEm).ThenBy(p => p.Nome).Select(p => p.Id).ToListAsync(ct);
+        }
     }
 
     public class CacheFalso : ICacheVagas

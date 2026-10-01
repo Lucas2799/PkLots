@@ -20,10 +20,39 @@ import 'apoio.dart';
 /// Requisições de escrita recebidas pelo servidor simulado (para conferir o que foi enviado)
 final enviadas = <http.Request>[];
 
+/// Todas as requisições (inclusive GET), para conferir cabeçalhos
+final recebidas = <http.Request>[];
+
 /// Servidor simulado com as rotas usadas pelas telas
 Future<http.Response> servidor(http.Request req, {required String perfil}) async {
+  recebidas.add(req);
   if (req.method != 'GET') enviadas.add(req);
   switch (req.url.path) {
+    case '/api/patios':
+      return json([
+        {'id': 'p1', 'nome': 'Pátio Padrão'},
+        {'id': 'p2', 'nome': 'Pátio Shopping'},
+      ]);
+    case '/api/admin/patios':
+      if (req.method == 'POST') {
+        return json({'id': 'p3', 'nome': 'Pátio Novo', 'ativo': true, 'totalVagas': 20, 'valorHora': 12.0, 'veiculosEstacionados': 0}, 201);
+      }
+      return json([
+        {'id': 'p1', 'nome': 'Pátio Padrão', 'ativo': true, 'totalVagas': 30, 'valorHora': 15.0, 'veiculosEstacionados': 1},
+        {'id': 'p2', 'nome': 'Pátio Shopping', 'ativo': true, 'totalVagas': 10, 'valorHora': 12.0, 'veiculosEstacionados': 0},
+      ]);
+    case '/api/motorista/patios':
+      return json([
+        {'id': 'p1', 'nome': 'Pátio Padrão', 'nomeEmpresa': 'Empresa Padrão', 'disponiveis': 28, 'total': 30},
+        {'id': 'p9', 'nome': 'Pátio Centro', 'nomeEmpresa': 'Estacionamentos Silva', 'disponiveis': 0, 'total': 40},
+      ]);
+    case '/api/plataforma/empresas':
+      if (req.method == 'POST') {
+        return json({'id': 'e9', 'nome': 'Estacionamentos Silva', 'ativa': true, 'patios': 1, 'usuarios': 1, 'criadoEm': '2026-10-01T12:00:00Z'}, 201);
+      }
+      return json([
+        {'id': 'e1', 'nome': 'Empresa Padrão', 'documento': null, 'ativa': true, 'patios': 2, 'usuarios': 3, 'criadoEm': '2026-09-30T12:00:00Z'},
+      ]);
     case '/api/admin/configuracao':
       return json({
         'nome': 'Pátio Padrão',
@@ -34,9 +63,20 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'maximoVagas': 260,
       });
     case '/api/admin/usuarios':
+      if (req.method == 'POST') {
+        final corpo = jsonDecode(req.body) as Map<String, dynamic>;
+        return json({
+          'id': 'u9',
+          'email': corpo['email'],
+          'nomeCompleto': corpo['nomeCompleto'],
+          'perfil': corpo['perfil'],
+          'ativo': true,
+          'patiosIds': corpo['patiosIds'],
+        }, 201);
+      }
       return json([
-        {'id': 'u1', 'email': 'teste@pklots.local', 'nomeCompleto': 'Lucas Tavares', 'perfil': 'admin', 'ativo': true},
-        {'id': 'u2', 'email': 'op@pklots.local', 'nomeCompleto': 'Operador Um', 'perfil': 'operador', 'ativo': false},
+        {'id': 'u1', 'email': 'teste@pklots.local', 'nomeCompleto': 'Lucas Tavares', 'perfil': 'admin', 'ativo': true, 'patiosIds': []},
+        {'id': 'u2', 'email': 'op@pklots.local', 'nomeCompleto': 'Operador Um', 'perfil': 'operador', 'ativo': false, 'patiosIds': ['p2']},
       ]);
     case '/api/auth/login':
       final senhaCorreta = req.body.contains('Senha@123');
@@ -53,6 +93,7 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'duracao': '4h 15m',
         'numeroVaga': 'A1',
         'valorEstimado': 63.75,
+        'nomePatio': 'Pátio Padrão',
       });
     case '/api/motorista/veiculos':
       return json([
@@ -149,6 +190,7 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     enviadas.clear();
+    recebidas.clear();
   });
 
   testWidgets('sem sessão abre o login e valida campos vazios', (tester) async {
@@ -175,6 +217,8 @@ void main() {
 
     expect(find.text('Olá, Lucas'), findsOneWidget);
     expect(find.text('28 / 30', findRichText: true), findsOneWidget);
+    expect(find.text('Estacionamentos Silva'), findsOneWidget);
+    expect(find.text('Lotado'), findsOneWidget);
     expect(find.text('ABC-1234'), findsOneWidget);
     expect(find.text('R\$ 63,75'), findsOneWidget);
     expect(find.text('INICIAR SAÍDA'), findsOneWidget);
@@ -224,6 +268,9 @@ void main() {
     await entrar(tester, 'Senha@123');
 
     await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+    expect(find.text('Configurando: Pátio Padrão'), findsOneWidget);
+    await tester.tap(find.text('Preço'));
     await tester.pumpAndSettle();
 
     expect(find.text('Pátio e preço'), findsOneWidget);
@@ -336,6 +383,88 @@ void main() {
     expect(corpo['impressoraHost'], '192.168.0.50');
     expect(corpo['larguraPapelMm'], 58);
     expect(find.textContaining('Configuração de impressão salva'), findsOneWidget);
+  });
+
+  testWidgets('trocar de pátio envia o novo pátio em todas as requisições', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+
+    // Começa no primeiro pátio permitido
+    expect(recebidas.where((r) => r.url.path == '/api/dashboard').last.headers['X-Patio-Id'], 'p1');
+
+    await tester.tap(find.byTooltip('Trocar de pátio'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pátio Shopping').last);
+    await tester.pumpAndSettle();
+
+    expect(recebidas.where((r) => r.url.path == '/api/dashboard').last.headers['X-Patio-Id'], 'p2');
+    expect(find.text('· Pátio Shopping'), findsOneWidget);
+    // A escolha fica salva no aparelho
+    expect((await SharedPreferences.getInstance()).getString('pklots.patio'), 'p2');
+
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('admin cadastra operador vinculado a pátios', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+    await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Usuários'));
+    await tester.pumpAndSettle();
+
+    // Operador mostra os pátios em que trabalha
+    expect(find.textContaining('Pátio Shopping'), findsOneWidget);
+
+    await tester.tap(find.text('Novo usuário'));
+    await tester.pumpAndSettle();
+    expect(find.text('Motorista'), findsNothing); // motoristas se cadastram pelo app
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nome completo'), 'Ana Operadora');
+    await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana@pklots.local');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Senha inicial'), 'Senha@123');
+
+    // Sem pátio marcado não salva
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Selecione pelo menos um pátio para o operador.'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(CheckboxListTile, 'Pátio Shopping'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.pumpAndSettle();
+
+    final post = enviadas.singleWhere((r) => r.url.path == '/api/admin/usuarios');
+    final corpo = jsonDecode(post.body) as Map<String, dynamic>;
+    expect(corpo['perfil'], 'operador');
+    expect(corpo['patiosIds'], ['p2']);
+  });
+
+  testWidgets('superadmin vê as empresas e cria uma nova', (tester) async {
+    await abrirApp(tester, perfil: 'superadmin');
+    await entrar(tester, 'Senha@123');
+
+    expect(find.text('· Plataforma'), findsOneWidget);
+    expect(find.text('Empresa Padrão'), findsOneWidget);
+    expect(find.byTooltip('Administração'), findsNothing);
+
+    await tester.tap(find.text('Nova empresa'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nome da empresa'), 'Estacionamentos Silva');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nome completo'), 'Maria Silva');
+    await tester.enterText(find.widgetWithText(TextFormField, 'E-mail (login)'), 'maria@silva.com');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Senha inicial'), 'Senha@123');
+    await tester.tap(find.text('Criar empresa'));
+    await tester.pumpAndSettle();
+
+    final corpo = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/plataforma/empresas').body) as Map<String, dynamic>;
+    expect(corpo['nome'], 'Estacionamentos Silva');
+    expect(corpo['nomePatio'], 'Pátio Principal');
+    expect(corpo['totalVagas'], 30);
+    expect(corpo['emailAdmin'], 'maria@silva.com');
+
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
   });
 
   test('lê valores em reais com vírgula ou ponto', () {

@@ -18,6 +18,8 @@ namespace PkLots.Application
             services.AddScoped<ServicoMotorista>();
             services.AddScoped<ServicoAdministracao>();
             services.AddScoped<ServicoImpressao>();
+            services.AddScoped<ServicoPatios>();
+            services.AddScoped<ServicoPlataforma>();
             return services;
         }
     }

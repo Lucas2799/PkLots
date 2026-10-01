@@ -1,52 +1,71 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PkLots.Application.Interfaces;
+using PkLots.Application.Servicos;
 using PkLots.Core.Constantes;
 using PkLots.Core.Entities;
 
 namespace PkLots.Infrastructure.Data
 {
-    // Dados iniciais do MVP: pátio padrão com 30 vagas (A1–C10) e os três usuários padrão
+    public class OpcoesPlataforma
+    {
+        public string SuperAdminEmail { get; set; } = "superadmin@pklots.local";
+        public string? SuperAdminSenha { get; set; }
+    }
+
+    // Dados iniciais: superadmin da plataforma e, em banco vazio, uma empresa de demonstração
+    // (pátio com 30 vagas, admin, operador e um motorista)
     public static class SemeadorDados
     {
-        private const int TotalVagasInicial = 30;
+        private const string SenhaPadraoSuperAdmin = "SuperAdmin@123";
 
-        public static async Task SemearAsync(PkLotsDbContext db, IHashSenha hashSenha, CancellationToken ct = default)
+        public static async Task SemearAsync(PkLotsDbContext db, IHashSenha hashSenha, OpcoesPlataforma opcoes,
+            ILogger? logger = null, CancellationToken ct = default)
         {
-            if (await db.Patios.AnyAsync(ct))
+            await GarantirSuperAdminAsync(db, hashSenha, opcoes, logger, ct);
+
+            if (await db.Empresas.IgnoreQueryFilters().AnyAsync(ct))
                 return;
 
-            var patio = new Patio
-            {
-                Nome = "Pátio Padrão",
-                Descricao = "Pátio inicial do MVP",
-                MaximoVagas = TotalVagasInicial,
-                ValorHora = 15.00m
-            };
+            var agora = DateTime.UtcNow;
+            var empresa = new Empresa { Nome = "Empresa Padrão" };
+            var patio = ServicoPatios.NovoPatio(empresa.Id, "Pátio Padrão", 30, agora);
+            db.Empresas.Add(empresa);
             db.Patios.Add(patio);
 
-            for (var posicao = 0; posicao < TotalVagasInicial; posicao++)
-            {
-                db.Vagas.Add(new Vaga
-                {
-                    PatioId = patio.Id,
-                    Numero = LayoutPatio.Numero(posicao),
-                    Fileira = LayoutPatio.Fileira(posicao),
-                    Indice = LayoutPatio.Indice(posicao)
-                });
-            }
+            var operador = NovoUsuario(empresa.Id, "operator@pklots.local", "Operator@123", "Operador", Perfis.Operador, hashSenha);
+            operador.Patios.Add(new UsuarioPatio { PatioId = patio.Id });
 
             db.Usuarios.AddRange(
-                NovoUsuario(patio.Id, "admin@pklots.local", "Admin@123", "Administrador", Perfis.Admin, hashSenha),
-                NovoUsuario(patio.Id, "operator@pklots.local", "Operator@123", "Operador", Perfis.Operador, hashSenha),
-                NovoUsuario(patio.Id, "driver@example.com", "Driver@123", "Motorista Exemplo", Perfis.Motorista, hashSenha));
+                NovoUsuario(empresa.Id, "admin@pklots.local", "Admin@123", "Administrador", Perfis.Admin, hashSenha),
+                operador,
+                NovoUsuario(null, "driver@example.com", "Driver@123", "Motorista Exemplo", Perfis.Motorista, hashSenha));
 
             await db.SaveChangesAsync(ct);
         }
 
-        private static Usuario NovoUsuario(Guid patioId, string email, string senha, string nome, string perfil, IHashSenha hashSenha) =>
+        private static async Task GarantirSuperAdminAsync(PkLotsDbContext db, IHashSenha hashSenha, OpcoesPlataforma opcoes,
+            ILogger? logger, CancellationToken ct)
+        {
+            if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Perfil == Perfis.SuperAdmin, ct))
+                return;
+
+            var senha = opcoes.SuperAdminSenha;
+            if (string.IsNullOrWhiteSpace(senha))
+            {
+                senha = SenhaPadraoSuperAdmin;
+                logger?.LogWarning("Superadmin criado com a senha padrão. Defina Plataforma__SuperAdminSenha e troque a senha.");
+            }
+
+            db.Usuarios.Add(NovoUsuario(null, opcoes.SuperAdminEmail.Trim().ToLowerInvariant(), senha, "Administrador da Plataforma",
+                Perfis.SuperAdmin, hashSenha));
+            await db.SaveChangesAsync(ct);
+        }
+
+        private static Usuario NovoUsuario(Guid? empresaId, string email, string senha, string nome, string perfil, IHashSenha hashSenha) =>
             new()
             {
-                PatioId = patioId,
+                EmpresaId = empresaId,
                 Email = email,
                 SenhaHash = hashSenha.Gerar(senha),
                 NomeCompleto = nome,

@@ -6,6 +6,7 @@ import 'estado/sessao_provider.dart';
 import 'tema/tema_pklots.dart';
 import 'telas/gestao/painel_tela.dart';
 import 'telas/login_tela.dart';
+import 'telas/plataforma/plataforma_tela.dart';
 import 'telas/motorista/inicio_motorista_tela.dart';
 import 'widgets/logo_pklots.dart';
 
@@ -34,7 +35,11 @@ class _Raiz extends StatelessWidget {
     return switch (sessao.situacao) {
       SituacaoSessao.carregando => const Scaffold(body: Center(child: LogoPkLots(tamanho: 180))),
       SituacaoSessao.deslogado => const LoginTela(),
-      SituacaoSessao.logado => sessao.ehGestao ? const PainelTela() : const InicioMotoristaTela(),
+      SituacaoSessao.logado => sessao.ehSuperAdmin
+          ? const PlataformaTela()
+          : sessao.ehGestao
+              ? const PainelTela()
+              : const InicioMotoristaTela(),
     };
   }
 }

@@ -10,12 +10,22 @@ namespace PkLots.Infrastructure.Data
 {
     public class PkLotsDbContext : DbContext, IPkLotsDbContext
     {
-        // Pátio atual resolvido a partir de HttpContext.Items["PatioId"].
-        // Quando nulo (migrations, jobs, startup), os filtros não restringem por pátio.
-        private readonly Guid? _patioId;
+        private readonly IHttpContextAccessor? _httpContext;
 
+        // Empresa (tenant) do usuário autenticado (claim empresa_id), lida a cada consulta: o DbContext é criado
+        // no início da requisição, antes da autenticação, então não pode guardar o valor no construtor.
+        // Nula para superadmin, motoristas, requisições anônimas e startup: nesses casos os serviços
+        // filtram explicitamente (ex.: motorista só vê as próprias placas).
+        private Guid? _empresaId =>
+            Guid.TryParse(_httpContext?.HttpContext?.User.FindFirst(ClaimEmpresa)?.Value, out var id) ? id : null;
+
+        public const string ClaimEmpresa = "empresa_id";
+
+        public DbSet<Empresa> Empresas { get; set; }
         public DbSet<Patio> Patios { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<UsuarioPatio> UsuariosPatios { get; set; }
+        public DbSet<VeiculoMotorista> VeiculosMotoristas { get; set; }
         public DbSet<Vaga> Vagas { get; set; }
         public DbSet<Veiculo> Veiculos { get; set; }
         public DbSet<EntradaVeiculo> EntradasVeiculos { get; set; }
@@ -25,32 +35,45 @@ namespace PkLots.Infrastructure.Data
         public PkLotsDbContext(DbContextOptions<PkLotsDbContext> options, IHttpContextAccessor? httpContext = null)
             : base(options)
         {
-            var valor = httpContext?.HttpContext?.Items["PatioId"]?.ToString();
-            _patioId = Guid.TryParse(valor, out var id) ? id : null;
+            _httpContext = httpContext;
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Filtros multi-pátio (multi-tenant)
-            modelBuilder.Entity<Vaga>()
-                .HasQueryFilter(v => _patioId == null || v.PatioId == _patioId);
+            // Isolamento entre empresas (multi-tenant): cada empresa só enxerga os próprios dados
+            modelBuilder.Entity<Empresa>()
+                .HasQueryFilter(e => _empresaId == null || e.Id == _empresaId);
+
+            modelBuilder.Entity<Patio>()
+                .HasQueryFilter(p => _empresaId == null || p.EmpresaId == _empresaId);
 
             modelBuilder.Entity<Usuario>()
-                .HasQueryFilter(u => _patioId == null || u.PatioId == _patioId);
+                .HasQueryFilter(u => _empresaId == null || u.EmpresaId == _empresaId);
+
+            modelBuilder.Entity<UsuarioPatio>()
+                .HasQueryFilter(up => _empresaId == null || up.Patio.EmpresaId == _empresaId);
+
+            modelBuilder.Entity<Vaga>()
+                .HasQueryFilter(v => _empresaId == null || v.Patio.EmpresaId == _empresaId);
 
             modelBuilder.Entity<Veiculo>()
-                .HasQueryFilter(v => _patioId == null || v.PatioId == _patioId);
+                .HasQueryFilter(v => _empresaId == null || v.Patio.EmpresaId == _empresaId);
 
             modelBuilder.Entity<EntradaVeiculo>()
-                .HasQueryFilter(e => _patioId == null || e.PatioId == _patioId);
+                .HasQueryFilter(e => _empresaId == null || e.Patio.EmpresaId == _empresaId);
 
             modelBuilder.Entity<SaidaVeiculo>()
-                .HasQueryFilter(s => _patioId == null || s.PatioId == _patioId);
+                .HasQueryFilter(s => _empresaId == null || s.Patio.EmpresaId == _empresaId);
 
             modelBuilder.Entity<LogAuditoria>()
-                .HasQueryFilter(l => _patioId == null || l.PatioId == _patioId);
+                .HasQueryFilter(l => _empresaId == null || l.Patio.EmpresaId == _empresaId);
+
+            // Placas dos motoristas são da plataforma: só aparecem para quem não pertence a uma empresa
+            // (o próprio motorista; os serviços filtram pelo UsuarioId)
+            modelBuilder.Entity<VeiculoMotorista>()
+                .HasQueryFilter(v => _empresaId == null);
 
             // Índices
             modelBuilder.Entity<Vaga>()
@@ -64,6 +87,12 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Email).IsUnique();
+
+            modelBuilder.Entity<VeiculoMotorista>()
+                .HasIndex(v => v.Placa).IsUnique(); // uma placa pertence a um só motorista
+
+            modelBuilder.Entity<UsuarioPatio>()
+                .HasKey(up => new { up.UsuarioId, up.PatioId });
 
             modelBuilder.Entity<Vaga>()
                 .HasIndex(v => new { v.PatioId, v.Numero }).IsUnique();
@@ -98,10 +127,34 @@ namespace PkLots.Infrastructure.Data
                 .IsRowVersion();
 
             // Relacionamentos
+            modelBuilder.Entity<Patio>()
+                .HasOne(p => p.Empresa)
+                .WithMany(e => e.Patios)
+                .HasForeignKey(p => p.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<Usuario>()
-                .HasOne(u => u.Patio)
+                .HasOne(u => u.Empresa)
+                .WithMany(e => e.Usuarios)
+                .HasForeignKey(u => u.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<UsuarioPatio>()
+                .HasOne(up => up.Usuario)
+                .WithMany(u => u.Patios)
+                .HasForeignKey(up => up.UsuarioId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<UsuarioPatio>()
+                .HasOne(up => up.Patio)
                 .WithMany(p => p.Usuarios)
-                .HasForeignKey(u => u.PatioId)
+                .HasForeignKey(up => up.PatioId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<VeiculoMotorista>()
+                .HasOne(v => v.Usuario)
+                .WithMany(u => u.Veiculos)
+                .HasForeignKey(v => v.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Vaga>()
@@ -127,12 +180,6 @@ namespace PkLots.Infrastructure.Data
                 .WithMany(p => p.Saidas)
                 .HasForeignKey(s => s.PatioId)
                 .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<Veiculo>()
-                .HasOne(v => v.Usuario)
-                .WithMany()
-                .HasForeignKey(v => v.UsuarioId)
-                .OnDelete(DeleteBehavior.SetNull);
 
             // LogAuditoria.Detalhes armazenado como jsonb
             modelBuilder.Entity<LogAuditoria>()

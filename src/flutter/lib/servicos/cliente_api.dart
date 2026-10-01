@@ -19,6 +19,9 @@ class ClienteApi {
 
   String? token;
 
+  /// Pátio escolhido no seletor do painel (enviado em X-Patio-Id; a API valida o acesso)
+  String? patioAtualId;
+
   /// Chamado quando a API responde 401 com um token presente (sessão expirada)
   void Function()? aoExpirarSessao;
 
@@ -44,6 +47,9 @@ class ClienteApi {
 
   // ---------- Motorista ----------
 
+  Future<List<PatioDisponibilidade>> patiosParaMotorista() async =>
+      _lista(await _get('/api/motorista/patios'), PatioDisponibilidade.deJson);
+
   Future<List<Veiculo>> meusVeiculos() async => _lista(await _get('/api/motorista/veiculos'), Veiculo.deJson);
 
   Future<Veiculo> cadastrarVeiculo(String placa, {String? modelo, String? cor}) async => Veiculo.deJson(
@@ -60,6 +66,8 @@ class ClienteApi {
   Future<Saida> iniciarSaida() async => Saida.deJson(await _post('/api/motorista/iniciar-saida', null));
 
   // ---------- Gestão ----------
+
+  Future<List<PatioResumo>> patiosPermitidos() async => _lista(await _get('/api/patios'), PatioResumo.deJson);
 
   Future<Dashboard> dashboard() async => Dashboard.deJson(await _get('/api/dashboard'));
 
@@ -110,13 +118,48 @@ class ClienteApi {
 
   Future<List<UsuarioAdmin>> usuarios() async => _lista(await _get('/api/admin/usuarios'), UsuarioAdmin.deJson);
 
-  Future<UsuarioAdmin> criarUsuario(String email, String nomeCompleto, String senha, String perfil) async =>
+  Future<UsuarioAdmin> criarUsuario(String email, String nomeCompleto, String senha, String perfil, List<String> patiosIds) async =>
       UsuarioAdmin.deJson(await _post('/api/admin/usuarios',
-          {'email': email, 'nomeCompleto': nomeCompleto, 'senha': senha, 'perfil': perfil}));
+          {'email': email, 'nomeCompleto': nomeCompleto, 'senha': senha, 'perfil': perfil, 'patiosIds': patiosIds}));
 
-  Future<UsuarioAdmin> atualizarUsuario(String id, String nomeCompleto, String perfil, bool ativo) async =>
+  Future<UsuarioAdmin> atualizarUsuario(String id, String nomeCompleto, String perfil, bool ativo, List<String> patiosIds) async =>
       UsuarioAdmin.deJson(await _enviar('PUT', '/api/admin/usuarios/$id',
-          {'nomeCompleto': nomeCompleto, 'perfil': perfil, 'ativo': ativo}));
+          {'nomeCompleto': nomeCompleto, 'perfil': perfil, 'ativo': ativo, 'patiosIds': patiosIds}));
+
+  Future<List<PatioAdmin>> patiosDaEmpresa() async => _lista(await _get('/api/admin/patios'), PatioAdmin.deJson);
+
+  Future<PatioAdmin> criarPatio(String nome, int totalVagas, double valorHora) async => PatioAdmin.deJson(
+      await _post('/api/admin/patios', {'nome': nome, 'totalVagas': totalVagas, 'valorHora': valorHora, 'minutosTolerancia': 0}));
+
+  Future<PatioAdmin> atualizarPatio(String id, String nome, bool ativo) async =>
+      PatioAdmin.deJson(await _enviar('PUT', '/api/admin/patios/$id', {'nome': nome, 'ativo': ativo}));
+
+  // ---------- Plataforma (superadmin) ----------
+
+  Future<List<EmpresaPlataforma>> empresas() async => _lista(await _get('/api/plataforma/empresas'), EmpresaPlataforma.deJson);
+
+  Future<EmpresaPlataforma> criarEmpresa({
+    required String nome,
+    String? documento,
+    required String nomePatio,
+    required int totalVagas,
+    required String nomeAdmin,
+    required String emailAdmin,
+    required String senhaAdmin,
+  }) async =>
+      EmpresaPlataforma.deJson(await _post('/api/plataforma/empresas', {
+        'nome': nome,
+        'documento': documento,
+        'nomePatio': nomePatio,
+        'totalVagas': totalVagas,
+        'nomeAdmin': nomeAdmin,
+        'emailAdmin': emailAdmin,
+        'senhaAdmin': senhaAdmin,
+      }));
+
+  Future<EmpresaPlataforma> atualizarEmpresa(String id, String nome, String? documento, bool ativa) async =>
+      EmpresaPlataforma.deJson(
+          await _enviar('PUT', '/api/plataforma/empresas/$id', {'nome': nome, 'documento': documento, 'ativa': ativa}));
 
   Future<void> redefinirSenha(String id, String senha) =>
       _enviar('PUT', '/api/admin/usuarios/$id/senha', {'senha': senha});
@@ -126,6 +169,7 @@ class ClienteApi {
   Map<String, String> get _cabecalhos => {
         'Accept': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',
+        'X-Patio-Id': ?patioAtualId,
       };
 
   Uri _uri(String caminho) => Uri.parse('$_urlBase$caminho');

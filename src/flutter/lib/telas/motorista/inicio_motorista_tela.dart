@@ -7,7 +7,6 @@ import '../../modelos/modelos.dart';
 import '../../servicos/excecao_api.dart';
 import '../../tema/cores.dart';
 import '../../util/formatadores.dart';
-import '../../widgets/cartao_vagas.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/item_historico_tile.dart';
 import '../../widgets/logo_pklots.dart';
@@ -65,16 +64,16 @@ class _InicioMotoristaTelaState extends State<InicioMotoristaTela> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                if (estado.carregando && estado.vagas == null)
+                if (estado.carregando && estado.patios == null)
                   const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator())),
                 if (estado.erro != null) ...[
                   MensagemErro(mensagem: estado.erro!, aoTentarNovamente: estado.carregar),
                   const SizedBox(height: 16),
                 ],
-                if (estado.vagas != null) ...[
-                  CartaoVagas(resumo: estado.vagas!),
-                  const SizedBox(height: 16),
+                if (estado.patios != null) ...[
                   _MeuEstacionamento(estado: estado),
+                  const SizedBox(height: 16),
+                  _Patios(patios: estado.patios!),
                   const SizedBox(height: 16),
                   _MeusAcessos(historico: estado.historico),
                 ],
@@ -141,6 +140,7 @@ class _MeuEstacionamentoState extends State<_MeuEstacionamento> {
           children: [
             const TituloSecao('Meu estacionamento', icone: Icons.directions_car),
             if (atual != null) ...[
+              if (atual.nomePatio.isNotEmpty) _Info('Pátio', atual.nomePatio),
               _Info('Placa', Formatadores.placa(atual.placa), destaque: true),
               _Info('Entrada', Formatadores.dataHora(atual.dataHoraEntrada)),
               _Info('Estacionado há', atual.duracao),
@@ -244,4 +244,71 @@ class _MeusAcessos extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Pátios da plataforma com as vagas livres agora
+class _Patios extends StatelessWidget {
+  const _Patios({required this.patios});
+
+  final List<PatioDisponibilidade> patios;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            const TituloSecao('Vagas disponíveis', icone: Icons.local_parking),
+            if (patios.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text('Nenhum pátio disponível no momento.', style: TextStyle(color: CoresPkLots.textoSecundario)),
+              ),
+            for (final patio in patios)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Semantics(
+                  label: '${patio.nome}: ${patio.disponiveis} de ${patio.total} vagas disponíveis',
+                  excludeSemantics: true,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(patio.nome,
+                              style: const TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho)),
+                          Text(patio.nomeEmpresa, style: const TextStyle(fontSize: 12, color: CoresPkLots.textoSuave)),
+                        ]),
+                      ),
+                      Text.rich(TextSpan(children: [
+                        TextSpan(
+                          text: '${patio.disponiveis}',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: patio.disponiveis == 0 ? CoresPkLots.erro : CoresPkLots.azulMarinho,
+                          ),
+                        ),
+                        TextSpan(text: ' / ${patio.total}', style: const TextStyle(color: CoresPkLots.textoSuave)),
+                      ])),
+                    ]),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: patio.total == 0 ? 0 : patio.disponiveis / patio.total,
+                        minHeight: 6,
+                        backgroundColor: CoresPkLots.borda,
+                        color: patio.disponiveis == 0 ? CoresPkLots.erro : CoresPkLots.ambar,
+                      ),
+                    ),
+                    if (patio.disponiveis == 0)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text('Lotado', style: TextStyle(color: CoresPkLots.erro, fontWeight: FontWeight.w600)),
+                      ),
+                  ]),
+                ),
+              ),
+          ]),
+        ),
+      );
 }

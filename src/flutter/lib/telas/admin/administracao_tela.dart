@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../estado/administracao_provider.dart';
+import '../../estado/gestao_provider.dart';
+import '../../tema/cores.dart';
+import 'aba_patios.dart';
 import '../../widgets/estados_tela.dart';
 import 'aba_impressao.dart';
 import 'aba_preco.dart';
@@ -28,12 +31,20 @@ class _AdministracaoTelaState extends State<AdministracaoTela> {
     final estado = context.watch<AdministracaoProvider>();
     final configuracao = estado.configuracao;
 
+    final patioAtual = context.watch<GestaoProvider>().patioAtual;
+
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Administração'),
-          bottom: const TabBar(tabs: [
+          title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Administração'),
+            if (patioAtual != null)
+              Text('Configurando: ${patioAtual.nome}',
+                  style: const TextStyle(fontSize: 12, color: CoresPkLots.textoSecundario)),
+          ]),
+          bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.center, tabs: [
+            Tab(icon: Icon(Icons.store_mall_directory_outlined), text: 'Pátios'),
             Tab(icon: Icon(Icons.payments_outlined), text: 'Preço'),
             Tab(icon: Icon(Icons.local_parking), text: 'Vagas'),
             Tab(icon: Icon(Icons.people_outline), text: 'Usuários'),
@@ -50,6 +61,7 @@ class _AdministracaoTelaState extends State<AdministracaoTela> {
                 ),
               (null, _) => const Center(child: CircularProgressIndicator()),
               (final config?, _) => TabBarView(children: [
+                  const AbaPatios(),
                   // A chave recria a aba com os valores salvos no servidor
                   AbaPreco(key: ValueKey(('preco', config.valorHora, config.minutosTolerancia, config.nome)), configuracao: config),
                   AbaVagas(key: ValueKey(('vagas', config.totalVagas)), configuracao: config),

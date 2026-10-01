@@ -19,10 +19,12 @@ class AdministracaoProvider extends ChangeNotifier {
     carregando = true;
     notifyListeners();
     try {
-      final resultados = await Future.wait([_api.configuracao(), _api.usuarios(), _api.configuracaoImpressao()]);
+      final resultados =
+          await Future.wait([_api.configuracao(), _api.usuarios(), _api.configuracaoImpressao(), _api.patiosDaEmpresa()]);
       configuracao = resultados[0] as ConfiguracaoPatio;
       usuarios = resultados[1] as List<UsuarioAdmin>;
       impressao = resultados[2] as ConfiguracaoImpressao;
+      patios = resultados[3] as List<PatioAdmin>;
       erro = null;
     } on ExcecaoApi catch (e) {
       erro = e.mensagem;
@@ -49,14 +51,33 @@ class AdministracaoProvider extends ChangeNotifier {
 
   Future<void> imprimirTesteNaRede() => _api.imprimirTeste();
 
-  Future<void> criarUsuario(String email, String nome, String senha, String perfil) async {
-    await _api.criarUsuario(email, nome, senha, perfil);
+  Future<void> criarUsuario(String email, String nome, String senha, String perfil, List<String> patiosIds) async {
+    await _api.criarUsuario(email, nome, senha, perfil, patiosIds);
     await _recarregarUsuarios();
   }
 
-  Future<void> atualizarUsuario(String id, String nome, String perfil, bool ativo) async {
-    await _api.atualizarUsuario(id, nome, perfil, ativo);
+  Future<void> atualizarUsuario(String id, String nome, String perfil, bool ativo, List<String> patiosIds) async {
+    await _api.atualizarUsuario(id, nome, perfil, ativo, patiosIds);
     await _recarregarUsuarios();
+  }
+
+  // ---------- Pátios ----------
+
+  List<PatioAdmin> patios = [];
+
+  Future<void> carregarPatios() async {
+    patios = await _api.patiosDaEmpresa();
+    notifyListeners();
+  }
+
+  Future<void> criarPatio(String nome, int totalVagas, double valorHora) async {
+    await _api.criarPatio(nome, totalVagas, valorHora);
+    await carregarPatios();
+  }
+
+  Future<void> atualizarPatio(String id, String nome, bool ativo) async {
+    await _api.atualizarPatio(id, nome, ativo);
+    await carregarPatios();
   }
 
   Future<void> redefinirSenha(String id, String senha) => _api.redefinirSenha(id, senha);

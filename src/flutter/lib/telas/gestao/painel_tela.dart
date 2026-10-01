@@ -54,17 +54,16 @@ class _PainelTelaState extends State<PainelTela> {
       appBar: AppBar(
         title: Row(mainAxisSize: MainAxisSize.min, children: [
           const MarcaPkLots(altura: 28),
-          if (dashboard != null) ...[
-            const SizedBox(width: 12),
-            Flexible(
-              child: Text('· ${dashboard.nomePatio}',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 16, color: CoresPkLots.textoSecundario)),
-            ),
-          ],
+          const SizedBox(width: 12),
+          Flexible(child: _SeletorPatio(estado: estado)),
         ]),
         actions: [
-          if (sessao.ehAdmin) _BotaoAdministracao(aoVoltar: () => estado.carregar(silencioso: true)),
+          if (sessao.ehAdmin)
+            _BotaoAdministracao(aoVoltar: () async {
+              // Pátios podem ter sido criados/renomeados; preço e vagas podem ter mudado
+              await estado.carregarPatios();
+              await estado.carregar(silencioso: true);
+            }),
           IconButton(
               tooltip: 'Histórico por placa', icon: const Icon(Icons.manage_search), onPressed: () => mostrarBuscaPlaca(context)),
           IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: estado.carregar),
@@ -286,4 +285,42 @@ class _BotaoAdministracao extends StatelessWidget {
           await aoVoltar();
         },
       );
+}
+
+/// Nome do pátio atual; com mais de um pátio vira um menu para trocar
+class _SeletorPatio extends StatelessWidget {
+  const _SeletorPatio({required this.estado});
+
+  final GestaoProvider estado;
+
+  @override
+  Widget build(BuildContext context) {
+    final atual = estado.patioAtual;
+    if (atual == null) return const SizedBox.shrink();
+
+    final rotulo = Text('· ${atual.nome}',
+        overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, color: CoresPkLots.textoSecundario));
+    if (estado.patios.length < 2) return rotulo;
+
+    return PopupMenuButton<String>(
+      tooltip: 'Trocar de pátio',
+      initialValue: atual.id,
+      onSelected: estado.selecionarPatio,
+      itemBuilder: (_) => [
+        for (final patio in estado.patios)
+          PopupMenuItem(
+            value: patio.id,
+            child: Row(children: [
+              Icon(patio.id == atual.id ? Icons.radio_button_checked : Icons.radio_button_unchecked, size: 18),
+              const SizedBox(width: 8),
+              Text(patio.nome),
+            ]),
+          ),
+      ],
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Flexible(child: rotulo),
+        const Icon(Icons.arrow_drop_down, color: CoresPkLots.textoSecundario),
+      ]),
+    );
+  }
 }

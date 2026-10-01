@@ -7,7 +7,7 @@ namespace PkLots.Api.Endpoints
     {
         public static void MapearVagas(this IEndpointRouteBuilder app)
         {
-            var grupo = app.MapGroup("/api/vagas").WithTags("Vagas").RequireAuthorization();
+            var grupo = app.MapGroup("/api/vagas").WithTags("Vagas").RequireAuthorization(Autorizacao.Gestao);
 
             grupo.MapGet("/", async (ServicoVagas servico, CancellationToken ct) =>
                 Results.Ok(await servico.ListarAsync(ct)))

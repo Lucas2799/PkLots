@@ -145,7 +145,7 @@ namespace PkLots.Application.Tests
             using var cenario = new Cenario();
 
             var usuario = await cenario.Administracao.CriarUsuarioAsync(AdminQualquer,
-                new CriarUsuarioRequisicao("Operador2@PkLots.local", "Operador Dois", "Senha@123", "Operador"));
+                new CriarUsuarioRequisicao("Operador2@PkLots.local", "Operador Dois", "Senha@123", "Operador", [cenario.Patio.Id]));
 
             Assert.Equal("operador2@pklots.local", usuario.Email);
             Assert.Equal(Perfis.Operador, usuario.Perfil);
@@ -157,12 +157,43 @@ namespace PkLots.Application.Tests
         public async Task Recusa_email_duplicado_e_perfil_invalido()
         {
             using var cenario = new Cenario();
-            cenario.CriarUsuario("ja@existe.com", "Senha@123");
+            cenario.CriarUsuario("ja@existe.com", "Senha@123"); // motorista da plataforma: o e-mail é único em todo o sistema
 
             await Assert.ThrowsAsync<ExcecaoConflito>(() => cenario.Administracao.CriarUsuarioAsync(AdminQualquer,
-                new CriarUsuarioRequisicao("ja@existe.com", "Nome", "Senha@123", Perfis.Motorista)));
+                new CriarUsuarioRequisicao("ja@existe.com", "Nome", "Senha@123", Perfis.Operador, [cenario.Patio.Id])));
             await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.Administracao.CriarUsuarioAsync(AdminQualquer,
                 new CriarUsuarioRequisicao("novo@existe.com", "Nome", "Senha@123", "gerente")));
+            // Motoristas se cadastram pelo app; superadmin é da plataforma
+            await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.Administracao.CriarUsuarioAsync(AdminQualquer,
+                new CriarUsuarioRequisicao("novo@existe.com", "Nome", "Senha@123", Perfis.Motorista)));
+            await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.Administracao.CriarUsuarioAsync(AdminQualquer,
+                new CriarUsuarioRequisicao("novo@existe.com", "Nome", "Senha@123", Perfis.SuperAdmin)));
+        }
+
+        [Fact]
+        public async Task Operador_precisa_de_pelo_menos_um_patio_da_propria_empresa()
+        {
+            using var cenario = new Cenario();
+            var (_, patioDeOutra) = cenario.CriarOutraEmpresa();
+
+            await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.Administracao.CriarUsuarioAsync(AdminQualquer,
+                new CriarUsuarioRequisicao("op@pklots.local", "Op", "Senha@123", Perfis.Operador, [])));
+            await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.Administracao.CriarUsuarioAsync(AdminQualquer,
+                new CriarUsuarioRequisicao("op@pklots.local", "Op", "Senha@123", Perfis.Operador, [patioDeOutra.Id])));
+        }
+
+        [Fact]
+        public async Task Lista_so_usuarios_da_empresa_com_os_patios_vinculados()
+        {
+            using var cenario = new Cenario();
+            cenario.CriarUsuario("admin@pklots.local", "Admin@123", Perfis.Admin);
+            cenario.CriarUsuario("op@pklots.local", "Senha@123", Perfis.Operador);
+            cenario.CriarUsuario("driver@example.com", "Senha@123"); // motorista: fora da empresa
+
+            var usuarios = await cenario.Administracao.ListarUsuariosAsync();
+
+            Assert.Equal(2, usuarios.Count);
+            Assert.Equal([cenario.Patio.Id], usuarios.Single(u => u.Perfil == Perfis.Operador).PatiosIds);
         }
 
         [Fact]
@@ -185,7 +216,7 @@ namespace PkLots.Application.Tests
             var unicoAdmin = cenario.CriarUsuario("admin@pklots.local", "Admin@123", Perfis.Admin);
 
             await Assert.ThrowsAsync<ExcecaoConflito>(() => cenario.Administracao.AtualizarUsuarioAsync(AdminQualquer, unicoAdmin.Id,
-                new AtualizarUsuarioRequisicao("Admin", Perfis.Motorista, true)));
+                new AtualizarUsuarioRequisicao("Admin", Perfis.Operador, true, [cenario.Patio.Id])));
         }
 
         [Fact]
@@ -196,7 +227,7 @@ namespace PkLots.Application.Tests
             var operador = cenario.CriarUsuario("op@pklots.local", "Senha@123", Perfis.Operador);
 
             var alterado = await cenario.Administracao.AtualizarUsuarioAsync(admin.Id, operador.Id,
-                new AtualizarUsuarioRequisicao("Operador", Perfis.Operador, false));
+                new AtualizarUsuarioRequisicao("Operador", Perfis.Operador, false, [cenario.Patio.Id]));
 
             Assert.False(alterado.Ativo);
             await Assert.ThrowsAsync<ExcecaoNaoAutorizado>(() =>
@@ -207,13 +238,13 @@ namespace PkLots.Application.Tests
         public async Task Redefine_senha()
         {
             using var cenario = new Cenario();
-            var usuario = cenario.CriarUsuario("driver@example.com", "Antiga@123");
+            var usuario = cenario.CriarUsuario("op@pklots.local", "Antiga@123", Perfis.Operador);
 
             await cenario.Administracao.RedefinirSenhaAsync(AdminQualquer, usuario.Id, "Nova@1234");
 
             await Assert.ThrowsAsync<ExcecaoNaoAutorizado>(() =>
-                cenario.Autenticacao.LoginAsync(new LoginRequisicao("driver@example.com", "Antiga@123")));
-            await cenario.Autenticacao.LoginAsync(new LoginRequisicao("driver@example.com", "Nova@1234"));
+                cenario.Autenticacao.LoginAsync(new LoginRequisicao("op@pklots.local", "Antiga@123")));
+            await cenario.Autenticacao.LoginAsync(new LoginRequisicao("op@pklots.local", "Nova@1234"));
             await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.Administracao.RedefinirSenhaAsync(AdminQualquer, usuario.Id, "curta"));
         }
     }

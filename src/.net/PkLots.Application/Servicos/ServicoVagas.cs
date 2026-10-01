@@ -32,10 +32,11 @@ namespace PkLots.Application.Servicos
         }
 
         // Resumo servido do Redis (TTL 5 min); recalculado do banco quando não há cache
-        public async Task<ResumoVagasDto> ObterResumoAsync(CancellationToken ct = default)
-        {
-            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+        public async Task<ResumoVagasDto> ObterResumoAsync(CancellationToken ct = default) =>
+            await ObterResumoDoPatioAsync(await contextoPatio.ObterPatioIdAsync(ct), ct);
 
+        public async Task<ResumoVagasDto> ObterResumoDoPatioAsync(Guid patioId, CancellationToken ct = default)
+        {
             var emCache = await cache.ObterAsync(patioId);
             if (emCache is not null)
                 return emCache;

@@ -4,6 +4,7 @@ namespace PkLots.Core.Entities
     public class Patio
     {
         public Guid Id { get; set; } = Guid.NewGuid();
+        public Guid EmpresaId { get; set; }
         public string Nome { get; set; } = string.Empty;
         public string? Descricao { get; set; }
         public int MaximoVagas { get; set; } = 30;
@@ -20,7 +21,8 @@ namespace PkLots.Core.Entities
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
         public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 
-        public ICollection<Usuario> Usuarios { get; set; } = new List<Usuario>();
+        public Empresa Empresa { get; set; } = null!;
+        public ICollection<UsuarioPatio> Usuarios { get; set; } = new List<UsuarioPatio>();
         public ICollection<Vaga> Vagas { get; set; } = new List<Vaga>();
         public ICollection<Veiculo> Veiculos { get; set; } = new List<Veiculo>();
         public ICollection<EntradaVeiculo> Entradas { get; set; } = new List<EntradaVeiculo>();

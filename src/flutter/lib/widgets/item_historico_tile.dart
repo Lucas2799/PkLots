@@ -15,6 +15,7 @@ class ItemHistoricoTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final detalhes = [
       if (mostrarPlaca) Formatadores.placa(item.placa),
+      ?item.nomePatio,
       if (item.numeroVaga != null) 'Vaga ${item.numeroVaga}',
       'Entrada ${Formatadores.hora(item.dataHoraEntrada)}',
     ].join(' · ');

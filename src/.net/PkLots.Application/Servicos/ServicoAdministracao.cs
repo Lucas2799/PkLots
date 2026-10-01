@@ -111,15 +111,7 @@ namespace PkLots.Application.Servicos
                 }
                 else
                 {
-                    db.Vagas.Add(new Vaga
-                    {
-                        PatioId = patio.Id,
-                        Numero = numero,
-                        Fileira = LayoutPatio.Fileira(posicao),
-                        Indice = LayoutPatio.Indice(posicao),
-                        CriadoEm = agora,
-                        AtualizadoEm = agora
-                    });
+                    db.Vagas.Add(VagasDoPatio.Nova(patio.Id, posicao, agora));
                 }
             }
 
@@ -142,15 +134,16 @@ namespace PkLots.Application.Servicos
             return ParaDto(patio, total);
         }
 
-        // ---------- Usuários ----------
+        // ---------- Usuários da empresa (admins e operadores) ----------
 
         public async Task<IReadOnlyList<UsuarioDto>> ListarUsuariosAsync(CancellationToken ct = default)
         {
-            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            var empresaId = ObterEmpresaId();
             return await db.Usuarios
-                .Where(u => u.PatioId == patioId)
+                .Where(u => u.EmpresaId == empresaId)
                 .OrderByDescending(u => u.Ativo).ThenBy(u => u.NomeCompleto)
-                .Select(u => new UsuarioDto(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm))
+                .Select(u => new UsuarioDto(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm,
+                    u.Patios.Select(up => up.PatioId).ToList()))
                 .ToListAsync(ct);
         }
 
@@ -158,17 +151,17 @@ namespace PkLots.Application.Servicos
         {
             var email = RegrasUsuario.NormalizarEmail(requisicao.Email);
             var nome = RegrasUsuario.ValidarNome(requisicao.NomeCompleto);
-            var perfil = RegrasUsuario.ValidarPerfil(requisicao.Perfil);
+            var perfil = RegrasUsuario.ValidarPerfilDeEmpresa(requisicao.Perfil);
             RegrasUsuario.ValidarSenha(requisicao.Senha);
+            var patiosIds = await ValidarPatiosAsync(perfil, requisicao.PatiosIds, ct);
 
             if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
                 throw new ExcecaoConflito("E-mail já cadastrado.");
 
-            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
             var agora = relogio.GetUtcNow().UtcDateTime;
             var usuario = new Usuario
             {
-                PatioId = patioId,
+                EmpresaId = ObterEmpresaId(),
                 Email = email,
                 NomeCompleto = nome,
                 Perfil = perfil,
@@ -176,9 +169,11 @@ namespace PkLots.Application.Servicos
                 CriadoEm = agora,
                 AtualizadoEm = agora
             };
+            foreach (var patioId in patiosIds)
+                usuario.Patios.Add(new UsuarioPatio { PatioId = patioId });
             db.Usuarios.Add(usuario);
 
-            Auditoria.Registrar(db, patioId, AcoesAuditoria.UsuarioCriado, SituacaoAuditoria.Sucesso, null, agora,
+            Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.UsuarioCriado, SituacaoAuditoria.Sucesso, null, agora,
                 new() { ["adminId"] = adminId.ToString(), ["usuarioId"] = usuario.Id.ToString(), ["email"] = email, ["perfil"] = perfil });
 
             await db.SaveChangesAsync(ct);
@@ -188,7 +183,8 @@ namespace PkLots.Application.Servicos
         public async Task<UsuarioDto> AtualizarUsuarioAsync(Guid adminId, Guid usuarioId, AtualizarUsuarioRequisicao requisicao, CancellationToken ct = default)
         {
             var nome = RegrasUsuario.ValidarNome(requisicao.NomeCompleto);
-            var perfil = RegrasUsuario.ValidarPerfil(requisicao.Perfil);
+            var perfil = RegrasUsuario.ValidarPerfilDeEmpresa(requisicao.Perfil);
+            var patiosIds = await ValidarPatiosAsync(perfil, requisicao.PatiosIds, ct);
             var usuario = await ObterUsuarioAsync(usuarioId, ct);
 
             var perdeAdmin = usuario.Perfil == Perfis.Admin && usuario.Ativo && (perfil != Perfis.Admin || !requisicao.Ativo);
@@ -197,13 +193,13 @@ namespace PkLots.Application.Servicos
             if (perdeAdmin)
             {
                 var outrosAdmins = await db.Usuarios.CountAsync(
-                    u => u.PatioId == usuario.PatioId && u.Id != usuario.Id && u.Ativo && u.Perfil == Perfis.Admin, ct);
+                    u => u.EmpresaId == usuario.EmpresaId && u.Id != usuario.Id && u.Ativo && u.Perfil == Perfis.Admin, ct);
                 if (outrosAdmins == 0)
-                    throw new ExcecaoConflito("O pátio precisa ter pelo menos um administrador ativo.");
+                    throw new ExcecaoConflito("A empresa precisa ter pelo menos um administrador ativo.");
             }
 
             var agora = relogio.GetUtcNow().UtcDateTime;
-            Auditoria.Registrar(db, usuario.PatioId, AcoesAuditoria.UsuarioAlterado, SituacaoAuditoria.Sucesso, null, agora,
+            Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.UsuarioAlterado, SituacaoAuditoria.Sucesso, null, agora,
                 new()
                 {
                     ["adminId"] = adminId.ToString(),
@@ -211,13 +207,19 @@ namespace PkLots.Application.Servicos
                     ["perfilAnterior"] = usuario.Perfil,
                     ["perfil"] = perfil,
                     ["ativoAnterior"] = usuario.Ativo,
-                    ["ativo"] = requisicao.Ativo
+                    ["ativo"] = requisicao.Ativo,
+                    ["patios"] = string.Join(",", patiosIds)
                 });
 
             usuario.NomeCompleto = nome;
             usuario.Perfil = perfil;
             usuario.Ativo = requisicao.Ativo;
             usuario.AtualizadoEm = agora;
+
+            // Substitui os pátios vinculados
+            usuario.Patios.Clear();
+            foreach (var patioId in patiosIds)
+                usuario.Patios.Add(new UsuarioPatio { UsuarioId = usuario.Id, PatioId = patioId });
 
             await db.SaveChangesAsync(ct);
             return ParaDto(usuario);
@@ -232,10 +234,27 @@ namespace PkLots.Application.Servicos
             usuario.SenhaHash = hashSenha.Gerar(senha);
             usuario.AtualizadoEm = agora;
 
-            Auditoria.Registrar(db, usuario.PatioId, AcoesAuditoria.SenhaRedefinida, SituacaoAuditoria.Sucesso, null, agora,
+            Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.SenhaRedefinida, SituacaoAuditoria.Sucesso, null, agora,
                 new() { ["adminId"] = adminId.ToString(), ["usuarioId"] = usuario.Id.ToString() });
 
             await db.SaveChangesAsync(ct);
+        }
+
+        // Operador precisa de pelo menos um pátio, todos da empresa; admin acessa todos (não guarda vínculos)
+        private async Task<List<Guid>> ValidarPatiosAsync(string perfil, IReadOnlyList<Guid>? patiosIds, CancellationToken ct)
+        {
+            if (perfil != Perfis.Operador)
+                return [];
+
+            var solicitados = (patiosIds ?? []).Distinct().ToList();
+            if (solicitados.Count == 0)
+                throw new ExcecaoNegocio("Selecione pelo menos um pátio para o operador.");
+
+            var empresaId = ObterEmpresaId();
+            var validos = await db.Patios.CountAsync(p => p.EmpresaId == empresaId && solicitados.Contains(p.Id), ct);
+            if (validos != solicitados.Count)
+                throw new ExcecaoNegocio("Um ou mais pátios selecionados não pertencem à empresa.");
+            return solicitados;
         }
 
         // ---------- Auxiliares ----------
@@ -247,10 +266,13 @@ namespace PkLots.Application.Servicos
                 ?? throw new ExcecaoNaoEncontrado("Pátio não encontrado.");
         }
 
+        private Guid ObterEmpresaId() =>
+            contextoPatio.EmpresaId ?? throw new ExcecaoProibido("Esta função é exclusiva de usuários de uma empresa.");
+
         private async Task<Usuario> ObterUsuarioAsync(Guid usuarioId, CancellationToken ct)
         {
-            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
-            return await db.Usuarios.FirstOrDefaultAsync(u => u.Id == usuarioId && u.PatioId == patioId, ct)
+            var empresaId = ObterEmpresaId();
+            return await db.Usuarios.Include(u => u.Patios).FirstOrDefaultAsync(u => u.Id == usuarioId && u.EmpresaId == empresaId, ct)
                 ?? throw new ExcecaoNaoEncontrado("Usuário não encontrado.");
         }
 
@@ -258,6 +280,6 @@ namespace PkLots.Application.Servicos
             new(patio.Nome, patio.ValorHora, patio.MinutosTolerancia, totalVagas, LayoutPatio.VagasPorFileira, LayoutPatio.MaximoVagas);
 
         private static UsuarioDto ParaDto(Usuario u) =>
-            new(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm);
+            new(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm, u.Patios.Select(up => up.PatioId).ToList());
     }
 }

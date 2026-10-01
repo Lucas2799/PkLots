@@ -22,6 +22,33 @@ namespace PkLots.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("PkLots.Core.Entities.Empresa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Documento")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Empresas");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.EntradaVeiculo", b =>
                 {
                     b.Property<Guid>("Id")
@@ -135,6 +162,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("Descricao")
                         .HasColumnType("text");
 
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("ImpressoraHost")
                         .HasColumnType("text");
 
@@ -165,6 +195,8 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
 
                     b.ToTable("Patios");
                 });
@@ -251,12 +283,12 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("EmpresaId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("NomeCompleto")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<Guid>("PatioId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("Perfil")
                         .IsRequired()
@@ -274,9 +306,24 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.HasIndex("PatioId");
+                    b.HasIndex("EmpresaId");
 
                     b.ToTable("Usuarios");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.UsuarioPatio", b =>
+                {
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PatioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UsuarioId", "PatioId");
+
+                    b.HasIndex("PatioId");
+
+                    b.ToTable("UsuariosPatios");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Vaga", b =>
@@ -373,19 +420,49 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("Telefone")
                         .HasColumnType("text");
 
-                    b.Property<Guid?>("UsuarioId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Placa");
-
-                    b.HasIndex("UsuarioId");
 
                     b.HasIndex("PatioId", "Placa")
                         .IsUnique();
 
                     b.ToTable("Veiculos");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.VeiculoMotorista", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Cor")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Modelo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Placa")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Placa")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("VeiculosMotoristas");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.EntradaVeiculo", b =>
@@ -422,6 +499,17 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Navigation("Patio");
                 });
 
+            modelBuilder.Entity("PkLots.Core.Entities.Patio", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Empresa", "Empresa")
+                        .WithMany("Patios")
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.SaidaVeiculo", b =>
                 {
                     b.HasOne("PkLots.Core.Entities.EntradaVeiculo", "EntradaVeiculo")
@@ -443,13 +531,31 @@ namespace PkLots.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("PkLots.Core.Entities.Usuario", b =>
                 {
+                    b.HasOne("PkLots.Core.Entities.Empresa", "Empresa")
+                        .WithMany("Usuarios")
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.UsuarioPatio", b =>
+                {
                     b.HasOne("PkLots.Core.Entities.Patio", "Patio")
                         .WithMany("Usuarios")
                         .HasForeignKey("PatioId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PkLots.Core.Entities.Usuario", "Usuario")
+                        .WithMany("Patios")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Patio");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Vaga", b =>
@@ -471,14 +577,25 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("PkLots.Core.Entities.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.Navigation("Patio");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.VeiculoMotorista", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Usuario", "Usuario")
+                        .WithMany("Veiculos")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.Empresa", b =>
+                {
+                    b.Navigation("Patios");
+
+                    b.Navigation("Usuarios");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Patio", b =>
@@ -490,6 +607,13 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Navigation("Usuarios");
 
                     b.Navigation("Vagas");
+
+                    b.Navigation("Veiculos");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.Usuario", b =>
+                {
+                    b.Navigation("Patios");
 
                     b.Navigation("Veiculos");
                 });

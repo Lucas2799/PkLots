@@ -22,6 +22,21 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.AlterarQuantidadeVagasAsync(usuario.ObterUsuarioId(), requisicao.Total, ct)))
                 .WithSummary("Altera a quantidade de vagas (não remove vagas ocupadas)");
 
+            grupo.MapGet("/patios", async (ServicoPatios servico, CancellationToken ct) =>
+                Results.Ok(await servico.ListarDaEmpresaAsync(ct)))
+                .WithSummary("Pátios da empresa, inclusive desativados");
+
+            grupo.MapPost("/patios", async (CriarPatioRequisicao requisicao, ClaimsPrincipal usuario, ServicoPatios servico, CancellationToken ct) =>
+                {
+                    var patio = await servico.CriarAsync(usuario.ObterUsuarioId(), requisicao, ct);
+                    return Results.Created($"/api/admin/patios/{patio.Id}", patio);
+                })
+                .WithSummary("Cria um pátio (já com as vagas)");
+
+            grupo.MapPut("/patios/{id:guid}", async (Guid id, AtualizarPatioRequisicao requisicao, ClaimsPrincipal usuario, ServicoPatios servico, CancellationToken ct) =>
+                Results.Ok(await servico.AtualizarAsync(usuario.ObterUsuarioId(), id, requisicao, ct)))
+                .WithSummary("Renomeia ou ativa/desativa um pátio");
+
             grupo.MapGet("/impressao", async (ServicoImpressao servico, CancellationToken ct) =>
                 Results.Ok(await servico.ObterConfiguracaoAsync(ct)))
                 .WithSummary("Configuração de impressão do ticket de entrada");

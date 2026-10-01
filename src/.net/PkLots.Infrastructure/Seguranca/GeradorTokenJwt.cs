@@ -26,14 +26,16 @@ namespace PkLots.Infrastructure.Seguranca
             var agora = relogio.GetUtcNow().UtcDateTime;
             var expiraEm = agora.AddMinutes(config.ExpirationMinutes);
 
-            var claims = new[]
+            var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, usuario.Email),
-                new Claim(JwtRegisteredClaimNames.Name, usuario.NomeCompleto),
-                new Claim(ClaimTypes.Role, usuario.Perfil),
-                new Claim(ContextoPatio.ClaimPatio, usuario.PatioId.ToString())
+                new(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
+                new(JwtRegisteredClaimNames.Email, usuario.Email),
+                new(JwtRegisteredClaimNames.Name, usuario.NomeCompleto),
+                new(ClaimTypes.Role, usuario.Perfil)
             };
+            // Usuários de empresa (admin/operador): define o isolamento dos dados (multi-tenant)
+            if (usuario.EmpresaId is not null)
+                claims.Add(new Claim(ContextoPatio.ClaimEmpresa, usuario.EmpresaId.Value.ToString()));
 
             var chave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config.SecretKey));
             var token = new JwtSecurityToken(

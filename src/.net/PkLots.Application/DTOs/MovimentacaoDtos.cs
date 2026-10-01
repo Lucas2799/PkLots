@@ -45,5 +45,6 @@ namespace PkLots.Application.DTOs
         string? NumeroVaga,
         string? DuracaoFormatada,
         decimal? ValorTotal,
-        string Situacao);
+        string Situacao,
+        string? NomePatio = null);
 }

@@ -11,7 +11,6 @@ namespace PkLots.Application.Servicos
         IPkLotsDbContext db,
         IHashSenha hashSenha,
         IGeradorToken geradorToken,
-        IContextoPatio contextoPatio,
         TimeProvider relogio)
     {
         public async Task<TokenDto> LoginAsync(LoginRequisicao requisicao, CancellationToken ct = default)
@@ -21,6 +20,10 @@ namespace PkLots.Application.Servicos
 
             if (usuario is null || !usuario.Ativo || !hashSenha.Verificar(requisicao.Senha, usuario.SenhaHash))
                 throw new ExcecaoNaoAutorizado("E-mail ou senha inválidos.");
+
+            if (usuario.EmpresaId is not null &&
+                !await db.Empresas.IgnoreQueryFilters().AnyAsync(e => e.Id == usuario.EmpresaId && e.Ativa, ct))
+                throw new ExcecaoNaoAutorizado("O acesso desta empresa está desativado. Procure o suporte.");
 
             usuario.UltimoLogin = relogio.GetUtcNow().UtcDateTime;
             await db.SaveChangesAsync(ct);
@@ -41,7 +44,6 @@ namespace PkLots.Application.Servicos
             var agora = relogio.GetUtcNow().UtcDateTime;
             var usuario = new Usuario
             {
-                PatioId = await contextoPatio.ObterPatioIdAsync(ct),
                 Email = email,
                 SenhaHash = hashSenha.Gerar(requisicao.Senha),
                 NomeCompleto = nome,

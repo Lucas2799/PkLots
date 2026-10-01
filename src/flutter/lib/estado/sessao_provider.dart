@@ -25,6 +25,8 @@ class SessaoProvider extends ChangeNotifier {
 
   bool get ehAdmin => perfil == 'admin';
 
+  bool get ehSuperAdmin => perfil == 'superadmin';
+
   /// Primeiro nome, para a saudação no topo
   String get primeiroNome => (nomeUsuario ?? '').split(' ').first;
 
@@ -69,6 +71,7 @@ class SessaoProvider extends ChangeNotifier {
 
   void _definirDeslogado() {
     _api.token = null;
+    _api.patioAtualId = null;
     perfil = null;
     nomeUsuario = null;
     emailUsuario = null;

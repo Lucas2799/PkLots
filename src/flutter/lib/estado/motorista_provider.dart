@@ -15,7 +15,8 @@ class MotoristaProvider extends ChangeNotifier {
 
   bool carregando = false;
   String? erro;
-  ResumoVagas? vagas;
+  /// Pátios da plataforma com vagas livres agora (null até a primeira carga)
+  List<PatioDisponibilidade>? patios;
   EstacionamentoAtual? atual;
   List<Veiculo> veiculos = [];
   List<ItemHistorico> historico = [];
@@ -36,12 +37,12 @@ class MotoristaProvider extends ChangeNotifier {
     }
     try {
       final resultados = await Future.wait([
-        _api.resumoVagas(),
+        _api.patiosParaMotorista(),
         _api.estacionamentoAtual(),
         _api.meusVeiculos(),
         _api.meuHistorico(),
       ]);
-      vagas = resultados[0] as ResumoVagas;
+      patios = resultados[0] as List<PatioDisponibilidade>;
       atual = resultados[1] as EstacionamentoAtual?;
       veiculos = resultados[2] as List<Veiculo>;
       historico = resultados[3] as List<ItemHistorico>;

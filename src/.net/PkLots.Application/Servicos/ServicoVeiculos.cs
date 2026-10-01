@@ -16,9 +16,12 @@ namespace PkLots.Application.Servicos
             return await ConsultarHistorico(patioId, [placaNormalizada], desde).ToListAsync(ct);
         }
 
-        internal IQueryable<HistoricoVeiculoDto> ConsultarHistorico(Guid patioId, IReadOnlyCollection<string> placas, DateTime? desde)
+        // patioId nulo: todos os pátios (histórico do motorista)
+        internal IQueryable<HistoricoVeiculoDto> ConsultarHistorico(Guid? patioId, IReadOnlyCollection<string> placas, DateTime? desde)
         {
-            var consulta = db.EntradasVeiculos.Where(e => e.PatioId == patioId && placas.Contains(e.Placa));
+            var consulta = db.EntradasVeiculos.Where(e => placas.Contains(e.Placa));
+            if (patioId is not null)
+                consulta = consulta.Where(e => e.PatioId == patioId);
             if (desde is not null)
                 consulta = consulta.Where(e => e.DataHoraEntrada >= desde);
 
@@ -28,6 +31,7 @@ namespace PkLots.Application.Servicos
                 {
                     Entrada = e,
                     NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null,
+                    NomePatio = e.Patio.Nome,
                     Saida = db.SaidasVeiculos.FirstOrDefault(s => s.EntradaVeiculoId == e.Id)
                 })
                 .Select(x => new HistoricoVeiculoDto(
@@ -38,7 +42,8 @@ namespace PkLots.Application.Servicos
                     x.NumeroVaga,
                     x.Saida != null ? x.Saida.DuracaoFormatada : null,
                     x.Saida != null ? x.Saida.ValorTotal : null,
-                    x.Entrada.Situacao));
+                    x.Entrada.Situacao,
+                    x.NomePatio));
         }
     }
 }

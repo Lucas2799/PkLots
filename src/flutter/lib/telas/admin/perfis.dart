@@ -11,8 +11,8 @@ class InfoPerfil {
   const InfoPerfil(this.rotulo, this.descricao, this.icone);
 
   static InfoPerfil de(String perfil) => switch (perfil) {
-        'admin' => const InfoPerfil('Administrador', 'Acesso total, inclusive esta área', Icons.admin_panel_settings),
-        'operador' => const InfoPerfil('Operador', 'Painel, entradas/saídas e manutenção', Icons.support_agent),
+        'admin' => const InfoPerfil('Administrador', 'Acesso total à empresa: todos os pátios e esta área', Icons.admin_panel_settings),
+        'operador' => const InfoPerfil('Operador', 'Painel, entradas/saídas e manutenção nos pátios marcados', Icons.support_agent),
         _ => const InfoPerfil('Motorista', 'App do motorista', Icons.directions_car),
       };
 }

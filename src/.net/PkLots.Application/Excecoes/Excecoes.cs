@@ -6,6 +6,9 @@ namespace PkLots.Application.Excecoes
     // Conflito de estado, ex.: veículo já estacionado, pátio lotado (HTTP 409)
     public class ExcecaoConflito(string mensagem) : Exception(mensagem);
 
+    // Usuário autenticado sem acesso ao recurso, ex.: pátio de outra empresa (HTTP 403)
+    public class ExcecaoProibido(string mensagem) : Exception(mensagem);
+
     // Recurso inexistente (HTTP 404)
     public class ExcecaoNaoEncontrado(string mensagem) : Exception(mensagem);
 

@@ -104,6 +104,7 @@ class EstacionamentoAtual {
   final String duracao;
   final String? numeroVaga;
   final double valorEstimado;
+  final String nomePatio;
 
   EstacionamentoAtual({
     required this.entradaId,
@@ -112,6 +113,7 @@ class EstacionamentoAtual {
     required this.duracao,
     this.numeroVaga,
     required this.valorEstimado,
+    this.nomePatio = '',
   });
 
   factory EstacionamentoAtual.deJson(Map<String, dynamic> json) => EstacionamentoAtual(
@@ -121,6 +123,7 @@ class EstacionamentoAtual {
         duracao: json['duracao'] as String,
         numeroVaga: json['numeroVaga'] as String?,
         valorEstimado: _numero(json['valorEstimado']),
+        nomePatio: (json['nomePatio'] as String?) ?? '',
       );
 }
 
@@ -133,6 +136,7 @@ class ItemHistorico {
   final String? duracaoFormatada;
   final double? valorTotal;
   final String situacao;
+  final String? nomePatio;
 
   ItemHistorico({
     required this.entradaId,
@@ -143,6 +147,7 @@ class ItemHistorico {
     this.duracaoFormatada,
     this.valorTotal,
     required this.situacao,
+    this.nomePatio,
   });
 
   bool get emAndamento => dataHoraSaida == null;
@@ -156,6 +161,7 @@ class ItemHistorico {
         duracaoFormatada: json['duracaoFormatada'] as String?,
         valorTotal: (json['valorTotal'] as num?)?.toDouble(),
         situacao: json['situacao'] as String,
+        nomePatio: json['nomePatio'] as String?,
       );
 }
 
@@ -331,7 +337,7 @@ class ConfiguracaoPatio {
 }
 
 class UsuarioAdmin {
-  static const perfis = ['admin', 'operador', 'motorista'];
+  static const perfis = ['admin', 'operador'];
 
   final String id;
   final String email;
@@ -339,6 +345,7 @@ class UsuarioAdmin {
   final String perfil;
   final bool ativo;
   final DateTime? ultimoLogin;
+  final List<String> patiosIds;
 
   UsuarioAdmin({
     required this.id,
@@ -347,6 +354,7 @@ class UsuarioAdmin {
     required this.perfil,
     required this.ativo,
     this.ultimoLogin,
+    this.patiosIds = const [],
   });
 
   factory UsuarioAdmin.deJson(Map<String, dynamic> json) => UsuarioAdmin(
@@ -356,6 +364,7 @@ class UsuarioAdmin {
         perfil: json['perfil'] as String,
         ativo: json['ativo'] as bool,
         ultimoLogin: _dataOpcional(json['ultimoLogin']),
+        patiosIds: ((json['patiosIds'] as List?) ?? []).cast<String>(),
       );
 }
 
@@ -432,4 +441,98 @@ class ConfiguracaoImpressao {
         'larguraPapelMm': larguraPapelMm,
         'imprimirEntradaAutomaticamente': imprimirEntradaAutomaticamente,
       };
+}
+
+/// Pátio do seletor do painel
+class PatioResumo {
+  final String id;
+  final String nome;
+
+  PatioResumo({required this.id, required this.nome});
+
+  factory PatioResumo.deJson(Map<String, dynamic> json) => PatioResumo(id: json['id'] as String, nome: json['nome'] as String);
+}
+
+/// Pátio na administração da empresa
+class PatioAdmin {
+  final String id;
+  final String nome;
+  final bool ativo;
+  final int totalVagas;
+  final double valorHora;
+  final int veiculosEstacionados;
+
+  PatioAdmin({
+    required this.id,
+    required this.nome,
+    required this.ativo,
+    required this.totalVagas,
+    required this.valorHora,
+    required this.veiculosEstacionados,
+  });
+
+  factory PatioAdmin.deJson(Map<String, dynamic> json) => PatioAdmin(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        ativo: json['ativo'] as bool,
+        totalVagas: json['totalVagas'] as int,
+        valorHora: _numero(json['valorHora']),
+        veiculosEstacionados: json['veiculosEstacionados'] as int,
+      );
+}
+
+/// Empresa cliente (área do superadmin)
+class EmpresaPlataforma {
+  final String id;
+  final String nome;
+  final String? documento;
+  final bool ativa;
+  final int patios;
+  final int usuarios;
+  final DateTime criadoEm;
+
+  EmpresaPlataforma({
+    required this.id,
+    required this.nome,
+    this.documento,
+    required this.ativa,
+    required this.patios,
+    required this.usuarios,
+    required this.criadoEm,
+  });
+
+  factory EmpresaPlataforma.deJson(Map<String, dynamic> json) => EmpresaPlataforma(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        documento: json['documento'] as String?,
+        ativa: json['ativa'] as bool,
+        patios: json['patios'] as int,
+        usuarios: json['usuarios'] as int,
+        criadoEm: _data(json['criadoEm']),
+      );
+}
+
+/// Pátio visível ao motorista, com vagas livres agora
+class PatioDisponibilidade {
+  final String id;
+  final String nome;
+  final String nomeEmpresa;
+  final int disponiveis;
+  final int total;
+
+  PatioDisponibilidade({
+    required this.id,
+    required this.nome,
+    required this.nomeEmpresa,
+    required this.disponiveis,
+    required this.total,
+  });
+
+  factory PatioDisponibilidade.deJson(Map<String, dynamic> json) => PatioDisponibilidade(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        nomeEmpresa: json['nomeEmpresa'] as String,
+        disponiveis: json['disponiveis'] as int,
+        total: json['total'] as int,
+      );
 }

@@ -73,10 +73,13 @@ builder.Services
                 var db = contexto.HttpContext.RequestServices.GetRequiredService<IPkLotsDbContext>();
                 var usuario = await db.Usuarios.IgnoreQueryFilters().AsNoTracking()
                     .Where(u => u.Id == id)
-                    .Select(u => new { u.Ativo, u.Perfil })
+                    .Select(u => new { u.Ativo, u.Perfil, u.EmpresaId, EmpresaAtiva = u.Empresa == null || u.Empresa.Ativa })
                     .FirstOrDefaultAsync(contexto.HttpContext.RequestAborted);
 
-                if (usuario is null || !usuario.Ativo || usuario.Perfil != perfil)
+                // Usuário/empresa desativados ou perfil/empresa alterados: o token deixa de valer na hora
+                var empresaDoToken = contexto.Principal?.FindFirstValue(ContextoPatio.ClaimEmpresa);
+                if (usuario is null || !usuario.Ativo || usuario.Perfil != perfil || !usuario.EmpresaAtiva
+                    || usuario.EmpresaId?.ToString() != empresaDoToken)
                     contexto.Fail("Usuário inativo ou com perfil alterado.");
             }
         };
@@ -129,15 +132,6 @@ if (app.Configuration.GetValue<bool>("RedirecionarHttps"))
 app.UseCors("AllowAll");
 app.UseAuthentication();
 
-// Disponibiliza o pátio do token para os filtros multi-pátio do DbContext
-app.Use(async (contexto, proximo) =>
-{
-    var patio = contexto.User.FindFirst(ContextoPatio.ClaimPatio)?.Value;
-    if (patio is not null)
-        contexto.Items["PatioId"] = patio;
-    await proximo();
-});
-
 app.UseAuthorization();
 
 // Health Check
@@ -152,13 +146,16 @@ app.MapearVagas();
 app.MapearGestao();
 app.MapearMotorista();
 app.MapearAdministracao();
+app.MapearPlataforma();
 
 // Migração e dados iniciais
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<PkLotsDbContext>();
     db.Database.Migrate();
-    await SemeadorDados.SemearAsync(db, scope.ServiceProvider.GetRequiredService<IHashSenha>());
+    var opcoesPlataforma = builder.Configuration.GetSection("Plataforma").Get<OpcoesPlataforma>() ?? new OpcoesPlataforma();
+    await SemeadorDados.SemearAsync(db, scope.ServiceProvider.GetRequiredService<IHashSenha>(), opcoesPlataforma,
+        scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("SemeadorDados"));
 }
 
 app.Run();

@@ -53,6 +53,10 @@ namespace PkLots.Core.Constantes
         public const string UsuarioCriado = "usuario_criado";
         public const string UsuarioAlterado = "usuario_alterado";
         public const string SenhaRedefinida = "senha_redefinida";
+        public const string EmpresaCriada = "empresa_criada";
+        public const string EmpresaAlterada = "empresa_alterada";
+        public const string PatioCriado = "patio_criado";
+        public const string PatioAlterado = "patio_alterado";
         public const string ConfiguracaoImpressaoAlterada = "configuracao_impressao_alterada";
         public const string ImpressaoFalhou = "impressao_falhou";
     }

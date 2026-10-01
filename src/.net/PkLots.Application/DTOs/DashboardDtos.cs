@@ -19,7 +19,11 @@ namespace PkLots.Application.DTOs
         DateTime DataHoraEntrada,
         string Duracao,
         string? NumeroVaga,
-        decimal ValorEstimado);
+        decimal ValorEstimado,
+        string NomePatio = "");
+
+    // Pátios visíveis ao motorista, com a disponibilidade atual
+    public record PatioDisponibilidadeDto(Guid Id, string Nome, string NomeEmpresa, int Disponiveis, int Total);
 
     public record CadastrarVeiculoRequisicao(string Placa, string? Modelo, string? Cor);
 

@@ -13,6 +13,7 @@ namespace PkLots.Api.Middleware
             {
                 ExcecaoNegocio => (StatusCodes.Status400BadRequest, "Requisição inválida"),
                 ExcecaoNaoAutorizado => (StatusCodes.Status401Unauthorized, "Não autorizado"),
+                ExcecaoProibido => (StatusCodes.Status403Forbidden, "Acesso negado"),
                 ExcecaoNaoEncontrado => (StatusCodes.Status404NotFound, "Não encontrado"),
                 ExcecaoConflito => (StatusCodes.Status409Conflict, "Conflito"),
                 ExcecaoReconhecimento => (StatusCodes.Status422UnprocessableEntity, "Placa não reconhecida"),

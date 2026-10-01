@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/ambiente.dart';
 import '../modelos/modelos.dart';
@@ -18,11 +19,49 @@ class GestaoProvider extends ChangeNotifier {
   Dashboard? dashboard;
   List<Vaga> vagas = [];
 
+  /// Pátios que o usuário pode usar e o escolhido no seletor (lembrado no aparelho)
+  List<PatioResumo> patios = [];
+  String? get patioAtualId => _api.patioAtualId;
+  PatioResumo? get patioAtual => patios.where((p) => p.id == _api.patioAtualId).firstOrNull;
+
+  static const _chavePatio = 'pklots.patio';
+
   void iniciar() {
-    carregar();
+    _iniciar();
     _atualizacao?.cancel();
     _atualizacao = Timer.periodic(Ambiente.intervaloAtualizacao, (_) => carregar(silencioso: true));
   }
+
+  Future<void> _iniciar() async {
+    await carregarPatios();
+    await carregar();
+  }
+
+  /// Carrega os pátios permitidos e restaura a última escolha (se ainda tiver acesso)
+  Future<void> carregarPatios() async {
+    try {
+      patios = await _api.patiosPermitidos();
+      final prefs = await SharedPreferences.getInstance();
+      final salvo = prefs.getString(_chavePatio);
+      _api.patioAtualId = patios.any((p) => p.id == salvo) ? salvo : patios.firstOrNull?.id;
+      notifyListeners();
+    } on ExcecaoApi catch (e) {
+      erro = e.mensagem;
+      notifyListeners();
+    }
+  }
+
+  Future<void> selecionarPatio(String patioId) async {
+    if (patioId == _api.patioAtualId) return;
+    _api.patioAtualId = patioId;
+    dashboard = null;
+    vagas = [];
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_chavePatio, patioId);
+    await carregar();
+  }
+
 
   void parar() => _atualizacao?.cancel();
 

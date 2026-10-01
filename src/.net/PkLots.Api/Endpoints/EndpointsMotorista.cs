@@ -18,6 +18,10 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.CadastrarVeiculoAsync(usuario.ObterUsuarioId(), requisicao, ct)))
                 .WithSummary("Vincula uma placa ao motorista");
 
+            grupo.MapGet("/patios", async (ServicoMotorista servico, CancellationToken ct) =>
+                Results.Ok(await servico.ListarPatiosAsync(ct)))
+                .WithSummary("Pátios disponíveis e vagas livres agora");
+
             grupo.MapGet("/estacionamento-atual", async (ClaimsPrincipal usuario, ServicoMotorista servico, CancellationToken ct) =>
                 {
                     var atual = await servico.ObterEstacionamentoAtualAsync(usuario.ObterUsuarioId(), ct);

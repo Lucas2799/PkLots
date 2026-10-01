@@ -60,6 +60,8 @@ class AbaUsuarios extends StatelessWidget {
               ]),
               subtitle: Text([
                 usuario.email,
+                if (usuario.perfil == 'operador')
+                  estado.patios.where((p) => usuario.patiosIds.contains(p.id)).map((p) => p.nome).join(', '),
                 if (!usuario.ativo) 'Inativo',
                 if (usuario.ultimoLogin != null) 'Último acesso ${Formatadores.dataHora(usuario.ultimoLogin!)}',
               ].join(' · ')),
@@ -93,6 +95,7 @@ class _FormularioUsuarioState extends State<_FormularioUsuario> {
   late final _email = TextEditingController(text: widget.usuario?.email);
   final _senha = TextEditingController();
   late String _perfil = widget.usuario?.perfil ?? 'operador';
+  late final Set<String> _patios = {...?widget.usuario?.patiosIds};
   late bool _ativo = widget.usuario?.ativo ?? true;
   bool _enviando = false;
   bool _novaSenha = false;
@@ -110,16 +113,21 @@ class _FormularioUsuarioState extends State<_FormularioUsuario> {
 
   Future<void> _salvar() async {
     if (!_formulario.currentState!.validate()) return;
+    if (_perfil == 'operador' && _patios.isEmpty) {
+      setState(() => _erro = 'Selecione pelo menos um pátio para o operador.');
+      return;
+    }
     setState(() {
       _enviando = true;
       _erro = null;
     });
     final estado = context.read<AdministracaoProvider>();
+    final patios = _perfil == 'operador' ? _patios.toList() : <String>[];
     try {
       if (_criando) {
-        await estado.criarUsuario(_email.text.trim(), _nome.text.trim(), _senha.text, _perfil);
+        await estado.criarUsuario(_email.text.trim(), _nome.text.trim(), _senha.text, _perfil, patios);
       } else {
-        await estado.atualizarUsuario(widget.usuario!.id, _nome.text.trim(), _perfil, _ativo);
+        await estado.atualizarUsuario(widget.usuario!.id, _nome.text.trim(), _perfil, _ativo, patios);
         if (_novaSenha) await estado.redefinirSenha(widget.usuario!.id, _senha.text);
       }
       if (mounted) {
@@ -176,6 +184,20 @@ class _FormularioUsuarioState extends State<_FormularioUsuario> {
                       ),
                   ]),
                 ),
+                if (_perfil == 'operador') ...[
+                  const SizedBox(height: 8),
+                  const Text('Pátios em que trabalha',
+                      style: TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho)),
+                  for (final patio in context.read<AdministracaoProvider>().patios.where((p) => p.ativo))
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      title: Text(patio.nome),
+                      value: _patios.contains(patio.id),
+                      onChanged: (marcado) =>
+                          setState(() => marcado == true ? _patios.add(patio.id) : _patios.remove(patio.id)),
+                    ),
+                ],
                 if (!_criando)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
