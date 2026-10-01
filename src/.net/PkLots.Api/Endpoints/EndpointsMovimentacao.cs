@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using PkLots.Application.DTOs;
 using PkLots.Application.Servicos;
 
@@ -40,21 +41,24 @@ namespace PkLots.Api.Endpoints
 
             var saidas = app.MapGroup("/api/saidas").WithTags("Saídas").RequireAuthorization(Autorizacao.Gestao);
 
-            saidas.MapPost("/", async (RegistrarSaidaRequisicao requisicao, ServicoSaida servico, CancellationToken ct) =>
-                    Results.Ok(await servico.RegistrarAsync(requisicao, ct)))
-                .WithSummary("Registra saída e calcula o valor");
+            // 1) Identifica o veículo e calcula a cobrança (valor congelado por alguns minutos; PIX gerado com a chave do pátio)
+            saidas.MapPost("/cobranca", async (GerarCobrancaRequisicao requisicao, ServicoSaida servico, CancellationToken ct) =>
+                    Results.Ok(await servico.CobrarAsync(requisicao, ct)))
+                .WithSummary("Calcula a cobrança da saída pela placa ou pelo código do ticket");
 
-            saidas.MapPost("/ticket", async (SaidaPorTicketRequisicao requisicao, ServicoSaida servico, CancellationToken ct) =>
-                    Results.Ok(await servico.RegistrarPorTicketAsync(requisicao.Codigo, ct)))
-                .WithSummary("Registra a saída pela leitura do ticket (QR Code ou código impresso)");
-
-            saidas.MapPost("/imagem", async (IFormFile imagem, ServicoSaida servico, CancellationToken ct) =>
+            saidas.MapPost("/cobranca/imagem", async (IFormFile imagem, ServicoSaida servico, CancellationToken ct) =>
                 {
                     await using var fluxo = imagem.OpenReadStream();
-                    return Results.Ok(await servico.RegistrarPorImagemAsync(fluxo, imagem.FileName, ct));
+                    return Results.Ok(await servico.CobrarPorImagemAsync(fluxo, imagem.FileName, ct));
                 })
                 .DisableAntiforgery()
-                .WithSummary("Registra saída a partir da foto da câmera (LPR)");
+                .WithSummary("Calcula a cobrança a partir da foto da placa (LPR)");
+
+            // 2) Confirma o pagamento e registra a saída (exige caixa aberto quando há valor)
+            saidas.MapPost("/cobranca/{id:guid}/confirmar", async (Guid id, ConfirmarSaidaRequisicao requisicao, ClaimsPrincipal usuario,
+                    ServicoSaida servico, CancellationToken ct) =>
+                    Results.Ok(await servico.ConfirmarAsync(usuario.ObterUsuarioId(), id, requisicao, ct)))
+                .WithSummary("Confirma o pagamento (dinheiro, pix, cartão) e libera a saída");
         }
     }
 }

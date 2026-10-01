@@ -4,13 +4,11 @@ import 'package:provider/provider.dart';
 import '../../estado/motorista_provider.dart';
 import '../../estado/sessao_provider.dart';
 import '../../modelos/modelos.dart';
-import '../../servicos/excecao_api.dart';
 import '../../tema/cores.dart';
 import '../../util/formatadores.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/item_historico_tile.dart';
 import '../../widgets/logo_pklots.dart';
-import '../../widgets/recibo_dialogo.dart';
 import 'cadastro_veiculo_dialogo.dart';
 import 'historico_tela.dart';
 
@@ -96,37 +94,6 @@ class _MeuEstacionamento extends StatefulWidget {
 }
 
 class _MeuEstacionamentoState extends State<_MeuEstacionamento> {
-  bool _saindo = false;
-
-  Future<void> _iniciarSaida(EstacionamentoAtual atual) async {
-    final confirmou = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Iniciar saída?'),
-        content: Text('O valor será calculado agora para o veículo ${Formatadores.placa(atual.placa)}.\n'
-            'Valor estimado: ${Formatadores.moeda(atual.valorEstimado)}'),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancelar')),
-          SizedBox(
-            width: 140,
-            child: FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Confirmar')),
-          ),
-        ],
-      ),
-    );
-    if (confirmou != true || !mounted) return;
-
-    setState(() => _saindo = true);
-    try {
-      final saida = await widget.estado.iniciarSaida();
-      if (mounted) await mostrarRecibo(context, saida);
-    } on ExcecaoApi catch (e) {
-      if (mounted) mostrarAviso(context, e.mensagem, erro: true);
-    } finally {
-      if (mounted) setState(() => _saindo = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final atual = widget.estado.atual;
@@ -147,14 +114,20 @@ class _MeuEstacionamentoState extends State<_MeuEstacionamento> {
               if (atual.numeroVaga != null) _Info('Vaga', atual.numeroVaga!),
               _Info('Valor estimado', Formatadores.moeda(atual.valorEstimado), destaque: true),
               const SizedBox(height: 16),
-              FilledButton.icon(
-                style: FilledButton.styleFrom(
-                    backgroundColor: CoresPkLots.ambar, foregroundColor: CoresPkLots.azulMarinho),
-                onPressed: _saindo ? null : () => _iniciarSaida(atual),
-                icon: _saindo
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.exit_to_app),
-                label: const Text('INICIAR SAÍDA'),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: CoresPkLots.ambar.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Row(children: [
+                  Icon(Icons.point_of_sale, color: CoresPkLots.azulMarinho),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text('O pagamento é feito na saída do pátio. O valor final é calculado na hora da saída.',
+                        style: TextStyle(color: CoresPkLots.azulMarinho)),
+                  ),
+                ]),
               ),
             ] else if (veiculos.isEmpty) ...[
               const Text('Cadastre a placa do seu veículo para acompanhar o estacionamento por aqui.',

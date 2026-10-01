@@ -7,8 +7,8 @@ import '../../servicos/excecao_api.dart';
 import '../../tema/cores.dart';
 import '../../util/formatadores.dart';
 import '../../widgets/estados_tela.dart';
-import '../../widgets/recibo_dialogo.dart';
 import '../../widgets/situacao_vaga.dart';
+import 'cobranca_dialogo.dart';
 
 /// Mapa das vagas por fileira; toque abre as ações da vaga
 class MapaVagasCartao extends StatelessWidget {
@@ -144,12 +144,7 @@ class _BlocoVaga extends StatelessWidget {
                       ? null
                       : () async {
                           Navigator.of(contextoFolha).pop();
-                          try {
-                            final saida = await estado.registrarSaida(vaga.placaAtual!);
-                            if (context.mounted) await mostrarRecibo(context, saida);
-                          } on ExcecaoApi catch (e) {
-                            if (context.mounted) mostrarAviso(context, e.mensagem, erro: true);
-                          }
+                          await processarSaida(context, () => estado.cobrarSaida(vaga.placaAtual!));
                         },
                 ),
             },

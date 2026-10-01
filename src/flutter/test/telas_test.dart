@@ -23,11 +23,48 @@ final enviadas = <http.Request>[];
 /// Todas as requisições (inclusive GET), para conferir cabeçalhos
 final recebidas = <http.Request>[];
 
+/// Caixa simulado do usuário (fechado no início de cada teste)
+bool caixaAberto = false;
+
+Map<String, dynamic> caixaJson() => {
+      'id': 'cx1', 'patioId': 'p1', 'nomePatio': 'Pátio Padrão', 'operadorId': 'u1', 'nomeOperador': 'Lucas Tavares',
+      'abertoEm': '2026-09-30T11:00:00Z', 'trocoInicial': 50.0, 'recebimentos': [], 'saidas': 0, 'totalRecebido': 0.0,
+      'suprimentos': 0.0, 'sangrias': 0.0, 'dinheiroEsperado': 50.0, 'movimentos': [],
+    };
+
 /// Servidor simulado com as rotas usadas pelas telas
 Future<http.Response> servidor(http.Request req, {required String perfil}) async {
   recebidas.add(req);
   if (req.method != 'GET') enviadas.add(req);
   switch (req.url.path) {
+    case '/api/caixa/atual':
+      return caixaAberto ? json(caixaJson()) : http.Response('', 204);
+    case '/api/caixa/abrir':
+      caixaAberto = true;
+      return json(caixaJson());
+    case '/api/caixa/':
+      return json(caixaAberto ? [caixaJson()] : []);
+    case '/api/saidas/cobranca':
+      final corpo = jsonDecode(req.body) as Map<String, dynamic>;
+      if ((corpo['codigoTicket'] as String? ?? '').contains('USADO')) {
+        return json({'title': 'Conflito', 'detail': 'Este ticket já foi usado: a saída de ABC1234 foi registrada em 30/09 às 14:45.'}, 409);
+      }
+      return json({
+        'id': 'c1', 'entradaId': 'e1', 'placa': 'ABC1234', 'numeroVaga': 'A1', 'nomePatio': 'Pátio Padrão',
+        'dataHoraEntrada': '2026-09-30T13:30:45Z', 'calculadoEm': '2026-09-30T17:45:30Z', 'expiraEm': '2026-09-30T18:00:30Z',
+        'duracaoFormatada': '4h 15m', 'valorHora': 15.0, 'valor': 63.75, 'situacaoPagamento': 'calculado',
+        'requerPagamento': true, 'formasAceitas': ['dinheiro', 'pix', 'cartao'],
+        'pixCopiaECola': '00020126360014br.gov.bcb.pix0114+55119999988885204000053039865405' '63.755802BR5909PATIO SA6009SAO PAULO62070503***6304ABCD',
+      });
+    case '/api/saidas/cobranca/c1/confirmar':
+      final corpo = jsonDecode(req.body) as Map<String, dynamic>;
+      return json({
+        'id': 's1', 'entradaVeiculoId': 'e1', 'placa': 'ABC1234',
+        'dataHoraEntrada': '2026-09-30T13:30:45Z', 'dataHoraSaida': '2026-09-30T17:45:30Z',
+        'duracaoFormatada': '4h 15m', 'valorHora': 15.0, 'valorTotal': 63.75, 'situacaoPagamento': 'pago',
+        'numeroVaga': 'A1', 'nomePatio': 'Pátio Padrão', 'formaPagamento': corpo['formaPagamento'],
+        'valorRecebido': corpo['valorRecebido'], 'troco': corpo['valorRecebido'] == null ? null : (corpo['valorRecebido'] as num) - 63.75,
+      });
     case '/api/mensalistas':
       if (req.method == 'POST') {
         final corpo = jsonDecode(req.body) as Map<String, dynamic>;
@@ -165,24 +202,6 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'situacao': 'ativa',
         'impressao': 'impresso',
       }, 201);
-    case '/api/saidas/ticket':
-      final codigo = (jsonDecode(req.body) as Map<String, dynamic>)['codigo'] as String;
-      if (codigo.contains('USADO')) {
-        return json({'title': 'Conflito', 'detail': 'Este ticket já foi usado: a saída de ABC1234 foi registrada em 30/09 às 14:45.'}, 409);
-      }
-      return json({
-        'id': 's1',
-        'entradaVeiculoId': 'e1',
-        'placa': 'ABC1234',
-        'dataHoraEntrada': '2026-09-30T13:30:45Z',
-        'dataHoraSaida': '2026-09-30T17:45:30Z',
-        'duracaoFormatada': '4h 15m',
-        'valorHora': 15.0,
-        'valorTotal': 63.75,
-        'situacaoPagamento': 'calculado',
-        'numeroVaga': 'A1',
-        'nomePatio': 'Pátio Padrão',
-      });
     case '/api/admin/impressao':
       final corpo = req.method == 'PUT' ? jsonDecode(req.body) as Map<String, dynamic> : null;
       return json(corpo ??
@@ -232,6 +251,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     enviadas.clear();
     recebidas.clear();
+    caixaAberto = false;
   });
 
   testWidgets('sem sessão abre o login e valida campos vazios', (tester) async {
@@ -262,7 +282,9 @@ void main() {
     expect(find.text('Lotado'), findsOneWidget);
     expect(find.text('ABC-1234'), findsOneWidget);
     expect(find.text('R\$ 63,75'), findsOneWidget);
-    expect(find.text('INICIAR SAÍDA'), findsOneWidget);
+    // Pagamento só na saída do pátio: o app não registra a saída
+    expect(find.text('INICIAR SAÍDA'), findsNothing);
+    expect(find.textContaining('O pagamento é feito na saída do pátio'), findsOneWidget);
 
     // Encerra o timer de atualização automática
     await tester.tap(find.byTooltip('Sair'));
@@ -368,24 +390,52 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('leitor de ticket registra a saída e mostra o recibo', (tester) async {
+  testWidgets('saída pelo ticket: cobra, exige caixa, calcula troco e mostra o recibo', (tester) async {
     await abrirApp(tester, perfil: 'operador');
     await entrar(tester, 'Senha@123');
+    expect(find.text('Caixa fechado: abra para receber pagamentos'), findsOneWidget);
 
     // Leitor USB: "digita" o conteúdo do QR e envia Enter
     await tester.enterText(find.widgetWithText(TextField, 'Ler ticket'), 'PKLOTS:K7M2Q9XD');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
-    final post = enviadas.singleWhere((r) => r.url.path == '/api/saidas/ticket');
-    expect(jsonDecode(post.body), {'codigo': 'PKLOTS:K7M2Q9XD'});
-    expect(find.text('Saída registrada'), findsOneWidget);
+    final cobranca = enviadas.singleWhere((r) => r.url.path == '/api/saidas/cobranca');
+    expect(jsonDecode(cobranca.body), {'codigoTicket': 'PKLOTS:K7M2Q9XD'});
+    expect(find.text('Saída · ABC-1234'), findsOneWidget);
     expect(find.text('R\$\u00a063,75'), findsOneWidget);
-    expect(find.text('Baixar PDF'), findsOneWidget);
+
+    // Caixa fechado bloqueia o recebimento
+    expect(find.text('Seu caixa está fechado. Abra o caixa para receber.'), findsOneWidget);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Abrir caixa'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Troco inicial'), '50,00');
+    await tester.tap(find.text('Confirmar'));
+    await tester.pumpAndSettle();
+    expect(find.text('Seu caixa está fechado. Abra o caixa para receber.'), findsNothing);
+
+    // PIX mostra o QR; dinheiro calcula o troco
+    await tester.tap(find.text('PIX'));
+    await tester.pumpAndSettle();
+    expect(find.text('Copiar PIX copia e cola'), findsOneWidget);
+    await tester.tap(find.text('Dinheiro'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Valor recebido'), '100,00');
+    await tester.pump();
+    expect(find.text('Troco: R\$\u00a036,25'), findsOneWidget);
+
+    await tester.tap(find.text('Receber e liberar'));
+    await tester.pumpAndSettle();
+
+    final confirmacao = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/saidas/cobranca/c1/confirmar').body);
+    expect(confirmacao, {'formaPagamento': 'dinheiro', 'valorRecebido': 100.0});
+    expect(find.text('Saída registrada'), findsOneWidget);
+    expect(find.text('Dinheiro'), findsOneWidget);
+    expect(find.text('R\$\u00a036,25'), findsOneWidget); // troco no recibo
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
 
-    // Ticket já usado: aviso com a explicação da API
+    // Ticket já usado: aviso da API, nenhuma cobrança aberta
     await tester.enterText(find.widgetWithText(TextField, 'Ler ticket'), 'USADO123');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();

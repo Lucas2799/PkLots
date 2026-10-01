@@ -71,9 +71,10 @@ class GestaoProvider extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      final resultados = await Future.wait([_api.dashboard(), _api.vagas()]);
+      final resultados = await Future.wait([_api.dashboard(), _api.vagas(), _api.caixaAtual()]);
       dashboard = resultados[0] as Dashboard;
       vagas = resultados[1] as List<Vaga>;
+      caixa = resultados[2] as Caixa?;
       erro = null;
     } on ExcecaoApi catch (e) {
       erro = e.mensagem;
@@ -85,15 +86,51 @@ class GestaoProvider extends ChangeNotifier {
 
   Future<Entrada> registrarEntrada(String placa) => _eAtualizar(() => _api.registrarEntrada(placa));
 
-  Future<Saida> registrarSaida(String placa) => _eAtualizar(() => _api.registrarSaida(placa));
+  // Saída: a cobrança não altera o pátio; a confirmação registra a saída e atualiza o painel
+  Future<CobrancaSaida> cobrarSaida(String placa) => _api.cobrarSaida(placa);
 
-  Future<Saida> registrarSaidaPorTicket(String codigo) => _eAtualizar(() => _api.registrarSaidaPorTicket(codigo));
+  Future<CobrancaSaida> cobrarSaidaPorTicket(String codigo) => _api.cobrarSaidaPorTicket(codigo);
+
+  Future<CobrancaSaida> cobrarSaidaPorImagem(List<int> bytes, String nome) => _api.cobrarSaidaPorImagem(bytes, nome);
+
+  Future<Saida> confirmarSaida(String cobrancaId, {String? forma, double? valorRecebido}) =>
+      _eAtualizar(() => _api.confirmarSaida(cobrancaId, forma: forma, valorRecebido: valorRecebido));
+
+  // ---------- Caixa do usuário ----------
+
+  Caixa? caixa;
+
+  Future<void> carregarCaixa() async {
+    try {
+      caixa = await _api.caixaAtual();
+      notifyListeners();
+    } on ExcecaoApi catch (_) {
+      // o painel continua funcionando; o caixa é recarregado na próxima atualização
+    }
+  }
+
+  Future<void> abrirCaixa(double troco) async {
+    caixa = await _api.abrirCaixa(troco);
+    notifyListeners();
+  }
+
+  Future<void> movimentarCaixa(String tipo, double valor, String? motivo) async {
+    caixa = await _api.movimentarCaixa(tipo, valor, motivo);
+    notifyListeners();
+  }
+
+  Future<Caixa> fecharCaixa(double contado, String? observacao) async {
+    final fechado = await _api.fecharCaixa(contado, observacao);
+    caixa = null;
+    notifyListeners();
+    return fechado;
+  }
+
+  Future<List<Caixa>> caixasDoDia() => _api.caixasDoDia();
 
   Future<Entrada> registrarEntradaPorImagem(List<int> bytes, String nome) =>
       _eAtualizar(() => _api.registrarEntradaPorImagem(bytes, nome));
 
-  Future<Saida> registrarSaidaPorImagem(List<int> bytes, String nome) =>
-      _eAtualizar(() => _api.registrarSaidaPorImagem(bytes, nome));
 
   Future<Vaga> marcarManutencao(String vagaId, String? observacoes) =>
       _eAtualizar(() => _api.marcarManutencao(vagaId, observacoes));

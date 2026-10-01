@@ -40,7 +40,10 @@ namespace PkLots.Application.DTOs
         string? NumeroVaga,
         string NomePatio = "",
         string? Mensalista = null,
-        string? Aviso = null); // ex.: mensalidade vencida, cobrado como avulso
+        string? Aviso = null, // ex.: mensalidade vencida, cobrado como avulso
+        string? FormaPagamento = null,
+        decimal? ValorRecebido = null,
+        decimal? Troco = null);
 
     public record HistoricoVeiculoDto(
         Guid EntradaId,

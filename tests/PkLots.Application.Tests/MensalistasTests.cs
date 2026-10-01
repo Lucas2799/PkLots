@@ -16,7 +16,8 @@ namespace PkLots.Application.Tests
 
         private static async Task<Cenario> CenarioComMensalidade(decimal mensalidade = 300m, int reservadas = 0, int vagasPorFileira = 10)
         {
-            var cenario = new Cenario(vagasPorFileira);
+            var cenario = new Cenario(vagasPorFileira) { UsuarioAtualId = Usuario };
+            await cenario.Caixa.AbrirAsync(new AbrirCaixaRequisicao(0m));
             await cenario.Administracao.AtualizarConfiguracaoAsync(Usuario,
                 new AtualizarConfiguracaoRequisicao("Pátio Teste", 15m, 0, mensalidade, reservadas));
             return cenario;
@@ -48,6 +49,19 @@ namespace PkLots.Application.Tests
             var maria = await cenario.Mensalistas.CriarAsync(Usuario, Dados("Maria", "ABC1234"));
             Assert.Equal(["ABC1234"], maria.Placas);
             Assert.Empty((await cenario.Mensalistas.ObterAsync(joao.Id)).Placas);
+        }
+
+        [Fact]
+        public async Task Adiciona_e_remove_placas_de_um_mensalista_existente()
+        {
+            using var cenario = await CenarioComMensalidade();
+            var m = await cenario.Mensalistas.CriarAsync(Usuario, Dados("João", "ABC1234"));
+
+            var atualizado = await cenario.Mensalistas.AtualizarAsync(Usuario, m.Id, Dados("João", "BRA2E19", "XYZ9876"));
+
+            Assert.Equal(["BRA2E19", "XYZ9876"], atualizado.Placas);
+            Assert.Equal(["BRA2E19", "XYZ9876"], (await cenario.Mensalistas.ObterAsync(m.Id)).Placas);
+            Assert.Equal(2, await cenario.Db.MensalistasPlacas.CountAsync());
         }
 
         [Theory]
@@ -132,7 +146,7 @@ namespace PkLots.Application.Tests
 
             var entrada = await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
             cenario.Relogio.Advance(TimeSpan.FromHours(5));
-            var saida = await cenario.Saida.RegistrarAsync(new RegistrarSaidaRequisicao("ABC1234"));
+            var saida = await cenario.SairAsync("ABC1234");
 
             Assert.Equal(("João Silva", SituacaoMensalista.EmDia), (entrada.Mensalista, entrada.SituacaoMensalista));
             Assert.Equal((0m, SituacaoPagamento.Mensalista, "João Silva"), (saida.ValorTotal, saida.SituacaoPagamento, saida.Mensalista));
@@ -147,7 +161,7 @@ namespace PkLots.Application.Tests
 
             var entrada = await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
             cenario.Relogio.Advance(TimeSpan.FromHours(2));
-            var saida = await cenario.Saida.RegistrarAsync(new RegistrarSaidaRequisicao("ABC1234"));
+            var saida = await cenario.SairAsync("ABC1234");
 
             Assert.Equal(SituacaoMensalista.Vencido, entrada.SituacaoMensalista);
             Assert.Null((await cenario.Db.EntradasVeiculos.SingleAsync()).MensalistaId); // não ocupa vaga reservada
@@ -164,7 +178,7 @@ namespace PkLots.Application.Tests
             cenario.Relogio.Advance(TimeSpan.FromHours(3));
 
             await cenario.Mensalistas.RegistrarPagamentoAsync(Usuario, m.Id, new(1, null, "dinheiro", null));
-            var saida = await cenario.Saida.RegistrarAsync(new RegistrarSaidaRequisicao("ABC1234"));
+            var saida = await cenario.SairAsync("ABC1234");
 
             Assert.Equal((0m, SituacaoPagamento.Mensalista), (saida.ValorTotal, saida.SituacaoPagamento));
         }

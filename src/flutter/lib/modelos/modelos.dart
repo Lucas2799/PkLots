@@ -227,6 +227,11 @@ class Saida {
   /// Aviso para o operador (ex.: mensalidade vencida, cobrado como avulso)
   final String? aviso;
 
+  /// Pagamento na saída: forma, dinheiro recebido e troco
+  final String? formaPagamento;
+  final double? valorRecebido;
+  final double? troco;
+
   bool get mensalistaSemCobranca => situacaoPagamento == 'mensalista';
 
   /// Saída dentro da tolerância gratuita
@@ -245,6 +250,9 @@ class Saida {
     this.nomePatio = '',
     this.mensalista,
     this.aviso,
+    this.formaPagamento,
+    this.valorRecebido,
+    this.troco,
   });
 
   factory Saida.deJson(Map<String, dynamic> json) => Saida(
@@ -260,6 +268,9 @@ class Saida {
         nomePatio: (json['nomePatio'] as String?) ?? '',
         mensalista: json['mensalista'] as String?,
         aviso: json['aviso'] as String?,
+        formaPagamento: json['formaPagamento'] as String?,
+        valorRecebido: (json['valorRecebido'] as num?)?.toDouble(),
+        troco: (json['troco'] as num?)?.toDouble(),
       );
 }
 
@@ -687,5 +698,206 @@ class PagamentoMensalidade {
         formaPagamento: json['formaPagamento'] as String,
         observacao: json['observacao'] as String?,
         pagoEm: _data(json['pagoEm']),
+      );
+}
+
+/// Rótulos das formas de pagamento
+const rotulosFormaPagamento = {'dinheiro': 'Dinheiro', 'pix': 'PIX', 'cartao': 'Cartão', 'outro': 'Outro'};
+
+/// Cobrança da saída: valor congelado até [expiraEm]; sem confirmação o carro não sai
+class CobrancaSaida {
+  final String id;
+  final String entradaId;
+  final String placa;
+  final String? numeroVaga;
+  final String nomePatio;
+  final DateTime dataHoraEntrada;
+  final DateTime calculadoEm;
+  final DateTime expiraEm;
+  final String duracaoFormatada;
+  final double valorHora;
+  final double valor;
+  final String situacaoPagamento;
+  final bool requerPagamento;
+  final List<String> formasAceitas;
+  final String? pixCopiaECola;
+  final String? mensalista;
+  final String? aviso;
+
+  CobrancaSaida({
+    required this.id,
+    required this.entradaId,
+    required this.placa,
+    this.numeroVaga,
+    required this.nomePatio,
+    required this.dataHoraEntrada,
+    required this.calculadoEm,
+    required this.expiraEm,
+    required this.duracaoFormatada,
+    required this.valorHora,
+    required this.valor,
+    required this.situacaoPagamento,
+    required this.requerPagamento,
+    required this.formasAceitas,
+    this.pixCopiaECola,
+    this.mensalista,
+    this.aviso,
+  });
+
+  factory CobrancaSaida.deJson(Map<String, dynamic> json) => CobrancaSaida(
+        id: json['id'] as String,
+        entradaId: json['entradaId'] as String,
+        placa: json['placa'] as String,
+        numeroVaga: json['numeroVaga'] as String?,
+        nomePatio: json['nomePatio'] as String,
+        dataHoraEntrada: _data(json['dataHoraEntrada']),
+        calculadoEm: _data(json['calculadoEm']),
+        expiraEm: _data(json['expiraEm']),
+        duracaoFormatada: json['duracaoFormatada'] as String,
+        valorHora: _numero(json['valorHora']),
+        valor: _numero(json['valor']),
+        situacaoPagamento: json['situacaoPagamento'] as String,
+        requerPagamento: json['requerPagamento'] as bool,
+        formasAceitas: ((json['formasAceitas'] as List?) ?? []).cast<String>(),
+        pixCopiaECola: json['pixCopiaECola'] as String?,
+        mensalista: json['mensalista'] as String?,
+        aviso: json['aviso'] as String?,
+      );
+}
+
+class ConfiguracaoPagamento {
+  final String provedor;
+  final String? chavePix;
+  final String? nomeRecebedor;
+  final String? cidadeRecebedor;
+  final bool aceitaDinheiro;
+  final bool aceitaPix;
+  final bool aceitaCartao;
+  final List<String> provedoresDisponiveis;
+
+  ConfiguracaoPagamento({
+    this.provedor = 'pix_manual',
+    this.chavePix,
+    this.nomeRecebedor,
+    this.cidadeRecebedor,
+    this.aceitaDinheiro = true,
+    this.aceitaPix = true,
+    this.aceitaCartao = true,
+    this.provedoresDisponiveis = const ['pix_manual'],
+  });
+
+  factory ConfiguracaoPagamento.deJson(Map<String, dynamic> json) => ConfiguracaoPagamento(
+        provedor: json['provedor'] as String,
+        chavePix: json['chavePix'] as String?,
+        nomeRecebedor: json['nomeRecebedor'] as String?,
+        cidadeRecebedor: json['cidadeRecebedor'] as String?,
+        aceitaDinheiro: json['aceitaDinheiro'] as bool,
+        aceitaPix: json['aceitaPix'] as bool,
+        aceitaCartao: json['aceitaCartao'] as bool,
+        provedoresDisponiveis: ((json['provedoresDisponiveis'] as List?) ?? ['pix_manual']).cast<String>(),
+      );
+
+  Map<String, dynamic> paraJson() => {
+        'provedor': provedor,
+        'chavePix': chavePix,
+        'nomeRecebedor': nomeRecebedor,
+        'cidadeRecebedor': cidadeRecebedor,
+        'aceitaDinheiro': aceitaDinheiro,
+        'aceitaPix': aceitaPix,
+        'aceitaCartao': aceitaCartao,
+      };
+}
+
+class RecebimentoPorForma {
+  final String forma;
+  final int quantidade;
+  final double total;
+
+  RecebimentoPorForma({required this.forma, required this.quantidade, required this.total});
+
+  factory RecebimentoPorForma.deJson(Map<String, dynamic> json) => RecebimentoPorForma(
+      forma: json['forma'] as String, quantidade: json['quantidade'] as int, total: _numero(json['total']));
+}
+
+class MovimentoCaixa {
+  final String tipo;
+  final double valor;
+  final String? motivo;
+  final DateTime criadoEm;
+
+  MovimentoCaixa({required this.tipo, required this.valor, this.motivo, required this.criadoEm});
+
+  factory MovimentoCaixa.deJson(Map<String, dynamic> json) => MovimentoCaixa(
+        tipo: json['tipo'] as String,
+        valor: _numero(json['valor']),
+        motivo: json['motivo'] as String?,
+        criadoEm: _data(json['criadoEm']),
+      );
+}
+
+class Caixa {
+  final String id;
+  final String patioId;
+  final String nomePatio;
+  final String operadorId;
+  final String nomeOperador;
+  final DateTime abertoEm;
+  final DateTime? fechadoEm;
+  final double trocoInicial;
+  final List<RecebimentoPorForma> recebimentos;
+  final int saidas;
+  final double totalRecebido;
+  final double suprimentos;
+  final double sangrias;
+  final double dinheiroEsperado;
+  final double? dinheiroContado;
+  final double? diferenca;
+  final String? observacaoFechamento;
+  final List<MovimentoCaixa> movimentos;
+
+  bool get aberto => fechadoEm == null;
+
+  Caixa({
+    required this.id,
+    required this.patioId,
+    required this.nomePatio,
+    required this.operadorId,
+    required this.nomeOperador,
+    required this.abertoEm,
+    this.fechadoEm,
+    required this.trocoInicial,
+    required this.recebimentos,
+    required this.saidas,
+    required this.totalRecebido,
+    required this.suprimentos,
+    required this.sangrias,
+    required this.dinheiroEsperado,
+    this.dinheiroContado,
+    this.diferenca,
+    this.observacaoFechamento,
+    required this.movimentos,
+  });
+
+  factory Caixa.deJson(Map<String, dynamic> json) => Caixa(
+        id: json['id'] as String,
+        patioId: json['patioId'] as String,
+        nomePatio: json['nomePatio'] as String,
+        operadorId: json['operadorId'] as String,
+        nomeOperador: json['nomeOperador'] as String,
+        abertoEm: _data(json['abertoEm']),
+        fechadoEm: _dataOpcional(json['fechadoEm']),
+        trocoInicial: _numero(json['trocoInicial']),
+        recebimentos: ((json['recebimentos'] as List?) ?? [])
+            .map((r) => RecebimentoPorForma.deJson(r as Map<String, dynamic>))
+            .toList(),
+        saidas: json['saidas'] as int,
+        totalRecebido: _numero(json['totalRecebido']),
+        suprimentos: _numero(json['suprimentos']),
+        sangrias: _numero(json['sangrias']),
+        dinheiroEsperado: _numero(json['dinheiroEsperado']),
+        dinheiroContado: (json['dinheiroContado'] as num?)?.toDouble(),
+        diferenca: (json['diferenca'] as num?)?.toDouble(),
+        observacaoFechamento: json['observacaoFechamento'] as String?,
+        movimentos: ((json['movimentos'] as List?) ?? []).map((m) => MovimentoCaixa.deJson(m as Map<String, dynamic>)).toList(),
       );
 }

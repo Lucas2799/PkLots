@@ -15,6 +15,14 @@ namespace PkLots.Core.Entities
         public string Moeda { get; set; } = "BRL";
         public string SituacaoPagamento { get; set; } = "calculado"; // calculado, pago, erro
         public string? UrlRecibo { get; set; }
+
+        // Pagamento na saída
+        public string? FormaPagamento { get; set; } // dinheiro, pix, cartao (nulo quando não houve cobrança)
+        public decimal? ValorRecebido { get; set; } // dinheiro entregue pelo cliente
+        public decimal? Troco { get; set; }
+        public Guid? CaixaId { get; set; }
+        public Guid? RegistradoPorId { get; set; }
+        public Guid? CobrancaId { get; set; }
         public string Situacao { get; set; } = "concluida";
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

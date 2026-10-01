@@ -63,8 +63,6 @@ class ClienteApi {
   Future<List<ItemHistorico>> meuHistorico() async =>
       _lista(await _get('/api/motorista/historico'), ItemHistorico.deJson);
 
-  Future<Saida> iniciarSaida() async => Saida.deJson(await _post('/api/motorista/iniciar-saida', null));
-
   // ---------- Gestão ----------
 
   Future<List<PatioResumo>> patiosPermitidos() async => _lista(await _get('/api/patios'), PatioResumo.deJson);
@@ -77,17 +75,42 @@ class ClienteApi {
   Future<Entrada> registrarEntrada(String placa) async =>
       Entrada.deJson(await _post('/api/entradas/', {'placa': placa, 'confianca': 1, 'metodoReconhecimento': 'manual'}));
 
-  Future<Saida> registrarSaida(String placa) async => Saida.deJson(await _post('/api/saidas/', {'placa': placa}));
+  // Saída em dois passos: cobrança (valor congelado) e confirmação do pagamento
 
-  /// Saída pela leitura do ticket: aceita "PKLOTS:K7M2Q9XD", "K7M2-Q9XD" etc.
-  Future<Saida> registrarSaidaPorTicket(String codigo) async =>
-      Saida.deJson(await _post('/api/saidas/ticket', {'codigo': codigo}));
+  Future<CobrancaSaida> cobrarSaida(String placa) async =>
+      CobrancaSaida.deJson(await _post('/api/saidas/cobranca', {'placa': placa}));
+
+  /// Pela leitura do ticket: aceita "PKLOTS:K7M2Q9XD", "K7M2-Q9XD" etc.
+  Future<CobrancaSaida> cobrarSaidaPorTicket(String codigo) async =>
+      CobrancaSaida.deJson(await _post('/api/saidas/cobranca', {'codigoTicket': codigo}));
+
+  Future<CobrancaSaida> cobrarSaidaPorImagem(List<int> bytes, String nomeArquivo) async =>
+      CobrancaSaida.deJson(await _enviarImagem('/api/saidas/cobranca/imagem', bytes, nomeArquivo));
+
+  Future<Saida> confirmarSaida(String cobrancaId, {String? forma, double? valorRecebido}) async => Saida.deJson(
+      await _post('/api/saidas/cobranca/$cobrancaId/confirmar', {'formaPagamento': forma, 'valorRecebido': valorRecebido}));
+
+  // ---------- Caixa ----------
+
+  Future<Caixa?> caixaAtual() async {
+    final json = await _get('/api/caixa/atual');
+    return json == null ? null : Caixa.deJson(json);
+  }
+
+  Future<Caixa> abrirCaixa(double trocoInicial) async =>
+      Caixa.deJson(await _post('/api/caixa/abrir', {'trocoInicial': trocoInicial}));
+
+  Future<Caixa> movimentarCaixa(String tipo, double valor, String? motivo) async =>
+      Caixa.deJson(await _post('/api/caixa/movimentos', {'tipo': tipo, 'valor': valor, 'motivo': motivo}));
+
+  Future<Caixa> fecharCaixa(double dinheiroContado, String? observacao) async =>
+      Caixa.deJson(await _post('/api/caixa/fechar', {'dinheiroContado': dinheiroContado, 'observacao': observacao}));
+
+  Future<List<Caixa>> caixasDoDia() async => _lista(await _get('/api/caixa/'), Caixa.deJson);
 
   Future<Entrada> registrarEntradaPorImagem(List<int> bytes, String nomeArquivo) async =>
       Entrada.deJson(await _enviarImagem('/api/entradas/imagem', bytes, nomeArquivo));
 
-  Future<Saida> registrarSaidaPorImagem(List<int> bytes, String nomeArquivo) async =>
-      Saida.deJson(await _enviarImagem('/api/saidas/imagem', bytes, nomeArquivo));
 
   // ---------- Impressão ----------
 
@@ -106,6 +129,15 @@ class ClienteApi {
   Future<void> imprimirTeste() => _post('/api/admin/impressao/teste', null);
 
   // ---------- Administração (somente admin) ----------
+
+  Future<ConfiguracaoPagamento> configuracaoPagamento() async =>
+      ConfiguracaoPagamento.deJson(await _get('/api/admin/pagamentos'));
+
+  Future<ConfiguracaoPagamento> salvarConfiguracaoPagamento(ConfiguracaoPagamento c) async =>
+      ConfiguracaoPagamento.deJson(await _enviar('PUT', '/api/admin/pagamentos', c.paraJson()));
+
+  Future<String> pixDeTeste() async =>
+      ((await _post('/api/admin/pagamentos/pix-teste', null)) as Map<String, dynamic>)['pixCopiaECola'] as String;
 
   Future<ConfiguracaoPatio> configuracao() async => ConfiguracaoPatio.deJson(await _get('/api/admin/configuracao'));
 

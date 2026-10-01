@@ -50,7 +50,7 @@ namespace PkLots.Application.Tests
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
             cenario.Relogio.Advance(TimeSpan.FromMinutes(10));
 
-            var saida = await cenario.Saida.RegistrarAsync(new RegistrarSaidaRequisicao("ABC1234"));
+            var saida = await cenario.SairAsync("ABC1234");
 
             Assert.Equal(0m, saida.ValorTotal);
             Assert.Equal(SituacaoPagamento.Isento, saida.SituacaoPagamento);
@@ -64,7 +64,7 @@ namespace PkLots.Application.Tests
             cenario.Relogio.Advance(TimeSpan.FromHours(2));
             await cenario.Administracao.AtualizarConfiguracaoAsync(AdminQualquer, new AtualizarConfiguracaoRequisicao("Pátio", 10m, 0));
 
-            var saida = await cenario.Saida.RegistrarAsync(new RegistrarSaidaRequisicao("ABC1234"));
+            var saida = await cenario.SairAsync("ABC1234");
 
             Assert.Equal(20.00m, saida.ValorTotal);
         }

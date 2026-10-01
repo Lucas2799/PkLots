@@ -11,7 +11,6 @@ namespace PkLots.Application.Servicos
     public class ServicoMotorista(
         IPkLotsDbContext db,
         ServicoVeiculos servicoVeiculos,
-        ServicoSaida servicoSaida,
         ServicoVagas servicoVagas,
         TimeProvider relogio)
     {
@@ -81,14 +80,6 @@ namespace PkLots.Application.Servicos
 
             var desde = relogio.GetUtcNow().UtcDateTime.AddDays(-30);
             return await servicoVeiculos.ConsultarHistorico(null, placas, desde).ToListAsync(ct);
-        }
-
-        public async Task<SaidaDto> IniciarSaidaAsync(Guid usuarioId, CancellationToken ct = default)
-        {
-            var entradaId = await ConsultarEntradaAtiva(usuarioId).Select(e => (Guid?)e.Id).FirstOrDefaultAsync(ct)
-                ?? throw new ExcecaoNaoEncontrado("Você não possui veículo estacionado no momento.");
-
-            return await servicoSaida.RegistrarPorEntradaAsync(entradaId, ct);
         }
 
         // Pátios ativos (de empresas ativas) com as vagas disponíveis agora

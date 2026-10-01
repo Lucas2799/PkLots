@@ -47,6 +47,9 @@ Future<void> mostrarRecibo(BuildContext context, Saida saida) => showDialog(
             _Linha('Saída', Formatadores.dataHora(saida.dataHoraSaida)),
             _Linha('Permanência', saida.duracaoFormatada),
             _Linha('Valor/hora', Formatadores.moeda(saida.valorHora)),
+            if (saida.formaPagamento != null) _Linha('Pagamento', rotulosFormaPagamento[saida.formaPagamento] ?? saida.formaPagamento!),
+            if (saida.valorRecebido != null) _Linha('Recebido', Formatadores.moeda(saida.valorRecebido!)),
+            if ((saida.troco ?? 0) > 0) _Linha('Troco', Formatadores.moeda(saida.troco!)),
           ]),
         ),
         actions: [

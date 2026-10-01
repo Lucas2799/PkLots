@@ -18,6 +18,10 @@ namespace PkLots.Application.Interfaces
         DbSet<Mensalista> Mensalistas { get; }
         DbSet<MensalistaPlaca> MensalistasPlacas { get; }
         DbSet<PagamentoMensalidade> PagamentosMensalidade { get; }
+        DbSet<ConfiguracaoPagamento> ConfiguracoesPagamento { get; }
+        DbSet<Caixa> Caixas { get; }
+        DbSet<MovimentoCaixa> MovimentosCaixa { get; }
+        DbSet<CobrancaSaida> CobrancasSaida { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

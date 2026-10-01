@@ -102,6 +102,10 @@ class DocumentosPdf {
         _linha('Valor por hora', Formatadores.moeda(saida.valorHora), escala),
         pw.Divider(thickness: 0.5),
         _linha('TOTAL', Formatadores.moeda(saida.valorTotal), escala, destaque: true),
+        if (saida.formaPagamento != null)
+          _linha('Pagamento', rotulosFormaPagamento[saida.formaPagamento] ?? saida.formaPagamento!, escala),
+        if (saida.valorRecebido != null) _linha('Recebido', Formatadores.moeda(saida.valorRecebido!), escala),
+        if ((saida.troco ?? 0) > 0) _linha('Troco', Formatadores.moeda(saida.troco!), escala),
         if (saida.mensalistaSemCobranca)
           pw.Text('Mensalista${saida.mensalista != null ? ' ${saida.mensalista}' : ''}: sem cobrança',
               textAlign: pw.TextAlign.center, style: pw.TextStyle(fontSize: 7 * escala, color: _cinza)),

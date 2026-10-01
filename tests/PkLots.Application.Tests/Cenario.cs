@@ -78,7 +78,29 @@ namespace PkLots.Application.Tests
         public ServicoSaida Saida => new(Db, ContextoPatio, Cache, Reconhecedor, Relogio);
         public ServicoVagas Vagas => new(Db, ContextoPatio, Cache, Relogio);
         public ServicoVeiculos Veiculos => new(Db, ContextoPatio);
-        public ServicoMotorista Motorista => new(Db, Veiculos, Saida, Vagas, Relogio);
+        public ServicoMotorista Motorista => new(Db, Veiculos, Vagas, Relogio);
+        public ServicoCaixa Caixa => new(Db, ContextoPatio, Relogio);
+        public ServicoConfiguracaoPagamento ConfiguracaoPagamento => new(Db, ContextoPatio, Relogio);
+
+        // Saída completa como no balcão: abre o caixa (se preciso), gera a cobrança e confirma o pagamento
+        public async Task<SaidaDto> SairAsync(string placa, string forma = FormasPagamento.Dinheiro, decimal? recebido = null)
+        {
+            var cobranca = await Saida.CobrarAsync(new GerarCobrancaRequisicao(placa, null));
+            return await ConfirmarAsync(cobranca, forma, recebido);
+        }
+
+        public async Task<SaidaDto> SairPorTicketAsync(string codigo, string forma = FormasPagamento.Dinheiro)
+        {
+            var cobranca = await Saida.CobrarAsync(new GerarCobrancaRequisicao(null, codigo));
+            return await ConfirmarAsync(cobranca, forma, null);
+        }
+
+        private async Task<SaidaDto> ConfirmarAsync(CobrancaDto cobranca, string forma, decimal? recebido)
+        {
+            if (cobranca.RequerPagamento && await Caixa.ObterAtualAsync() is null)
+                await Caixa.AbrirAsync(new AbrirCaixaRequisicao(0m));
+            return await Saida.ConfirmarAsync(UsuarioAtualId, cobranca.Id, new ConfirmarSaidaRequisicao(forma, recebido));
+        }
         public ServicoPatios Patios => new(Db, ContextoPatio, Relogio);
         public ServicoPlataforma Plataforma => new(Db, HashSenha, Relogio);
         public ServicoMensalistas Mensalistas => new(Db, ContextoPatio, Relogio);

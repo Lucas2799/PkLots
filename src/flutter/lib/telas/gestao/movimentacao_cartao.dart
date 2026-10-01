@@ -11,7 +11,9 @@ import '../../servicos/excecao_api.dart';
 import '../../util/formatadores.dart';
 import '../../util/validadores.dart';
 import '../../widgets/estados_tela.dart';
-import '../../widgets/recibo_dialogo.dart';
+import '../../tema/cores.dart';
+import '../../widgets/caixa_dialogos.dart';
+import 'cobranca_dialogo.dart';
 import 'leitor_ticket_tela.dart';
 
 /// Registro de entrada/saída: digitando a placa ou enviando a foto (LPR)
@@ -40,9 +42,9 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
   /// Leitor USB "digita" o conteúdo do QR e envia Enter; a câmera devolve o mesmo texto
   Future<void> _saidaPorTicket(String lido) async {
     if (lido.trim().isEmpty) return;
-    final saida = await _executar(() => _estado.registrarSaidaPorTicket(lido.trim()));
+    final cobranca = await _executar(() => _estado.cobrarSaidaPorTicket(lido.trim()));
     _ticket.clear();
-    if (saida != null && mounted) await mostrarRecibo(context, saida);
+    if (cobranca != null && mounted) await processarSaida(context, () async => cobranca);
     // Pronto para o próximo ticket
     if (mounted) _focoTicket.requestFocus();
   }
@@ -113,10 +115,10 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
 
   Future<void> _saidaManual() async {
     if (!_formulario.currentState!.validate()) return;
-    final saida = await _executar(() => _estado.registrarSaida(Validadores.normalizarPlaca(_placa.text)));
-    if (saida == null || !mounted) return;
-    _placa.clear();
-    await mostrarRecibo(context, saida);
+    final cobranca = await _executar(() => _estado.cobrarSaida(Validadores.normalizarPlaca(_placa.text)));
+    if (cobranca == null || !mounted) return;
+    final saida = await processarSaida(context, () async => cobranca);
+    if (saida != null) _placa.clear();
   }
 
   Future<XFile?> _escolherFoto() async {
@@ -156,8 +158,8 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
         await _aposEntrada(registro, 'Placa ${Formatadores.placa(registro.placa)} reconhecida · vaga ${registro.numeroVaga}');
       }
     } else {
-      final saida = await _executar(() => _estado.registrarSaidaPorImagem(bytes, foto.name));
-      if (saida != null && mounted) await mostrarRecibo(context, saida);
+      final cobranca = await _executar(() => _estado.cobrarSaidaPorImagem(bytes, foto.name));
+      if (cobranca != null && mounted) await processarSaida(context, () async => cobranca);
     }
   }
 
@@ -169,6 +171,8 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
             key: _formulario,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               const TituloSecao('Entrada e saída', icone: Icons.swap_horiz),
+              _SituacaoCaixa(caixa: context.watch<GestaoProvider>().caixa),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _placa,
                 enabled: !_enviando,
@@ -253,4 +257,38 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
           ),
         ),
       );
+}
+
+/// Lembra o operador de abrir o caixa antes de receber
+class _SituacaoCaixa extends StatelessWidget {
+  const _SituacaoCaixa({required this.caixa});
+
+  final Caixa? caixa;
+
+  @override
+  Widget build(BuildContext context) {
+    final aberto = caixa != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: (aberto ? CoresPkLots.disponivel : CoresPkLots.manutencao).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(children: [
+        Icon(aberto ? Icons.lock_open : Icons.lock_outline,
+            size: 18, color: aberto ? CoresPkLots.disponivel : CoresPkLots.manutencao),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            aberto
+                ? 'Caixa aberto · ${Formatadores.moeda(caixa!.dinheiroEsperado)} em dinheiro'
+                : 'Caixa fechado: abra para receber pagamentos',
+            style: const TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho),
+          ),
+        ),
+        if (!aberto)
+          TextButton(onPressed: () => mostrarAbrirCaixa(context), child: const Text('Abrir')),
+      ]),
+    );
+  }
 }

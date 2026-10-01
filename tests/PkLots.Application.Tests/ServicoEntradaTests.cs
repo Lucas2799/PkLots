@@ -78,7 +78,7 @@ namespace PkLots.Application.Tests
         {
             using var cenario = new Cenario();
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
-            await cenario.Saida.RegistrarAsync(new RegistrarSaidaRequisicao("ABC1234"));
+            await cenario.SairAsync("ABC1234");
 
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
 

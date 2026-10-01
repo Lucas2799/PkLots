@@ -29,6 +29,10 @@ namespace PkLots.Infrastructure.Data
         public DbSet<Mensalista> Mensalistas { get; set; }
         public DbSet<MensalistaPlaca> MensalistasPlacas { get; set; }
         public DbSet<PagamentoMensalidade> PagamentosMensalidade { get; set; }
+        public DbSet<ConfiguracaoPagamento> ConfiguracoesPagamento { get; set; }
+        public DbSet<Caixa> Caixas { get; set; }
+        public DbSet<MovimentoCaixa> MovimentosCaixa { get; set; }
+        public DbSet<CobrancaSaida> CobrancasSaida { get; set; }
         public DbSet<Vaga> Vagas { get; set; }
         public DbSet<Veiculo> Veiculos { get; set; }
         public DbSet<EntradaVeiculo> EntradasVeiculos { get; set; }
@@ -82,6 +86,18 @@ namespace PkLots.Infrastructure.Data
             modelBuilder.Entity<PagamentoMensalidade>()
                 .HasQueryFilter(p => _empresaId == null || p.Patio.EmpresaId == _empresaId);
 
+            modelBuilder.Entity<ConfiguracaoPagamento>()
+                .HasQueryFilter(c => _empresaId == null || c.EmpresaId == _empresaId);
+
+            modelBuilder.Entity<Caixa>()
+                .HasQueryFilter(c => _empresaId == null || c.Patio.EmpresaId == _empresaId);
+
+            modelBuilder.Entity<MovimentoCaixa>()
+                .HasQueryFilter(m => _empresaId == null || m.Caixa.Patio.EmpresaId == _empresaId);
+
+            modelBuilder.Entity<CobrancaSaida>()
+                .HasQueryFilter(c => _empresaId == null || c.Patio.EmpresaId == _empresaId);
+
             // Placas dos motoristas são da plataforma: só aparecem para quem não pertence a uma empresa
             // (o próprio motorista; os serviços filtram pelo UsuarioId)
             modelBuilder.Entity<VeiculoMotorista>()
@@ -121,6 +137,43 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<Patio>()
                 .Property(p => p.ValorMensalidade).HasPrecision(10, 2);
+
+            // Pagamentos e caixa
+            modelBuilder.Entity<ConfiguracaoPagamento>().HasKey(c => c.EmpresaId);
+            modelBuilder.Entity<ConfiguracaoPagamento>()
+                .HasOne(c => c.Empresa).WithOne().HasForeignKey<ConfiguracaoPagamento>(c => c.EmpresaId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<ConfiguracaoPagamento>().Property(c => c.NomeRecebedor).HasMaxLength(25);
+            modelBuilder.Entity<ConfiguracaoPagamento>().Property(c => c.CidadeRecebedor).HasMaxLength(15);
+
+            // Cada operador tem no máximo um caixa aberto
+            modelBuilder.Entity<Caixa>()
+                .HasIndex(c => c.OperadorId).IsUnique().HasFilter("\"FechadoEm\" IS NULL");
+            modelBuilder.Entity<Caixa>().HasIndex(c => new { c.PatioId, c.AbertoEm });
+            modelBuilder.Entity<Caixa>().Ignore(c => c.Aberto);
+            modelBuilder.Entity<Caixa>().Property(c => c.TrocoInicial).HasPrecision(10, 2);
+            modelBuilder.Entity<Caixa>().Property(c => c.DinheiroEsperado).HasPrecision(10, 2);
+            modelBuilder.Entity<Caixa>().Property(c => c.DinheiroContado).HasPrecision(10, 2);
+            modelBuilder.Entity<Caixa>()
+                .HasOne(c => c.Patio).WithMany().HasForeignKey(c => c.PatioId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Caixa>()
+                .HasOne(c => c.Operador).WithMany().HasForeignKey(c => c.OperadorId).OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MovimentoCaixa>().Property(m => m.Valor).HasPrecision(10, 2);
+            modelBuilder.Entity<MovimentoCaixa>()
+                .HasOne(m => m.Caixa).WithMany(c => c.Movimentos).HasForeignKey(m => m.CaixaId).OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CobrancaSaida>().Property(c => c.Valor).HasPrecision(10, 2);
+            modelBuilder.Entity<CobrancaSaida>().Property(c => c.TxId).HasMaxLength(25);
+            modelBuilder.Entity<CobrancaSaida>().HasIndex(c => new { c.EntradaVeiculoId, c.Situacao });
+            modelBuilder.Entity<CobrancaSaida>()
+                .HasOne(c => c.Patio).WithMany().HasForeignKey(c => c.PatioId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<CobrancaSaida>()
+                .HasOne(c => c.Entrada).WithMany().HasForeignKey(c => c.EntradaVeiculoId).OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<SaidaVeiculo>().Property(s => s.ValorRecebido).HasPrecision(10, 2);
+            modelBuilder.Entity<SaidaVeiculo>().Property(s => s.Troco).HasPrecision(10, 2);
+            modelBuilder.Entity<SaidaVeiculo>().HasIndex(s => s.CaixaId);
+            modelBuilder.Entity<PagamentoMensalidade>().HasIndex(p => p.CaixaId);
 
             modelBuilder.Entity<Vaga>()
                 .HasIndex(v => new { v.PatioId, v.Numero }).IsUnique();

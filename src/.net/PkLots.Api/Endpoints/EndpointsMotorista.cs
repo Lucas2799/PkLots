@@ -33,9 +33,7 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.ObterHistoricoAsync(usuario.ObterUsuarioId(), ct)))
                 .WithSummary("Acessos dos últimos 30 dias");
 
-            grupo.MapPost("/iniciar-saida", async (ClaimsPrincipal usuario, ServicoMotorista servico, CancellationToken ct) =>
-                Results.Ok(await servico.IniciarSaidaAsync(usuario.ObterUsuarioId(), ct)))
-                .WithSummary("Registra a saída do veículo estacionado e calcula o valor");
+
         }
     }
 }

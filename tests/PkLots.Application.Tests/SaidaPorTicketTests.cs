@@ -65,7 +65,7 @@ namespace PkLots.Application.Tests
             var codigo = (await cenario.Db.EntradasVeiculos.SingleAsync()).CodigoTicket!;
             cenario.Relogio.Advance(TimeSpan.FromHours(2));
 
-            var saida = await cenario.Saida.RegistrarPorTicketAsync($"PKLOTS:{codigo}");
+            var saida = await cenario.SairPorTicketAsync($"PKLOTS:{codigo}");
 
             Assert.Equal("ABC1234", saida.Placa);
             Assert.Equal(30.00m, saida.ValorTotal);
@@ -81,7 +81,7 @@ namespace PkLots.Application.Tests
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
             var codigo = (await cenario.Db.EntradasVeiculos.SingleAsync()).CodigoTicket!;
 
-            var saida = await cenario.Saida.RegistrarPorTicketAsync(CodigoTicket.Formatar(codigo).ToLowerInvariant());
+            var saida = await cenario.SairPorTicketAsync(CodigoTicket.Formatar(codigo).ToLowerInvariant());
 
             Assert.Equal("ABC1234", saida.Placa);
         }
@@ -92,9 +92,9 @@ namespace PkLots.Application.Tests
             using var cenario = new Cenario();
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
             var codigo = (await cenario.Db.EntradasVeiculos.SingleAsync()).CodigoTicket!;
-            await cenario.Saida.RegistrarPorTicketAsync(codigo);
+            await cenario.SairPorTicketAsync(codigo);
 
-            var erro = await Assert.ThrowsAsync<ExcecaoConflito>(() => cenario.Saida.RegistrarPorTicketAsync(codigo));
+            var erro = await Assert.ThrowsAsync<ExcecaoConflito>(() => cenario.SairPorTicketAsync(codigo));
 
             Assert.Contains("já foi usado", erro.Message);
             Assert.Contains("30/09 às 10:30", erro.Message); // horário de Brasília
@@ -106,8 +106,8 @@ namespace PkLots.Application.Tests
         {
             using var cenario = new Cenario();
 
-            await Assert.ThrowsAsync<ExcecaoNaoEncontrado>(() => cenario.Saida.RegistrarPorTicketAsync("K7M2-Q9XD"));
-            await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.Saida.RegistrarPorTicketAsync("ABC1234"));
+            await Assert.ThrowsAsync<ExcecaoNaoEncontrado>(() => cenario.SairPorTicketAsync("K7M2-Q9XD"));
+            await Assert.ThrowsAsync<ExcecaoNegocio>(() => cenario.SairPorTicketAsync("ABC1234"));
         }
 
         [Fact]
@@ -118,7 +118,7 @@ namespace PkLots.Application.Tests
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("BBB2222"));
             var codigoB = (await cenario.Db.EntradasVeiculos.SingleAsync(e => e.Placa == "BBB2222")).CodigoTicket!;
 
-            var saida = await cenario.Saida.RegistrarPorTicketAsync(codigoB);
+            var saida = await cenario.SairPorTicketAsync(codigoB);
 
             Assert.Equal("BBB2222", saida.Placa);
             Assert.Equal(SituacaoEntrada.Ativa, (await cenario.Db.EntradasVeiculos.SingleAsync(e => e.Placa == "AAA1111")).Situacao);

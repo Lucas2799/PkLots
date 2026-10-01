@@ -61,11 +61,6 @@ class MotoristaProvider extends ChangeNotifier {
     return veiculo;
   }
 
-  Future<Saida> iniciarSaida() async {
-    final saida = await _api.iniciarSaida();
-    await carregar(silencioso: true);
-    return saida;
-  }
 
   @override
   void dispose() {

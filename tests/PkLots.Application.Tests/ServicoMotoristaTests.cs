@@ -43,30 +43,6 @@ namespace PkLots.Application.Tests
                 cenario.Motorista.CadastrarVeiculoAsync(segundo.Id, new CadastrarVeiculoRequisicao("ABC1234", null, null)));
         }
 
-        [Fact]
-        public async Task Iniciar_saida_finaliza_e_aparece_no_historico()
-        {
-            using var cenario = new Cenario();
-            var motorista = cenario.CriarUsuario("driver@example.com", "Driver@123");
-            await cenario.Motorista.CadastrarVeiculoAsync(motorista.Id, new CadastrarVeiculoRequisicao("ABC1234", null, null));
-            await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("ABC1234"));
-            cenario.Relogio.Advance(TimeSpan.FromMinutes(30));
 
-            var saida = await cenario.Motorista.IniciarSaidaAsync(motorista.Id);
-            var historico = await cenario.Motorista.ObterHistoricoAsync(motorista.Id);
-
-            Assert.Equal(7.50m, saida.ValorTotal);
-            var item = Assert.Single(historico);
-            Assert.Equal(7.50m, item.ValorTotal);
-        }
-
-        [Fact]
-        public async Task Iniciar_saida_sem_veiculo_estacionado_falha()
-        {
-            using var cenario = new Cenario();
-            var motorista = cenario.CriarUsuario("driver@example.com", "Driver@123");
-
-            await Assert.ThrowsAsync<ExcecaoNaoEncontrado>(() => cenario.Motorista.IniciarSaidaAsync(motorista.Id));
-        }
     }
 }

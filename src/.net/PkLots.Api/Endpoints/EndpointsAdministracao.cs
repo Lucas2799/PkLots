@@ -37,6 +37,19 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.AtualizarAsync(usuario.ObterUsuarioId(), id, requisicao, ct)))
                 .WithSummary("Renomeia ou ativa/desativa um pátio");
 
+            grupo.MapGet("/pagamentos", async (ServicoConfiguracaoPagamento servico, CancellationToken ct) =>
+                Results.Ok(await servico.ObterAsync(ct)))
+                .WithSummary("Provedor de pagamento, chave PIX e formas aceitas da empresa");
+
+            grupo.MapPut("/pagamentos", async (AtualizarConfiguracaoPagamentoRequisicao requisicao, ClaimsPrincipal usuario,
+                    ServicoConfiguracaoPagamento servico, CancellationToken ct) =>
+                Results.Ok(await servico.AtualizarAsync(usuario.ObterUsuarioId(), requisicao, ct)))
+                .WithSummary("Altera provedor, chave PIX (do dono do pátio) e formas aceitas");
+
+            grupo.MapPost("/pagamentos/pix-teste", async (ServicoConfiguracaoPagamento servico, CancellationToken ct) =>
+                Results.Ok(new { pixCopiaECola = await servico.GerarPixDeTesteAsync(ct) }))
+                .WithSummary("PIX de R$ 1,00 para testar a chave no app do banco");
+
             grupo.MapGet("/impressao", async (ServicoImpressao servico, CancellationToken ct) =>
                 Results.Ok(await servico.ObterConfiguracaoAsync(ct)))
                 .WithSummary("Configuração de impressão do ticket de entrada");

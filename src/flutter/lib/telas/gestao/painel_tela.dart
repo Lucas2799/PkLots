@@ -13,8 +13,9 @@ import '../../widgets/cartao_vagas.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/grafico_ocupacao.dart';
 import '../../widgets/logo_pklots.dart';
-import '../../widgets/recibo_dialogo.dart';
 import '../admin/administracao_tela.dart';
+import 'caixa_tela.dart';
+import 'cobranca_dialogo.dart';
 import '../mensalistas/mensalistas_tela.dart';
 import 'busca_placa_dialogo.dart';
 import 'mapa_vagas_cartao.dart';
@@ -65,6 +66,19 @@ class _PainelTelaState extends State<PainelTela> {
               await estado.carregarPatios();
               await estado.carregar(silencioso: true);
             }),
+          IconButton(
+            tooltip: estado.caixa == null ? 'Caixa (fechado)' : 'Caixa (aberto)',
+            icon: Badge(
+              isLabelVisible: estado.caixa != null,
+              backgroundColor: CoresPkLots.disponivel,
+              smallSize: 8,
+              child: const Icon(Icons.point_of_sale),
+            ),
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CaixaTela()));
+              await estado.carregar(silencioso: true);
+            },
+          ),
           IconButton(
             tooltip: 'Mensalistas',
             icon: const Icon(Icons.card_membership_outlined),
@@ -230,14 +244,8 @@ class _Estacionados extends StatelessWidget {
     }
   }
 
-  Future<void> _registrarSaida(BuildContext context, String placa) async {
-    try {
-      final saida = await context.read<GestaoProvider>().registrarSaida(placa);
-      if (context.mounted) await mostrarRecibo(context, saida);
-    } on ExcecaoApi catch (e) {
-      if (context.mounted) mostrarAviso(context, e.mensagem, erro: true);
-    }
-  }
+  Future<void> _registrarSaida(BuildContext context, String placa) =>
+      processarSaida(context, () => context.read<GestaoProvider>().cobrarSaida(placa));
 
   @override
   Widget build(BuildContext context) => Card(

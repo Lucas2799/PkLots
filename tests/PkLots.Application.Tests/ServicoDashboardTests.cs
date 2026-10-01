@@ -12,7 +12,7 @@ namespace PkLots.Application.Tests
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("AAA1111"));
             await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("BBB2222"));
             cenario.Relogio.Advance(TimeSpan.FromHours(1));
-            await cenario.Saida.RegistrarAsync(new RegistrarSaidaRequisicao("AAA1111"));
+            await cenario.SairAsync("AAA1111");
 
             var dashboard = await cenario.Dashboard.ObterAsync();
 

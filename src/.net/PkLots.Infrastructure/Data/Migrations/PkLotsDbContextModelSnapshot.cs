@@ -22,6 +22,150 @@ namespace PkLots.Infrastructure.Data.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("PkLots.Core.Entities.Caixa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AbertoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal?>("DinheiroContado")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal?>("DinheiroEsperado")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateTime?>("FechadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ObservacaoFechamento")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OperadorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PatioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TrocoInicial")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OperadorId")
+                        .IsUnique()
+                        .HasFilter("\"FechadoEm\" IS NULL");
+
+                    b.HasIndex("PatioId", "AbertoEm");
+
+                    b.ToTable("Caixas");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.CobrancaSaida", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Aviso")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CalculadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DuracaoFormatada")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DuracaoSegundos")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("EntradaVeiculoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mensalista")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Origem")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("PatioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PixCopiaECola")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Situacao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SituacaoPagamento")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TxId")
+                        .IsRequired()
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatioId");
+
+                    b.HasIndex("EntradaVeiculoId", "Situacao");
+
+                    b.ToTable("CobrancasSaida");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.ConfiguracaoPagamento", b =>
+                {
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("AceitaCartao")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("AceitaDinheiro")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("AceitaPix")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ChavePix")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CidadeRecebedor")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<string>("NomeRecebedor")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)");
+
+                    b.Property<string>("Provedor")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("EmpresaId");
+
+                    b.ToTable("ConfiguracoesPagamento");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.Empresa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -216,10 +360,43 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.ToTable("MensalistasPlacas");
                 });
 
+            modelBuilder.Entity("PkLots.Core.Entities.MovimentoCaixa", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CaixaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaixaId");
+
+                    b.ToTable("MovimentosCaixa");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.PagamentoMensalidade", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CaixaId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("FormaPagamento")
@@ -255,6 +432,8 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .HasColumnType("numeric(10,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CaixaId");
 
                     b.HasIndex("PatioId");
 
@@ -333,6 +512,12 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CaixaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CobrancaId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("timestamp with time zone");
 
@@ -349,6 +534,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<Guid>("EntradaVeiculoId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("FormaPagamento")
+                        .HasColumnType("text");
+
                     b.Property<string>("Moeda")
                         .IsRequired()
                         .HasColumnType("text");
@@ -360,6 +548,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("RegistradoPorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Situacao")
                         .IsRequired()
                         .HasColumnType("text");
@@ -367,6 +558,10 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("SituacaoPagamento")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<decimal?>("Troco")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
 
                     b.Property<string>("UrlFotoSaida")
                         .HasColumnType("text");
@@ -377,10 +572,16 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<decimal>("ValorHora")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal?>("ValorRecebido")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
                     b.Property<decimal>("ValorTotal")
                         .HasColumnType("numeric");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CaixaId");
 
                     b.HasIndex("EntradaVeiculoId")
                         .IsUnique();
@@ -591,6 +792,55 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.ToTable("VeiculosMotoristas");
                 });
 
+            modelBuilder.Entity("PkLots.Core.Entities.Caixa", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Usuario", "Operador")
+                        .WithMany()
+                        .HasForeignKey("OperadorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("PkLots.Core.Entities.Patio", "Patio")
+                        .WithMany()
+                        .HasForeignKey("PatioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Operador");
+
+                    b.Navigation("Patio");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.CobrancaSaida", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.EntradaVeiculo", "Entrada")
+                        .WithMany()
+                        .HasForeignKey("EntradaVeiculoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PkLots.Core.Entities.Patio", "Patio")
+                        .WithMany()
+                        .HasForeignKey("PatioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Entrada");
+
+                    b.Navigation("Patio");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.ConfiguracaoPagamento", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Empresa", "Empresa")
+                        .WithOne()
+                        .HasForeignKey("PkLots.Core.Entities.ConfiguracaoPagamento", "EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.EntradaVeiculo", b =>
                 {
                     b.HasOne("PkLots.Core.Entities.Mensalista", "Mensalista")
@@ -652,6 +902,17 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Mensalista");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.MovimentoCaixa", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Caixa", "Caixa")
+                        .WithMany("Movimentos")
+                        .HasForeignKey("CaixaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Caixa");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.PagamentoMensalidade", b =>
@@ -763,6 +1024,11 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Usuario");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.Caixa", b =>
+                {
+                    b.Navigation("Movimentos");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Empresa", b =>

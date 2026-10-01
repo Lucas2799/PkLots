@@ -51,7 +51,33 @@ namespace PkLots.Core.Constantes
 
     public static class FormasPagamento
     {
-        public static readonly string[] Todas = ["dinheiro", "pix", "cartao", "outro"];
+        public const string Dinheiro = "dinheiro";
+        public const string Pix = "pix";
+        public const string Cartao = "cartao";
+        public const string Outro = "outro";
+
+        // Mensalidade aceita também "outro" (ex.: transferência); a saída aceita as formas habilitadas pela empresa
+        public static readonly string[] Todas = [Dinheiro, Pix, Cartao, Outro];
+        public static readonly string[] Saida = [Dinheiro, Pix, Cartao];
+    }
+
+    public static class ProvedoresPagamento
+    {
+        public const string PixManual = "pix_manual";
+        public static readonly string[] Todos = [PixManual];
+    }
+
+    public static class SituacaoCobranca
+    {
+        public const string Pendente = "pendente";
+        public const string Paga = "paga";
+        public const string Cancelada = "cancelada";
+    }
+
+    public static class TipoMovimentoCaixa
+    {
+        public const string Sangria = "sangria";
+        public const string Suprimento = "suprimento";
     }
 
     public static class AcoesAuditoria
@@ -71,6 +97,10 @@ namespace PkLots.Core.Constantes
         public const string MensalistaCriado = "mensalista_criado";
         public const string MensalistaAlterado = "mensalista_alterado";
         public const string MensalidadePaga = "mensalidade_paga";
+        public const string CaixaAberto = "caixa_aberto";
+        public const string CaixaFechado = "caixa_fechado";
+        public const string MovimentoCaixa = "movimento_caixa";
+        public const string ConfiguracaoPagamentoAlterada = "configuracao_pagamento_alterada";
         public const string EmpresaCriada = "empresa_criada";
         public const string EmpresaAlterada = "empresa_alterada";
         public const string PatioCriado = "patio_criado";

@@ -179,6 +179,11 @@ namespace PkLots.Application.Servicos
             if (decimal.Round(valor, 2) != valor || valor > 100_000m)
                 throw new ExcecaoNegocio("Valor inválido.");
 
+            // Dinheiro exige caixa aberto (entra na conferência); outras formas entram no caixa aberto, se houver
+            var caixa = forma == FormasPagamento.Dinheiro
+                ? await ServicoCaixa.ExigirCaixaAbertoAsync(db, usuarioId, patioId, ct)
+                : await db.Caixas.FirstOrDefaultAsync(c => c.OperadorId == usuarioId && c.FechadoEm == null && c.PatioId == patioId, ct);
+
             var agora = relogio.GetUtcNow().UtcDateTime;
             var hoje = Hoje(agora);
             var de = mensalista.ValidoAte is { } ate && ate >= hoje ? ate.AddDays(1) : hoje;
@@ -195,6 +200,7 @@ namespace PkLots.Application.Servicos
                 FormaPagamento = forma,
                 Observacao = Limpar(requisicao.Observacao),
                 RegistradoPorId = usuarioId,
+                CaixaId = caixa?.Id,
                 PagoEm = agora
             });
             mensalista.ValidoAte = ateNovo;
@@ -260,8 +266,12 @@ namespace PkLots.Application.Servicos
                 mensalista.Placas.Remove(antiga);
                 db.MensalistasPlacas.Remove(antiga);
             }
-            foreach (var placa in placas.Where(p => mensalista.Placas.All(mp => mp.Placa != p)))
-                mensalista.Placas.Add(new MensalistaPlaca { MensalistaId = mensalista.Id, PatioId = mensalista.PatioId, Placa = placa });
+            foreach (var placa in placas.Where(p => mensalista.Placas.All(mp => mp.Placa != p)).ToList())
+            {
+                var nova = new MensalistaPlaca { MensalistaId = mensalista.Id, PatioId = mensalista.PatioId, Placa = placa };
+                mensalista.Placas.Add(nova);
+                db.MensalistasPlacas.Add(nova); // explícito: pela coleção o EF trataria o Id preenchido como registro existente
+            }
         }
 
         private async Task<HashSet<string>> PlacasEstacionadasAsync(Guid patioId, CancellationToken ct) =>

@@ -42,6 +42,7 @@ namespace PkLots.Core.Entities
         public string FormaPagamento { get; set; } = "dinheiro"; // dinheiro, pix, cartao, outro
         public string? Observacao { get; set; }
         public Guid? RegistradoPorId { get; set; }
+        public Guid? CaixaId { get; set; } // caixa em que o dinheiro entrou
         public DateTime PagoEm { get; set; } = DateTime.UtcNow;
 
         public Mensalista Mensalista { get; set; } = null!;
