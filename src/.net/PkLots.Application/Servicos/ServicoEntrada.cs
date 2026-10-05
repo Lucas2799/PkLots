@@ -124,6 +124,79 @@ namespace PkLots.Application.Servicos
                 MensalidadeValidaAte: mensalista?.ValidoAte);
         }
 
+        // Cancela uma entrada ativa sem registrar saída nem cobrança: placa digitada errada, entrada em duplicidade,
+        // veículo que saiu sem passar pelo sistema. Libera a vaga e fica na auditoria com o motivo e o valor que seria cobrado.
+        public async Task CancelarAsync(Guid entradaId, CancelarEntradaRequisicao requisicao, CancellationToken ct = default)
+        {
+            var motivo = requisicao.Motivo?.Trim();
+            if (string.IsNullOrEmpty(motivo))
+                throw new ExcecaoNegocio("Informe o motivo do cancelamento.");
+            if (motivo.Length > SituacaoEntrada.TamanhoMaximoMotivo)
+                throw new ExcecaoNegocio($"O motivo deve ter no máximo {SituacaoEntrada.TamanhoMaximoMotivo} caracteres.");
+
+            var usuarioId = contextoPatio.UsuarioId ?? throw new ExcecaoNaoAutorizado("Usuário não identificado.");
+            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            var entrada = await db.EntradasVeiculos
+                .Include(e => e.Vaga)
+                .Include(e => e.Patio)
+                .FirstOrDefaultAsync(e => e.Id == entradaId && e.PatioId == patioId, ct)
+                ?? throw new ExcecaoNaoEncontrado("Entrada não encontrada.");
+            var agora = relogio.GetUtcNow().UtcDateTime;
+
+            if (entrada.Situacao != SituacaoEntrada.Ativa)
+                throw new ExcecaoConflito($"A entrada de {entrada.Placa} não está mais ativa (saída registrada ou já cancelada).");
+
+            var permanencia = agora - entrada.DataHoraEntrada;
+            if (contextoPatio.Perfil != Perfis.Admin && permanencia > TimeSpan.FromMinutes(SituacaoEntrada.MinutosCancelamentoOperador))
+                throw new ExcecaoProibido(
+                    $"Passados {SituacaoEntrada.MinutosCancelamentoOperador} minutos da entrada, só o administrador pode cancelá-la.");
+
+            var pendentes = await db.CobrancasSaida
+                .Where(c => c.EntradaVeiculoId == entrada.Id && c.Situacao == SituacaoCobranca.Pendente)
+                .ToListAsync(ct);
+            foreach (var cobranca in pendentes)
+                cobranca.Situacao = SituacaoCobranca.Cancelada;
+
+            entrada.Situacao = SituacaoEntrada.Cancelada;
+            entrada.CanceladaEm = agora;
+            entrada.CanceladaPorId = usuarioId;
+            entrada.MotivoCancelamento = motivo;
+
+            var vaga = entrada.Vaga;
+            if (vaga is not null)
+            {
+                vaga.Disponivel = true;
+                vaga.Ocupada = false;
+                vaga.Situacao = SituacaoVaga.Disponivel;
+                vaga.VeiculoAtualId = null;
+                vaga.OcupadaDesde = null;
+                vaga.AtualizadoEm = agora;
+            }
+
+            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, entrada.Patio.ValorHora, entrada.Patio.MinutosTolerancia);
+            Auditoria.Registrar(db, patioId, AcoesAuditoria.EntradaCancelada, SituacaoAuditoria.Alerta, entrada.Placa, agora,
+                new()
+                {
+                    ["motivo"] = motivo,
+                    ["usuarioId"] = usuarioId.ToString(),
+                    ["perfil"] = contextoPatio.Perfil ?? "",
+                    ["vaga"] = vaga?.Numero ?? "",
+                    ["duracao"] = tarifa.DuracaoFormatada,
+                    ["valorNaoCobrado"] = entrada.MensalistaId is null ? tarifa.ValorTotal : 0m
+                });
+
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                throw new ExcecaoConflito("A saída deste veículo está sendo processada ao mesmo tempo. Atualize e tente novamente.");
+            }
+
+            await cache.InvalidarAsync(patioId);
+        }
+
         private async Task<string> GerarCodigoTicketAsync(Guid patioId, CancellationToken ct)
         {
             // ~1 trilhão de combinações: colisão é improvável, mas confere mesmo assim

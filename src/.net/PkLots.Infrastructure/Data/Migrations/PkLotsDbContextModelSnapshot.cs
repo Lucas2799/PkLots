@@ -199,6 +199,12 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("CanceladaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CanceladaPorId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("CodigoTicket")
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
@@ -217,6 +223,10 @@ namespace PkLots.Infrastructure.Data.Migrations
 
                     b.Property<string>("MetodoReconhecimento")
                         .HasColumnType("text");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<Guid>("PatioId")
                         .HasColumnType("uuid");

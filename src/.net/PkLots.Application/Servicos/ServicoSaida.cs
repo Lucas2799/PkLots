@@ -169,6 +169,8 @@ namespace PkLots.Application.Servicos
                 .FirstOrDefaultAsync(e => e.PatioId == patioId && e.CodigoTicket == codigo, ct)
                 ?? throw new ExcecaoNaoEncontrado($"Ticket {CodigoTicket.Formatar(codigo)} não encontrado.");
 
+            if (entrada.Situacao == SituacaoEntrada.Cancelada)
+                throw new ExcecaoConflito($"A entrada deste ticket ({entrada.Placa}) foi cancelada: {entrada.MotivoCancelamento}");
             if (entrada.Situacao != SituacaoEntrada.Ativa)
             {
                 var saidaAnterior = await db.SaidasVeiculos

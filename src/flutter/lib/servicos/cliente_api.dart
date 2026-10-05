@@ -81,6 +81,10 @@ class ClienteApi {
   Future<Entrada> registrarEntrada(String placa) async =>
       Entrada.deJson(await _post('/api/entradas/', {'placa': placa, 'confianca': 1, 'metodoReconhecimento': 'manual'}));
 
+  /// Cancela uma entrada ativa (204); operador só logo após a entrada, admin a qualquer momento
+  Future<void> cancelarEntrada(String entradaId, String motivo) =>
+      _post('/api/entradas/$entradaId/cancelar', {'motivo': motivo});
+
   // Saída em dois passos: cobrança (valor congelado) e confirmação do pagamento
 
   Future<CobrancaSaida> cobrarSaida(String placa) async =>

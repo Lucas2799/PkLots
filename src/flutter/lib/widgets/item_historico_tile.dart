@@ -24,20 +24,40 @@ class ItemHistoricoTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
         backgroundColor: CoresPkLots.fundo,
-        child: Icon(item.emAndamento ? Icons.timelapse : Icons.check,
-            color: item.emAndamento ? CoresPkLots.ambarEscuro : CoresPkLots.azulMarinho),
+        child: Icon(
+          item.cancelada ? Icons.block : (item.emAndamento ? Icons.timelapse : Icons.check),
+          color: item.cancelada
+              ? CoresPkLots.textoSecundario
+              : (item.emAndamento ? CoresPkLots.ambarEscuro : CoresPkLots.azulMarinho),
+        ),
       ),
-      title: Text(Formatadores.dataCurta(item.dataHoraEntrada),
-          style: const TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho)),
+      title: Text(
+        Formatadores.dataCurta(item.dataHoraEntrada),
+        style: const TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho),
+      ),
       subtitle: Text(detalhes),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
-        children: item.emAndamento
-            ? const [Text('Em andamento', style: TextStyle(color: CoresPkLots.ambarEscuro, fontWeight: FontWeight.w600))]
+        children: item.cancelada
+            ? const [
+                Text(
+                  'Cancelada',
+                  style: TextStyle(color: CoresPkLots.textoSecundario, fontWeight: FontWeight.w600),
+                ),
+              ]
+            : item.emAndamento
+            ? const [
+                Text(
+                  'Em andamento',
+                  style: TextStyle(color: CoresPkLots.ambarEscuro, fontWeight: FontWeight.w600),
+                ),
+              ]
             : [
-                Text(Formatadores.moeda(item.valorTotal ?? 0),
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: CoresPkLots.azulMarinho)),
+                Text(
+                  Formatadores.moeda(item.valorTotal ?? 0),
+                  style: const TextStyle(fontWeight: FontWeight.w700, color: CoresPkLots.azulMarinho),
+                ),
                 Text(item.duracaoFormatada ?? '', style: const TextStyle(color: CoresPkLots.textoSecundario)),
               ],
       ),

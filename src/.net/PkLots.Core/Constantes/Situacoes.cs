@@ -11,7 +11,12 @@ namespace PkLots.Core.Constantes
     {
         public const string Ativa = "ativa";
         public const string Concluida = "concluida";
+        public const string Cancelada = "cancelada";
         public const string Erro = "erro";
+
+        // Operador pode cancelar só logo após a entrada (corrigir placa digitada errada); depois, só o admin
+        public const int MinutosCancelamentoOperador = 10;
+        public const int TamanhoMaximoMotivo = 200;
     }
 
     public static class SituacaoPagamento
@@ -84,6 +89,7 @@ namespace PkLots.Core.Constantes
     {
         public const string EntradaSucesso = "entrada_sucesso";
         public const string EntradaRecusada = "entrada_recusada";
+        public const string EntradaCancelada = "entrada_cancelada";
         public const string SaidaSucesso = "saida_sucesso";
         public const string SaidaSemEntrada = "saida_sem_entrada";
         public const string LprFalhou = "lpr_falhou";

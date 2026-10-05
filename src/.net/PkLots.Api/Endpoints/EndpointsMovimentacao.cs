@@ -39,6 +39,13 @@ namespace PkLots.Api.Endpoints
                 })
                 .WithSummary("Imprime (ou reimprime) o ticket na impressora de rede");
 
+            entradas.MapPost("/{id:guid}/cancelar", async (Guid id, CancelarEntradaRequisicao requisicao, ServicoEntrada servico, CancellationToken ct) =>
+                {
+                    await servico.CancelarAsync(id, requisicao, ct);
+                    return Results.NoContent();
+                })
+                .WithSummary("Cancela uma entrada ativa com motivo (operador: só logo após a entrada; admin: a qualquer momento)");
+
             var saidas = app.MapGroup("/api/saidas").WithTags("Saídas").RequireAuthorization(Autorizacao.Gestao);
 
             // 1) Identifica o veículo e calcula a cobrança (valor congelado por alguns minutos; PIX gerado com a chave do pátio)

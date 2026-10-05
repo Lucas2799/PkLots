@@ -109,6 +109,8 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<EntradaVeiculo>()
                 .HasIndex(e => new { e.PatioId, e.DataHoraEntrada });
+            modelBuilder.Entity<EntradaVeiculo>()
+                .Property(e => e.MotivoCancelamento).HasMaxLength(SituacaoEntrada.TamanhoMaximoMotivo);
 
             modelBuilder.Entity<Veiculo>()
                 .HasIndex(v => v.Placa);

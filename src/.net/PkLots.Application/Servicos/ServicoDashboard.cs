@@ -23,7 +23,7 @@ namespace PkLots.Application.Servicos
 
             // Resumo de hoje
             var entradasHoje = await db.EntradasVeiculos
-                .CountAsync(e => e.PatioId == patioId && e.DataHoraEntrada >= inicioHoje, ct);
+                .CountAsync(e => e.PatioId == patioId && e.DataHoraEntrada >= inicioHoje && e.Situacao != SituacaoEntrada.Cancelada, ct);
 
             var saidasHoje = await db.SaidasVeiculos
                 .Where(s => s.PatioId == patioId && s.DataHoraSaida >= inicioHoje)
@@ -65,10 +65,11 @@ namespace PkLots.Application.Servicos
                 .Select(e => new
                 {
                     e.DataHoraEntrada,
+                    // Entrada cancelada ocupou a vaga até o cancelamento
                     DataHoraSaida = db.SaidasVeiculos
                         .Where(s => s.EntradaVeiculoId == e.Id)
                         .Select(s => (DateTime?)s.DataHoraSaida)
-                        .FirstOrDefault()
+                        .FirstOrDefault() ?? e.CanceladaEm
                 })
                 .Where(p => p.DataHoraSaida == null || p.DataHoraSaida >= inicioJanela)
                 .ToListAsync(ct);

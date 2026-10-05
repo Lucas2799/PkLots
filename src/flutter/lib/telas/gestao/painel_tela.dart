@@ -16,6 +16,7 @@ import '../../widgets/logo_pklots.dart';
 import '../admin/administracao_tela.dart';
 import '../troca_senha_tela.dart';
 import 'caixa_tela.dart';
+import 'cancelar_entrada_dialogo.dart';
 import 'cobranca_dialogo.dart';
 import '../mensalistas/mensalistas_tela.dart';
 import 'busca_placa_dialogo.dart';
@@ -311,6 +312,13 @@ class _Estacionados extends StatelessWidget {
     }
   }
 
+  Future<void> _cancelar(BuildContext context, VeiculoEstacionado veiculo) async {
+    final cancelou = await mostrarCancelarEntrada(context, veiculo);
+    if (cancelou == true && context.mounted) {
+      mostrarAviso(context, 'Entrada de ${Formatadores.placa(veiculo.placa)} cancelada');
+    }
+  }
+
   Future<void> _registrarSaida(BuildContext context, String placa) =>
       processarSaida(context, () => context.read<GestaoProvider>().cobrarSaida(placa));
 
@@ -346,6 +354,11 @@ class _Estacionados extends StatelessWidget {
                     tooltip: 'Registrar saída de ${v.placa}',
                     icon: const Icon(Icons.logout),
                     onPressed: () => _registrarSaida(context, v.placa),
+                  ),
+                  IconButton(
+                    tooltip: 'Cancelar entrada de ${v.placa}',
+                    icon: const Icon(Icons.cancel_outlined),
+                    onPressed: () => _cancelar(context, v),
                   ),
                 ]),
               ),

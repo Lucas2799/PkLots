@@ -86,6 +86,9 @@ class GestaoProvider extends ChangeNotifier {
 
   Future<Entrada> registrarEntrada(String placa) => _eAtualizar(() => _api.registrarEntrada(placa));
 
+  Future<void> cancelarEntrada(String entradaId, String motivo) =>
+      _eAtualizar(() => _api.cancelarEntrada(entradaId, motivo));
+
   // Saída: a cobrança não altera o pátio; a confirmação registra a saída e atualiza o painel
   Future<CobrancaSaida> cobrarSaida(String placa) => _api.cobrarSaida(placa);
 

@@ -4,6 +4,8 @@ namespace PkLots.Application.DTOs
 
     public record RegistrarEntradaRequisicao(string Placa, decimal Confianca = 1m, string? MetodoReconhecimento = "manual", string? UrlFoto = null);
 
+    public record CancelarEntradaRequisicao(string? Motivo);
+
     public record SaidaPorTicketRequisicao(string Codigo);
 
     public record RegistrarSaidaRequisicao(string Placa, decimal Confianca = 1m, string? UrlFoto = null);

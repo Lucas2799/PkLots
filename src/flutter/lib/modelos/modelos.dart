@@ -160,7 +160,8 @@ class ItemHistorico {
     this.nomePatio,
   });
 
-  bool get emAndamento => dataHoraSaida == null;
+  bool get emAndamento => situacao == 'ativa';
+  bool get cancelada => situacao == 'cancelada';
 
   factory ItemHistorico.deJson(Map<String, dynamic> json) => ItemHistorico(
         entradaId: json['entradaId'] as String,
