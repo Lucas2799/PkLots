@@ -14,6 +14,7 @@ namespace PkLots.Application.Servicos
         IPkLotsDbContext db,
         IContextoPatio contextoPatio,
         IImpressoraTickets impressora,
+        LinksPublicos links,
         TimeProvider relogio,
         ILogger<ServicoImpressao> logger)
     {
@@ -81,6 +82,7 @@ namespace PkLots.Application.Servicos
                 {
                     e.Id,
                     e.CodigoTicket,
+                    e.TokenAcesso,
                     e.Placa,
                     e.DataHoraEntrada,
                     NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null,
@@ -92,6 +94,15 @@ namespace PkLots.Application.Servicos
                 .FirstOrDefaultAsync(ct)
                 ?? throw new ExcecaoNaoEncontrado("Entrada não encontrada.");
 
+            // Entradas anteriores ao link do ticket ganham o token na primeira reimpressão
+            var token = dados.TokenAcesso;
+            if (token is null)
+            {
+                var entrada = await db.EntradasVeiculos.FirstAsync(e => e.Id == dados.Id, ct);
+                token = entrada.TokenAcesso ??= TokenSeguro.Gerar(TokenSeguro.BytesTicket);
+                await db.SaveChangesAsync(ct);
+            }
+
             return new TicketEntradaDto(
                 dados.Id,
                 CodigoTicket.Formatar(dados.CodigoTicket ?? Codigo(dados.Id)),
@@ -102,7 +113,7 @@ namespace PkLots.Application.Servicos
                 dados.ValorHora,
                 dados.MinutosTolerancia,
                 dados.LarguraPapelMm,
-                CodigoTicket.ConteudoQrCode(dados.CodigoTicket ?? Codigo(dados.Id)));
+                links.Ticket(token));
         }
 
         // Chamado após registrar a entrada. Falha na impressora nunca desfaz a entrada.

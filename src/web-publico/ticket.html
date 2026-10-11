@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#ffffff">
+  <title>Meu estacionamento · PkLots</title>
+  <link rel="icon" href="/favicon.png">
+  <!--
+    Página aberta pelo QR do ticket (/t/{token}): leve, sem o app Flutter, mas com o mesmo visual
+    (tema_pklots.dart / cores.dart / tela do mensalista). Consulta /api/publico/estadias/{token}.
+  -->
+  <style>
+    :root {
+      /* Mesmas cores de lib/tema/cores.dart */
+      --azul-marinho: #0b2545;
+      --ambar: #ffab00;
+      --ambar-escuro: #b77a00;
+      --fundo: #f6f7f9;
+      --superficie: #ffffff;
+      --texto-secundario: #55627a;
+      --texto-suave: #8792a6;
+      --borda: #e2e6ec;
+      --disponivel: #1e8e3e;
+      --erro: #c62828;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--fundo);
+      color: var(--azul-marinho);
+      font: 15px/1.45 Roboto, "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    }
+    svg.icone { width: 20px; height: 20px; fill: currentColor; flex: none; }
+
+    /* AppBar branca com a marca (MarcaPkLots) */
+    .barra {
+      position: sticky; top: 0; z-index: 1;
+      background: var(--superficie); border-bottom: 1px solid var(--borda);
+      height: 56px; padding: 0 16px; display: flex; align-items: center;
+    }
+    .marca { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+    .marca img { height: 28px; width: auto; }
+    .marca span { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .marca .pk { color: var(--azul-marinho); }
+    .marca .lots { color: var(--ambar); }
+
+    main { max-width: 600px; margin: 0 auto; padding: 16px; }
+
+    /* Card do tema: branco, borda clara, cantos de 14px, sem sombra */
+    .cartao {
+      background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px;
+      padding: 20px; margin-bottom: 16px;
+    }
+
+    /* TituloSecao */
+    .titulo { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .titulo h2 { flex: 1; margin: 0; font-size: 16px; font-weight: 700; color: var(--azul-marinho); }
+
+    /* Chip de situação (borda e texto na cor) */
+    .chip {
+      display: inline-flex; align-items: center; height: 32px; padding: 0 12px;
+      border: 1px solid currentColor; border-radius: 8px; font-size: 14px; font-weight: 700; white-space: nowrap;
+    }
+    .chip.ativa { color: var(--ambar-escuro); }
+    .chip.concluida { color: var(--disponivel); }
+    .chip.cancelada { color: var(--texto-secundario); }
+
+    /* _Info: rótulo à esquerda, valor à direita */
+    .info { display: flex; align-items: baseline; gap: 12px; padding: 5px 0; }
+    .info .rotulo { flex: 1; color: var(--texto-secundario); }
+    .info .valor { font-size: 15px; font-weight: 600; color: var(--azul-marinho); text-align: right; }
+    .info.destaque .valor { font-size: 18px; font-weight: 800; }
+    .divisor { height: 1px; background: var(--borda); margin: 12px 0; }
+
+    /* Aviso âmbar (mesmo do app) */
+    .aviso {
+      display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 12px;
+      background: rgba(255, 171, 0, 0.15); border-radius: 10px; color: var(--azul-marinho);
+    }
+
+    .nota { color: var(--texto-suave); font-size: 12px; text-align: center; margin: 4px 0 0; }
+
+    /* Erro (MensagemErro) */
+    .erro { display: flex; align-items: center; gap: 12px; background: rgba(198, 40, 40, 0.06); }
+    .erro svg { color: var(--erro); }
+    .erro p { margin: 0; }
+    .erro strong { display: block; margin-bottom: 2px; }
+
+    .carregando { display: flex; justify-content: center; padding: 48px 0; }
+    .girando {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 3px solid var(--borda); border-top-color: var(--azul-marinho);
+      animation: girar 0.8s linear infinite;
+    }
+    @keyframes girar { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .girando { animation: none; } }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <span class="marca" aria-label="PkLots">
+      <img src="/assets/assets/imagens/icone.png" alt="" onerror="this.remove()">
+      <span><span class="pk">Pk</span><span class="lots">Lots</span></span>
+    </span>
+  </header>
+
+  <!-- Ícones Material (mesmos do app), desenhados inline -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-carro" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></symbol>
+    <symbol id="i-recibo" viewBox="0 0 24 24"><path d="M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2 4.5 3.5 3 2v20z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></symbol>
+    <symbol id="i-erro" viewBox="0 0 24 24"><path d="M11 15h2v2h-2zm0-8h2v6h-2zm.99-5C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/></symbol>
+  </svg>
+
+  <main>
+    <div id="carregando" class="carregando" role="status" aria-label="Carregando"><div class="girando"></div></div>
+
+    <section id="erro" class="cartao erro" hidden>
+      <svg class="icone"><use href="#i-erro"/></svg>
+      <p><strong>Ticket não encontrado</strong><span id="erro-texto">Este link expirou ou não é válido. Em caso de dúvida, fale com o atendente do estacionamento.</span></p>
+    </section>
+
+    <div id="conteudo" hidden>
+      <section class="cartao">
+        <div class="titulo">
+          <svg class="icone"><use href="#i-carro"/></svg>
+          <h2>Meu estacionamento</h2>
+          <span id="situacao" class="chip"></span>
+        </div>
+        <div id="estadia"></div>
+        <div class="divisor"></div>
+        <div id="valor"></div>
+        <div class="aviso">
+          <svg class="icone"><use href="#i-info"/></svg>
+          <span id="aviso"></span>
+        </div>
+      </section>
+
+      <section class="cartao">
+        <div class="titulo">
+          <svg class="icone"><use href="#i-recibo"/></svg>
+          <h2>Ticket</h2>
+        </div>
+        <div id="ticket"></div>
+      </section>
+
+      <p class="nota" id="nota"></p>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var token = decodeURIComponent(location.pathname.split('/t/')[1] || '').replace(/\/.*$/, '');
+      var el = function (id) { return document.getElementById(id); };
+      // Mesmos formatos do app (util/formatadores.dart)
+      var moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+      var hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+      var dataHora = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+      var formas = { dinheiro: 'Dinheiro', pix: 'PIX', cartao: 'Cartão' };
+      var temporizador = null;
+
+      function data(valor) { return new Date(/[zZ]|[+-]\d\d:\d\d$/.test(valor) ? valor : valor + 'Z'); }
+      function placa(p) { return p.length === 7 && /\d/.test(p[4]) ? p.slice(0, 3) + '-' + p.slice(3) : p; }
+
+      function info(destino, rotulo, valor, destaque) {
+        var linha = document.createElement('div');
+        linha.className = 'info' + (destaque ? ' destaque' : '');
+        var r = document.createElement('span'); r.className = 'rotulo'; r.textContent = rotulo;
+        var v = document.createElement('span'); v.className = 'valor'; v.textContent = valor;
+        linha.append(r, v);
+        el(destino).append(linha);
+      }
+
+      function mostrarErro(texto) {
+        clearInterval(temporizador);
+        el('carregando').hidden = true;
+        el('conteudo').hidden = true;
+        if (texto) el('erro-texto').textContent = texto;
+        el('erro').hidden = false;
+      }
+
+      function mostrar(e) {
+        var ativa = e.situacao === 'ativa', cancelada = e.situacao === 'cancelada';
+        var chip = el('situacao');
+        chip.className = 'chip ' + e.situacao;
+        chip.textContent = ativa ? 'Estacionado' : cancelada ? 'Cancelada' : 'Saída registrada';
+
+        ['estadia', 'valor', 'ticket'].forEach(function (id) { el(id).replaceChildren(); });
+        info('estadia', 'Pátio', e.nomePatio);
+        info('estadia', 'Placa', placa(e.placa), true);
+        info('estadia', 'Entrada', dataHora.format(data(e.dataHoraEntrada)));
+        info('estadia', ativa ? 'Estacionado há' : 'Permanência', e.duracao);
+        if (e.numeroVaga) info('estadia', 'Vaga', e.numeroVaga);
+        if (e.dataHoraSaida) info('estadia', cancelada ? 'Cancelada em' : 'Saída', dataHora.format(data(e.dataHoraSaida)));
+
+        if (e.cobertoPorMensalidade) info('valor', 'Valor', 'Coberto pela mensalidade', true);
+        else if (ativa) info('valor', 'Valor estimado', moeda.format(e.valor), true);
+        else if (cancelada) info('valor', 'Valor', 'Sem cobrança', true);
+        else info('valor', 'Valor pago', moeda.format(e.valor), true);
+        if (!ativa && !cancelada && e.formaPagamento && !e.cobertoPorMensalidade)
+          info('valor', 'Forma de pagamento', formas[e.formaPagamento] || e.formaPagamento);
+
+        el('aviso').textContent = ativa
+          ? 'O pagamento é feito na saída do pátio. O valor final é calculado na hora da saída.'
+          : cancelada
+            ? 'Esta entrada foi cancelada pelo estacionamento. Em caso de dúvida, fale com o atendente.'
+            : 'Saída registrada. Obrigado pela preferência!';
+
+        info('ticket', 'Código', e.codigo, true);
+        info('ticket', 'Valor por hora', moeda.format(e.valorHora));
+        if (e.minutosTolerancia > 0) info('ticket', 'Tolerância gratuita', e.minutosTolerancia + ' min');
+
+        el('nota').textContent = ativa
+          ? 'Atualizado às ' + hora.format(data(e.consultadoEm)) + ' · a página se atualiza sozinha. Guarde o ticket até a saída.'
+          : 'Este comprovante fica disponível por 24 horas após a saída.';
+
+        el('carregando').hidden = true;
+        el('erro').hidden = true;
+        el('conteudo').hidden = false;
+        if (!ativa) clearInterval(temporizador);
+      }
+
+      function carregar() {
+        fetch('/api/publico/estadias/' + encodeURIComponent(token), { headers: { Accept: 'application/json' }, cache: 'no-store' })
+          .then(function (r) {
+            if (r.status === 404) return mostrarErro();
+            if (r.status === 429) return; // mantém o que já está na tela; tenta de novo no próximo ciclo
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json().then(mostrar);
+          })
+          .catch(function () {
+            if (el('conteudo').hidden) mostrarErro('Não foi possível carregar agora. Verifique a conexão e recarregue a página.');
+          });
+      }
+
+      if (!/^[A-Za-z0-9_-]{22}$/.test(token)) return mostrarErro();
+      carregar();
+      temporizador = setInterval(function () { if (!document.hidden) carregar(); }, 30000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) carregar(); });
+    })();
+  </script>
+</body>
+</html>

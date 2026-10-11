@@ -78,6 +78,7 @@ namespace PkLots.Application.Servicos
             {
                 PatioId = patioId,
                 CodigoTicket = await GerarCodigoTicketAsync(patioId, ct),
+                TokenAcesso = TokenSeguro.Gerar(TokenSeguro.BytesTicket),
                 MensalistaId = mensalistaEmDia ? mensalista!.Id : null,
                 VeiculoId = veiculo.Id,
                 Placa = placa,

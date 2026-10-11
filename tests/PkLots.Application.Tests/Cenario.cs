@@ -72,6 +72,7 @@ namespace PkLots.Application.Tests
             return (empresa, patio);
         }
         public ICacheVagas Cache => new CacheFalso();
+        public LinksPublicos Links { get; } = new("https://pklots.teste");
 
         public ReconhecedorPlaca Reconhecedor => new(Lpr, Db, ContextoPatio, Relogio);
         public ServicoEntrada Entrada => new(Db, ContextoPatio, Cache, Reconhecedor, Relogio);
@@ -104,10 +105,11 @@ namespace PkLots.Application.Tests
         public ServicoPatios Patios => new(Db, ContextoPatio, Relogio);
         public ServicoPlataforma Plataforma => new(Db, HashSenha, Relogio);
         public ServicoMensalistas Mensalistas => new(Db, ContextoPatio, Relogio);
+        public ServicoEstadiaPublica EstadiaPublica => new(Db, Relogio);
         public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Mensalistas, Relogio);
         public ImpressoraFalsa Impressora { get; } = new();
         public ServicoImpressao Impressao =>
-            new(Db, ContextoPatio, Impressora, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);
+            new(Db, ContextoPatio, Impressora, Links, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);
         public ServicoAdministracao Administracao => new(Db, ContextoPatio, Cache, HashSenha, Relogio);
         public ServicoAutenticacao Autenticacao => new(Db, HashSenha, new GeradorTokenFalso(), Relogio);
 

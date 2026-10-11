@@ -42,6 +42,8 @@ COPY docker/nginx/base.conf.inc docker/nginx/rotas.conf docker/nginx/cabecalhos-
 COPY docker/nginx/http.conf.template docker/nginx/https.conf.template /etc/nginx/modelos/
 COPY --chmod=755 docker/nginx/15-pklots-https.sh /docker-entrypoint.d/15-pklots-https.sh
 COPY --from=build /app/build/web /usr/share/nginx/html
+# Página do link do QR do ticket (/t/{token})
+COPY src/web-publico/ /usr/share/nginx/html/publico/
 
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1 \
     PORTA_HTTPS_PUBLICA=443

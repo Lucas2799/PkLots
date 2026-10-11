@@ -1,7 +1,8 @@
-# Contexto da raiz usado só pelo gateway: envia apenas o app Flutter e a config do Nginx
+# Contexto da raiz usado só pelo gateway: envia apenas o app Flutter, a página do ticket e a config do Nginx
 *
 !src/flutter
 !docker/nginx
+!src/web-publico
 src/flutter/build
 src/flutter/.dart_tool
 src/flutter/.idea

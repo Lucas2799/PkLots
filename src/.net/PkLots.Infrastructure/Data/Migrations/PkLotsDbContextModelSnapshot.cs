@@ -239,6 +239,10 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("TokenAcesso")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("UrlFotoEntrada")
                         .HasColumnType("text");
 
@@ -251,6 +255,10 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("MensalistaId");
+
+                    b.HasIndex("TokenAcesso")
+                        .IsUnique()
+                        .HasFilter("\"TokenAcesso\" IS NOT NULL");
 
                     b.HasIndex("VagaId");
 

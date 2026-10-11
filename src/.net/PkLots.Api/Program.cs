@@ -100,6 +100,10 @@ builder.Services.AddRateLimiter(opcoes =>
     opcoes.AddPolicy("autenticacao", contexto => RateLimitPartition.GetFixedWindowLimiter(
         contexto.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    // Links públicos (ticket, convite): a página do ticket se atualiza sozinha, então o limite é mais folgado
+    opcoes.AddPolicy(EndpointsPublicos.PoliticaLimite, contexto => RateLimitPartition.GetFixedWindowLimiter(
+        contexto.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     opcoes.OnRejected = async (contexto, ct) =>
     {
         contexto.HttpContext.Response.ContentType = "application/problem+json";
@@ -165,6 +169,11 @@ if (args.Length > 0 && args[0] == "criar-superadmin")
     return;
 }
 
+// O QR impresso aponta para este endereço: em produção ele precisa ser o domínio público (HTTPS)
+var links = app.Services.GetRequiredService<PkLots.Application.Servicos.LinksPublicos>();
+if (!app.Environment.IsDevelopment() && (links.UrlBase.Contains("localhost") || links.UrlBase.StartsWith("http:")))
+    Log.Warning("Plataforma__UrlPublica = {Url}: os tickets e e-mails vão apontar para um endereço local ou sem HTTPS", links.UrlBase);
+
 app.UseForwardedHeaders();
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
@@ -201,6 +210,7 @@ app.MapearAdministracao();
 app.MapearPlataforma();
 app.MapearMensalistas();
 app.MapearCaixa();
+app.MapearPublicos();
 
 // Migração e dados iniciais
 using (var scope = app.Services.CreateScope())

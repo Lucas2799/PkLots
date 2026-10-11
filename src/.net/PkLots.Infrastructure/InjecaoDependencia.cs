@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PkLots.Application.Interfaces;
+using PkLots.Application.Servicos;
 using PkLots.Infrastructure.Data;
 using PkLots.Infrastructure.Seguranca;
 using PkLots.Infrastructure.Servicos;
@@ -48,6 +49,9 @@ namespace PkLots.Infrastructure
             services.AddSingleton<IGeradorToken, GeradorTokenJwt>();
             services.AddSingleton<IHashSenha, HashSenhaBcrypt>();
             services.AddSingleton<IImpressoraTickets, ImpressoraTicketsTcp>();
+
+            // Endereço público do gateway: vai no QR do ticket
+            services.AddSingleton(new LinksPublicos(configuracao["Plataforma:UrlPublica"] ?? "http://localhost:8000"));
 
             return services;
         }

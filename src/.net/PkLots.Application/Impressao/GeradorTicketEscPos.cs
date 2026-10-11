@@ -43,6 +43,7 @@ namespace PkLots.Application.Impressao
             b.Linha(new string('-', colunas))
              .Bytes(AlinharCentro)
              .QrCode(ticket.ConteudoQrCode, ticket.LarguraPapelMm <= 58 ? (byte)5 : (byte)6)
+             .Linha("Acompanhe pelo celular: leia o QR")
              .Bytes(NegritoLigado).Linha($"Codigo: {ticket.Codigo}").Bytes(NegritoDesligado)
              .Linha("Guarde este ticket ate a saida")
              .Bytes(AvancarECortar);

@@ -92,6 +92,8 @@ services:
       Swagger__Habilitado: ${SWAGGER_HABILITADO:-false}
       Jwt__SecretKey: ${JWT_CHAVE:?Defina JWT_CHAVE no docker/.env (openssl rand -base64 48)}
       Plataforma__CriarDadosDemonstracao: ${DADOS_DEMONSTRACAO:-false}
+      # Endereço público (vai no QR do ticket)
+      Plataforma__UrlPublica: ${URL_PUBLICA:-http://localhost:8000}
     ports:
       - "127.0.0.1:${API_PORTA:-8080}:8080"
     volumes:

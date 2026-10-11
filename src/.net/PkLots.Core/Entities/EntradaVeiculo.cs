@@ -12,7 +12,8 @@ namespace PkLots.Core.Entities
         public string? MetodoReconhecimento { get; set; } // easyocr, claude_vision
         public decimal Confianca { get; set; } // 0.95
         public string Situacao { get; set; } = "ativa"; // ativa, concluida, cancelada, erro
-        public string? CodigoTicket { get; set; } // código impresso no ticket/QR (ex.: K7M2Q9XD), usado na saída por ticket
+        public string? CodigoTicket { get; set; } // código impresso no ticket (ex.: K7M2Q9XD), digitado na saída por ticket
+        public string? TokenAcesso { get; set; } // segredo do link do QR (/t/{token}): quem tem o ticket acompanha a estadia
         public Guid? MensalistaId { get; set; } // preenchido quando entrou como mensalista em dia (usa as vagas reservadas)
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 

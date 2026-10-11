@@ -201,6 +201,14 @@ namespace PkLots.Infrastructure.Data
                 .Property(e => e.CodigoTicket)
                 .HasMaxLength(8);
 
+            modelBuilder.Entity<EntradaVeiculo>()
+                .HasIndex(e => e.TokenAcesso)
+                .IsUnique()
+                .HasFilter("\"TokenAcesso\" IS NOT NULL");
+            modelBuilder.Entity<EntradaVeiculo>()
+                .Property(e => e.TokenAcesso)
+                .HasMaxLength(32);
+
             modelBuilder.Entity<LogAuditoria>()
                 .HasIndex(l => new { l.PatioId, l.CriadoEm });
 

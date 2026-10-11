@@ -22,6 +22,11 @@ public static class ValidacaoConfiguracao
         if (string.IsNullOrWhiteSpace(conexao))
             problemas.Add("ConnectionStrings__DefaultConnection não configurada.");
 
+        var urlPublica = configuracao["Plataforma:UrlPublica"];
+        if (!string.IsNullOrWhiteSpace(urlPublica)
+            && (!Uri.TryCreate(urlPublica, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")))
+            problemas.Add("Plataforma__UrlPublica deve ser um endereço completo, ex.: https://pklots.com.br (vai no QR do ticket).");
+
         if (!ambiente.IsDevelopment())
         {
             if (SegredosConhecidos.Any(s => jwt.SecretKey?.Contains(s) == true))

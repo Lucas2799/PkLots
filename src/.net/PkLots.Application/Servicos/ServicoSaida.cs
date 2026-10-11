@@ -158,16 +158,25 @@ namespace PkLots.Application.Servicos
             return entrada;
         }
 
+        // Pelo QR (link com token) ou pelo código impresso/digitado
         private async Task<EntradaVeiculo> BuscarPorTicketAsync(string lido, CancellationToken ct)
         {
-            var codigo = CodigoTicket.Normalizar(lido)
-                ?? throw new ExcecaoNegocio("Código de ticket inválido. Use o código de 8 caracteres impresso no ticket.");
             var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            var consulta = db.EntradasVeiculos.Include(e => e.Vaga).Where(e => e.PatioId == patioId);
 
-            var entrada = await db.EntradasVeiculos
-                .Include(e => e.Vaga)
-                .FirstOrDefaultAsync(e => e.PatioId == patioId && e.CodigoTicket == codigo, ct)
-                ?? throw new ExcecaoNaoEncontrado($"Ticket {CodigoTicket.Formatar(codigo)} não encontrado.");
+            EntradaVeiculo entrada;
+            if (CodigoTicket.ExtrairToken(lido) is { } token)
+            {
+                entrada = await consulta.FirstOrDefaultAsync(e => e.TokenAcesso == token, ct)
+                    ?? throw new ExcecaoNaoEncontrado("Ticket não encontrado neste pátio.");
+            }
+            else
+            {
+                var codigo = CodigoTicket.Normalizar(lido)
+                    ?? throw new ExcecaoNegocio("Código de ticket inválido. Use o código de 8 caracteres impresso no ticket.");
+                entrada = await consulta.FirstOrDefaultAsync(e => e.CodigoTicket == codigo, ct)
+                    ?? throw new ExcecaoNaoEncontrado($"Ticket {CodigoTicket.Formatar(codigo)} não encontrado.");
+            }
 
             if (entrada.Situacao == SituacaoEntrada.Cancelada)
                 throw new ExcecaoConflito($"A entrada deste ticket ({entrada.Placa}) foi cancelada: {entrada.MotivoCancelamento}");
