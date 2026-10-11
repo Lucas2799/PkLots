@@ -131,17 +131,22 @@ namespace PkLots.Application.Tests
         private static readonly Guid SuperAdmin = Guid.NewGuid();
 
         private static CriarEmpresaRequisicao Requisicao(string nome = "Estacionamentos Silva", string email = "admin@silva.com") =>
-            new(nome, "12.345.678/0001-90", "Pátio Centro", 40, "Maria Silva", email, "Senha@123");
+            new(nome, "12.345.678/0001-90", "Pátio Centro", 40, "Maria Silva", email);
 
         [Fact]
-        public async Task Cria_empresa_com_patio_e_admin_que_consegue_entrar()
+        public async Task Cria_empresa_com_patio_e_admin_que_entra_pelo_convite()
         {
             using var cenario = new Cenario();
 
             var empresa = await cenario.Plataforma.CriarEmpresaAsync(SuperAdmin, Requisicao());
 
-            Assert.Equal((1, 1), (empresa.Patios, empresa.Usuarios));
+            Assert.Equal((1, 1, 1), (empresa.Patios, empresa.Usuarios, empresa.ConvitesPendentes));
             Assert.Equal(40, await cenario.Db.Vagas.CountAsync(v => v.Patio.EmpresaId == empresa.Id));
+            var email = await cenario.Db.EmailsPendentes.SingleAsync();
+            Assert.Contains("Estacionamentos Silva", email.Assunto);
+            Assert.Contains("Administrador(a)", email.CorpoTexto);
+
+            await cenario.Autenticacao.AtivarContaAsync(new AtivarContaRequisicao(cenario.TokenDoUltimoEmail("admin@silva.com", "ativar"), "Senha@123"));
             var token = await cenario.Autenticacao.LoginAsync(new LoginRequisicao("admin@silva.com", "Senha@123"));
             Assert.Equal(Perfis.Admin, token.Perfil);
             Assert.Equal(empresa.Id, (await cenario.Db.Usuarios.SingleAsync(u => u.Email == "admin@silva.com")).EmpresaId);
@@ -162,6 +167,7 @@ namespace PkLots.Application.Tests
         {
             using var cenario = new Cenario();
             var empresa = await cenario.Plataforma.CriarEmpresaAsync(SuperAdmin, Requisicao());
+            await cenario.Autenticacao.AtivarContaAsync(new AtivarContaRequisicao(cenario.TokenDoUltimoEmail("admin@silva.com", "ativar"), "Senha@123"));
 
             await cenario.Plataforma.AtualizarEmpresaAsync(SuperAdmin, empresa.Id, new AtualizarEmpresaRequisicao(empresa.Nome, null, false));
 

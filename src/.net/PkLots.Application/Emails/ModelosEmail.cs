@@ -17,6 +17,22 @@ namespace PkLots.Application.Emails
                 link,
                 $"O link vale por {Horas(validade)} e só pode ser usado uma vez. Se você não esperava este e-mail, ignore-o: nenhum acesso é liberado sem abrir o link.");
 
+        public static MensagemEmail ConviteUsuario(string nome, string nomeEmpresa, string perfil, IReadOnlyList<string> patios,
+            string link, string enderecoSistema, TimeSpan validade)
+        {
+            var admin = perfil == PkLots.Core.Constantes.Perfis.Admin;
+            var paragrafos = new List<string>
+            {
+                $"Você foi cadastrado(a) no PkLots, o sistema de gestão do estacionamento da {nomeEmpresa}, como {(admin ? "Administrador(a)" : "Operador(a)")}.",
+                admin
+                    ? "Como administrador(a) você acessa todos os pátios da empresa: painel, entrada e saída de veículos, caixa, mensalistas e a área de Administração (preços, vagas, usuários, pagamentos e impressão)."
+                    : $"Pátio(s) em que você vai trabalhar: {string.Join(", ", patios)}. Você acessa o painel, a entrada e a saída de veículos, o seu caixa e os mensalistas.",
+                $"Para começar, crie a sua senha pelo botão abaixo. Depois, entre sempre pelo endereço {enderecoSistema} com o seu e-mail e essa senha."
+            };
+            return Montar($"Seu acesso ao PkLots ({nomeEmpresa})", $"Olá, {nome}!", [.. paragrafos], "Criar minha senha", link,
+                $"O link vale por {Horas(validade)} e só pode ser usado uma vez. Se expirar, peça ao administrador para reenviar o convite. Ninguém do PkLots ou da empresa vai pedir a sua senha.");
+        }
+
         public static MensagemEmail RedefinirSenha(string nome, string link, TimeSpan validade) =>
             Montar(
                 "Redefinição de senha do PkLots",

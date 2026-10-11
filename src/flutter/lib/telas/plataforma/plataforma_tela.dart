@@ -72,6 +72,15 @@ class _PlataformaTelaState extends State<PlataformaTela> {
     }
   }
 
+  Future<void> _reenviarConvite(EmpresaPlataforma empresa) async {
+    try {
+      await _api.reenviarConviteEmpresa(empresa.id);
+      if (mounted) mostrarAviso(context, 'Convite reenviado ao administrador de ${empresa.nome}.');
+    } on ExcecaoApi catch (e) {
+      if (mounted) mostrarAviso(context, e.mensagem, erro: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessao = context.watch<SessaoProvider>();
@@ -142,11 +151,20 @@ class _PlataformaTelaState extends State<PlataformaTela> {
                           '${empresa.usuarios} usuário(s)',
                           'desde ${Formatadores.dataCurta(empresa.criadoEm)}',
                           if (!empresa.ativa) 'Desativada',
+                          if (empresa.convitesPendentes > 0) 'Convite pendente',
                         ].join(' · ')),
-                        trailing: Switch(
-                          value: empresa.ativa,
-                          onChanged: (_) => _alternarAtiva(empresa),
-                        ),
+                        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                          if (empresa.ativa && empresa.convitesPendentes > 0)
+                            IconButton(
+                              tooltip: 'Reenviar convite do administrador',
+                              icon: const Icon(Icons.forward_to_inbox_outlined),
+                              onPressed: () => _reenviarConvite(empresa),
+                            ),
+                          Switch(
+                            value: empresa.ativa,
+                            onChanged: (_) => _alternarAtiva(empresa),
+                          ),
+                        ]),
                       ),
                     ],
                   ]),
@@ -175,13 +193,12 @@ class _NovaEmpresaState extends State<_NovaEmpresa> {
   final _vagas = TextEditingController(text: '30');
   final _nomeAdmin = TextEditingController();
   final _emailAdmin = TextEditingController();
-  final _senhaAdmin = TextEditingController();
   bool _enviando = false;
   String? _erro;
 
   @override
   void dispose() {
-    for (final c in [_nome, _documento, _patio, _vagas, _nomeAdmin, _emailAdmin, _senhaAdmin]) {
+    for (final c in [_nome, _documento, _patio, _vagas, _nomeAdmin, _emailAdmin]) {
       c.dispose();
     }
     super.dispose();
@@ -201,11 +218,10 @@ class _NovaEmpresaState extends State<_NovaEmpresa> {
             totalVagas: int.parse(_vagas.text),
             nomeAdmin: _nomeAdmin.text.trim(),
             emailAdmin: _emailAdmin.text.trim(),
-            senhaAdmin: _senhaAdmin.text,
           );
       if (mounted) {
         Navigator.of(context).pop(true);
-        mostrarAviso(context, 'Empresa criada. O administrador já pode entrar com o e-mail informado.');
+        mostrarAviso(context, 'Empresa criada. Convite enviado para ${_emailAdmin.text.trim()}.');
       }
     } on ExcecaoApi catch (e) {
       setState(() => _erro = e.mensagem);
@@ -270,13 +286,9 @@ class _NovaEmpresaState extends State<_NovaEmpresa> {
                   keyboardType: TextInputType.emailAddress,
                   validator: Validadores.email,
                 ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _senhaAdmin,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Senha inicial', helperText: 'Mínimo de 8 caracteres'),
-                  validator: Validadores.senha,
-                ),
+                const SizedBox(height: 8),
+                const Text('O administrador recebe um convite por e-mail e cria a própria senha.',
+                    style: TextStyle(fontSize: 13, color: CoresPkLots.textoSecundario)),
                 if (_erro != null) ...[
                   const SizedBox(height: 12),
                   Text(_erro!, style: const TextStyle(color: CoresPkLots.erro)),

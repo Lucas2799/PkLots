@@ -719,6 +719,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("AguardandoAtivacao")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("boolean");
 

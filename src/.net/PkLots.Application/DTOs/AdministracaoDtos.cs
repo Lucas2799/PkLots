@@ -10,10 +10,11 @@ namespace PkLots.Application.DTOs
     public record AlterarQuantidadeVagasRequisicao(int Total);
 
     public record UsuarioDto(Guid Id, string Email, string NomeCompleto, string Perfil, bool Ativo, DateTime? UltimoLogin, DateTime CriadoEm,
-        IReadOnlyList<Guid> PatiosIds);
+        IReadOnlyList<Guid> PatiosIds, bool ConvitePendente = false);
 
+    // Sem senha: a pessoa recebe um convite por e-mail e cria a própria.
     // PatiosIds: obrigatório para operador (pátios em que trabalha); ignorado para admin (acessa todos)
-    public record CriarUsuarioRequisicao(string Email, string NomeCompleto, string Senha, string Perfil, IReadOnlyList<Guid>? PatiosIds = null);
+    public record CriarUsuarioRequisicao(string Email, string NomeCompleto, string Perfil, IReadOnlyList<Guid>? PatiosIds = null);
 
     public record AtualizarUsuarioRequisicao(string NomeCompleto, string Perfil, bool Ativo, IReadOnlyList<Guid>? PatiosIds = null);
 
@@ -29,7 +30,8 @@ namespace PkLots.Application.DTOs
 
     // ---------- Plataforma (superadmin) ----------
 
-    public record EmpresaDto(Guid Id, string Nome, string? Documento, bool Ativa, int Patios, int Usuarios, DateTime CriadoEm);
+    public record EmpresaDto(Guid Id, string Nome, string? Documento, bool Ativa, int Patios, int Usuarios, DateTime CriadoEm,
+        int ConvitesPendentes = 0);
 
     public record CriarEmpresaRequisicao(
         string Nome,
@@ -37,10 +39,7 @@ namespace PkLots.Application.DTOs
         string NomePatio,
         int TotalVagas,
         string NomeAdmin,
-        string EmailAdmin,
-        string SenhaAdmin);
+        string EmailAdmin); // o admin recebe um convite por e-mail para criar a senha
 
     public record AtualizarEmpresaRequisicao(string Nome, string? Documento, bool Ativa);
-
-    public record RedefinirSenhaRequisicao(string Senha);
 }

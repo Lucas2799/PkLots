@@ -13,5 +13,7 @@ namespace PkLots.Application.Servicos
         public string Convite(string token) => $"{UrlBase}/?convite={token}";
 
         public string RedefinirSenha(string token) => $"{UrlBase}/?redefinir={token}";
+
+        public string AtivarConta(string token) => $"{UrlBase}/?ativar={token}";
     }
 }

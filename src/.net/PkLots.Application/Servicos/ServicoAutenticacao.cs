@@ -26,9 +26,10 @@ namespace PkLots.Application.Servicos
             var usuario = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == email, ct);
             var agora = relogio.GetUtcNow().UtcDateTime;
 
-            // Mesma mensagem para e-mail inexistente e senha errada (não revela quem tem conta)
+            // Mesma mensagem para e-mail inexistente e senha errada (não revela quem tem conta).
+            // Conta convidada que ainda não criou a senha também não entra.
             const string invalido = "E-mail ou senha inválidos.";
-            if (usuario is null || !usuario.Ativo)
+            if (usuario is null || !usuario.Ativo || usuario.AguardandoAtivacao)
             {
                 logger?.LogWarning("Login recusado para {Email}: usuário inexistente ou inativo", email);
                 throw new ExcecaoNaoAutorizado(invalido);
@@ -102,11 +103,21 @@ namespace PkLots.Application.Servicos
                 return;
             }
 
-            EnfileirarRedefinicao(db, links, usuario, relogio.GetUtcNow().UtcDateTime);
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            // Ainda não ativou: manda de novo o convite (que é por onde se cria a primeira senha)
+            if (usuario.AguardandoAtivacao)
+            {
+                await db.Usuarios.Entry(usuario).Collection(u => u.Patios).LoadAsync(ct);
+                await ConvitesUsuario.EnviarAsync(db, links, usuario, agora, ct);
+            }
+            else
+            {
+                EnfileirarRedefinicao(db, links, usuario, agora);
+            }
             await db.SaveChangesAsync(ct);
         }
 
-        // Link de nova senha
+        // Link de nova senha (também usado quando o admin pede a redefinição para alguém da equipe)
         internal static void EnfileirarRedefinicao(IPkLotsDbContext db, LinksPublicos links, Usuario usuario, DateTime agora)
         {
             db.TokensUsuario.RemoveRange(db.TokensUsuario.IgnoreQueryFilters().Where(t => t.UsuarioId == usuario.Id && t.Tipo == TiposToken.RedefinirSenha));
@@ -122,6 +133,61 @@ namespace PkLots.Application.Servicos
             });
             FilaEmails.Enfileirar(db, usuario.Email,
                 ModelosEmail.RedefinirSenha(usuario.NomeCompleto, links.RedefinirSenha(token), TiposToken.ValidadeRedefinicao), agora);
+        }
+
+        // ---------- Convite de admin/operador ----------
+
+        private const string ConviteInvalido = "Convite inválido, expirado ou já utilizado. Peça ao administrador para reenviar.";
+
+        public async Task<ConviteUsuarioDto> ObterConviteUsuarioAsync(string token, CancellationToken ct = default)
+        {
+            var (_, usuario) = await ValidarConviteUsuarioAsync(token, ct);
+            var empresa = await db.Empresas.IgnoreQueryFilters().Where(e => e.Id == usuario.EmpresaId).Select(e => e.Nome).FirstOrDefaultAsync(ct);
+            var idsPatios = usuario.Patios.Select(up => up.PatioId).ToList();
+            var patios = await db.Patios.IgnoreQueryFilters().Where(p => idsPatios.Contains(p.Id)).OrderBy(p => p.Nome).Select(p => p.Nome).ToListAsync(ct);
+            return new ConviteUsuarioDto(usuario.NomeCompleto, usuario.Email, empresa ?? "", usuario.Perfil, patios);
+        }
+
+        // Cria a primeira senha e já entra no sistema
+        public async Task<TokenDto> AtivarContaAsync(AtivarContaRequisicao requisicao, CancellationToken ct = default)
+        {
+            var (convite, usuario) = await ValidarConviteUsuarioAsync(requisicao.Token, ct);
+            RegrasUsuario.ValidarSenha(requisicao.Senha);
+
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            usuario.SenhaHash = hashSenha.Gerar(requisicao.Senha!);
+            usuario.AguardandoAtivacao = false;
+            usuario.DeveTrocarSenha = false;
+            usuario.FalhasLogin = 0;
+            usuario.BloqueadoAte = null;
+            usuario.UltimoLogin = agora;
+            usuario.AtualizadoEm = agora;
+            convite.UsadoEm = agora;
+
+            await db.SaveChangesAsync(ct);
+            logger?.LogInformation("Conta ativada por convite: {Email}", usuario.Email);
+            return geradorToken.Gerar(usuario);
+        }
+
+        private async Task<(TokenUsuario Convite, Usuario Usuario)> ValidarConviteUsuarioAsync(string? token, CancellationToken ct)
+        {
+            if (!TokenSeguro.FormatoValido(token, TokenSeguro.BytesEmail))
+                throw new ExcecaoNaoEncontrado(ConviteInvalido);
+
+            var hash = TokenSeguro.Hash(token!);
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            var convite = await db.TokensUsuario.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(t => t.HashToken == hash && t.Tipo == TiposToken.ConviteUsuario, ct);
+            if (convite is null || convite.UsadoEm is not null || convite.ExpiraEm <= agora)
+                throw new ExcecaoNaoEncontrado(ConviteInvalido);
+
+            // Conta ainda pendente, ativa, com o mesmo e-mail do convite e empresa ativa
+            var usuario = await db.Usuarios.IgnoreQueryFilters()
+                .Include(u => u.Patios)
+                .FirstOrDefaultAsync(u => u.Id == convite.UsuarioId && u.Ativo && u.AguardandoAtivacao && u.Email == convite.Email
+                    && (u.Empresa == null || u.Empresa.Ativa), ct)
+                ?? throw new ExcecaoNaoEncontrado(ConviteInvalido);
+            return (convite, usuario);
         }
 
         // Nova senha pelo link do e-mail: também desbloqueia a conta e encerra a senha temporária

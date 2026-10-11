@@ -441,6 +441,9 @@ class UsuarioAdmin {
   final DateTime? ultimoLogin;
   final List<String> patiosIds;
 
+  /// Convidado por e-mail e ainda sem senha criada
+  final bool convitePendente;
+
   UsuarioAdmin({
     required this.id,
     required this.email,
@@ -449,6 +452,7 @@ class UsuarioAdmin {
     required this.ativo,
     this.ultimoLogin,
     this.patiosIds = const [],
+    this.convitePendente = false,
   });
 
   factory UsuarioAdmin.deJson(Map<String, dynamic> json) => UsuarioAdmin(
@@ -459,6 +463,7 @@ class UsuarioAdmin {
         ativo: json['ativo'] as bool,
         ultimoLogin: _dataOpcional(json['ultimoLogin']),
         patiosIds: ((json['patiosIds'] as List?) ?? []).cast<String>(),
+        convitePendente: (json['convitePendente'] as bool?) ?? false,
       );
 }
 
@@ -585,6 +590,9 @@ class EmpresaPlataforma {
   final int usuarios;
   final DateTime criadoEm;
 
+  /// Usuários convidados que ainda não criaram a senha
+  final int convitesPendentes;
+
   EmpresaPlataforma({
     required this.id,
     required this.nome,
@@ -593,6 +601,7 @@ class EmpresaPlataforma {
     required this.patios,
     required this.usuarios,
     required this.criadoEm,
+    this.convitesPendentes = 0,
   });
 
   factory EmpresaPlataforma.deJson(Map<String, dynamic> json) => EmpresaPlataforma(
@@ -603,6 +612,7 @@ class EmpresaPlataforma {
         patios: json['patios'] as int,
         usuarios: json['usuarios'] as int,
         criadoEm: _data(json['criadoEm']),
+        convitesPendentes: (json['convitesPendentes'] as int?) ?? 0,
       );
 }
 
@@ -959,3 +969,27 @@ class Caixa {
       );
 }
 
+/// Convite de admin/operador aberto pelo link do e-mail (?ativar=token)
+class ConviteUsuario {
+  final String nomeCompleto;
+  final String email;
+  final String nomeEmpresa;
+  final String perfil;
+  final List<String> patios;
+
+  ConviteUsuario({
+    required this.nomeCompleto,
+    required this.email,
+    required this.nomeEmpresa,
+    required this.perfil,
+    required this.patios,
+  });
+
+  factory ConviteUsuario.deJson(Map<String, dynamic> json) => ConviteUsuario(
+        nomeCompleto: json['nomeCompleto'] as String,
+        email: json['email'] as String,
+        nomeEmpresa: json['nomeEmpresa'] as String,
+        perfil: json['perfil'] as String,
+        patios: ((json['patios'] as List?) ?? []).cast<String>(),
+      );
+}

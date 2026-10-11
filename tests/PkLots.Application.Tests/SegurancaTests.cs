@@ -89,23 +89,20 @@ namespace PkLots.Application.Tests
         }
 
         [Fact]
-        public async Task Senha_definida_pelo_admin_e_temporaria_e_redefinir_desbloqueia()
+        public async Task Admin_envia_link_de_nova_senha_sem_conhecer_a_senha()
         {
             using var cenario = new Cenario();
-            var criado = await cenario.Administracao.CriarUsuarioAsync(Guid.NewGuid(),
-                new CriarUsuarioRequisicao("novo@pklots.local", "Novo Operador", "Inicial2026", Perfis.Operador, [cenario.Patio.Id]));
-            var usuario = await cenario.Db.Usuarios.SingleAsync(u => u.Id == criado.Id);
-            Assert.True(usuario.DeveTrocarSenha);
-
-            usuario.DeveTrocarSenha = false;
+            var usuario = cenario.CriarUsuario("op@pklots.local", "Antiga@123", Perfis.Operador);
             usuario.BloqueadoAte = DateTime.UtcNow.AddHours(1);
             await cenario.Db.SaveChangesAsync();
 
-            await cenario.Administracao.RedefinirSenhaAsync(Guid.NewGuid(), criado.Id, "Redefinida2026");
+            await cenario.Administracao.EnviarLinkNovaSenhaAsync(Guid.NewGuid(), usuario.Id);
+            await cenario.Autenticacao.RedefinirSenhaAsync(
+                new RedefinirSenhaPorEmailRequisicao(cenario.TokenDoUltimoEmail("op@pklots.local", "redefinir"), "Nova@12345"));
 
-            var depois = await cenario.Db.Usuarios.SingleAsync(u => u.Id == criado.Id);
-            Assert.True(depois.DeveTrocarSenha);
-            Assert.Null(depois.BloqueadoAte);
+            Assert.Null(usuario.BloqueadoAte);
+            await cenario.Autenticacao.LoginAsync(new LoginRequisicao("op@pklots.local", "Nova@12345"));
+            Assert.Contains(cenario.Db.LogsAuditoria, l => l.Acao == AcoesAuditoria.SenhaRedefinida);
         }
     }
 

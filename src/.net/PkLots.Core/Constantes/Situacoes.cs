@@ -102,7 +102,8 @@ namespace PkLots.Core.Constantes
         public const string QuantidadeVagasAlterada = "quantidade_vagas_alterada";
         public const string UsuarioCriado = "usuario_criado";
         public const string UsuarioAlterado = "usuario_alterado";
-        public const string SenhaRedefinida = "senha_redefinida";
+        public const string SenhaRedefinida = "senha_redefinida"; // link de nova senha enviado pelo admin
+        public const string ConviteUsuarioEnviado = "convite_usuario_enviado";
         public const string MensalistaCriado = "mensalista_criado";
         public const string MensalistaAlterado = "mensalista_alterado";
         public const string MensalidadePaga = "mensalidade_paga";
@@ -121,6 +122,7 @@ namespace PkLots.Core.Constantes
     public static class TiposToken
     {
         public const string ConviteMensalista = "convite_mensalista";
+        public const string ConviteUsuario = "convite_usuario"; // admin/operador criado pela empresa ou pela plataforma
         public const string RedefinirSenha = "redefinir_senha";
 
         public static readonly TimeSpan ValidadeConvite = TimeSpan.FromHours(72);

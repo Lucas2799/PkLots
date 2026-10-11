@@ -53,8 +53,8 @@ class AdministracaoProvider extends ChangeNotifier {
 
   Future<void> imprimirTesteNaRede() => _api.imprimirTeste();
 
-  Future<void> criarUsuario(String email, String nome, String senha, String perfil, List<String> patiosIds) async {
-    await _api.criarUsuario(email, nome, senha, perfil, patiosIds);
+  Future<void> criarUsuario(String email, String nome, String perfil, List<String> patiosIds) async {
+    await _api.criarUsuario(email, nome, perfil, patiosIds);
     await _recarregarUsuarios();
   }
 
@@ -82,7 +82,12 @@ class AdministracaoProvider extends ChangeNotifier {
     await carregarPatios();
   }
 
-  Future<void> redefinirSenha(String id, String senha) => _api.redefinirSenha(id, senha);
+  Future<void> reenviarConvite(String id) async {
+    await _api.reenviarConviteUsuario(id);
+    await _recarregarUsuarios();
+  }
+
+  Future<void> enviarLinkNovaSenha(String id) => _api.enviarLinkNovaSenha(id);
 
   Future<void> _recarregarUsuarios() async {
     usuarios = await _api.usuarios();

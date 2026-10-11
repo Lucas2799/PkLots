@@ -16,6 +16,10 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.ObterAsync(token, ct)))
                 .WithSummary("Estadia do ticket (link do QR): tempo, valor parcial ou recibo");
 
+            grupo.MapGet("/convites-usuario/{token}", async (string token, ServicoAutenticacao servico, CancellationToken ct) =>
+                Results.Ok(await servico.ObterConviteUsuarioAsync(token, ct)))
+                .WithSummary("Dados do convite de admin/operador (empresa, perfil, pátios) antes de criar a senha");
+
             grupo.MapGet("/convites/{token}", async (string token, ServicoAcessoMensalista servico, CancellationToken ct) =>
                 Results.Ok(await servico.ObterConviteAsync(token, ct)))
                 .WithSummary("Dados do convite de mensalista (placas mascaradas) antes de aceitar");

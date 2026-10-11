@@ -11,7 +11,7 @@ import '../../util/validadores.dart';
 import '../../widgets/estados_tela.dart';
 import 'perfis.dart';
 
-/// Usuários do pátio: criar, alterar perfil, ativar/desativar e redefinir senha
+/// Usuários da empresa: convidar por e-mail, alterar perfil, ativar/desativar e enviar link de nova senha
 class AbaUsuarios extends StatelessWidget {
   const AbaUsuarios({super.key});
 
@@ -63,6 +63,7 @@ class AbaUsuarios extends StatelessWidget {
                 if (usuario.perfil == 'operador')
                   estado.patios.where((p) => usuario.patiosIds.contains(p.id)).map((p) => p.nome).join(', '),
                 if (!usuario.ativo) 'Inativo',
+                if (usuario.ativo && usuario.convitePendente) 'Convite pendente',
                 if (usuario.ultimoLogin != null) 'Último acesso ${Formatadores.dataHora(usuario.ultimoLogin!)}',
               ].join(' · ')),
               trailing: EtiquetaPerfil(perfil: usuario.perfil, ativo: usuario.ativo),
@@ -93,19 +94,17 @@ class _FormularioUsuarioState extends State<_FormularioUsuario> {
   final _formulario = GlobalKey<FormState>();
   late final _nome = TextEditingController(text: widget.usuario?.nomeCompleto);
   late final _email = TextEditingController(text: widget.usuario?.email);
-  final _senha = TextEditingController();
   late String _perfil = widget.usuario?.perfil ?? 'operador';
   late final Set<String> _patios = {...?widget.usuario?.patiosIds};
   late bool _ativo = widget.usuario?.ativo ?? true;
   bool _enviando = false;
-  bool _novaSenha = false;
   String? _erro;
 
   bool get _criando => widget.usuario == null;
 
   @override
   void dispose() {
-    for (final c in [_nome, _email, _senha]) {
+    for (final c in [_nome, _email]) {
       c.dispose();
     }
     super.dispose();
@@ -125,14 +124,39 @@ class _FormularioUsuarioState extends State<_FormularioUsuario> {
     final patios = _perfil == 'operador' ? _patios.toList() : <String>[];
     try {
       if (_criando) {
-        await estado.criarUsuario(_email.text.trim(), _nome.text.trim(), _senha.text, _perfil, patios);
+        await estado.criarUsuario(_email.text.trim(), _nome.text.trim(), _perfil, patios);
       } else {
         await estado.atualizarUsuario(widget.usuario!.id, _nome.text.trim(), _perfil, _ativo, patios);
-        if (_novaSenha) await estado.redefinirSenha(widget.usuario!.id, _senha.text);
       }
       if (mounted) {
         Navigator.of(context).pop();
-        mostrarAviso(context, _criando ? 'Usuário criado.' : 'Usuário atualizado.');
+        mostrarAviso(context, _criando ? 'Convite enviado para ${_email.text.trim()}.' : 'Usuário atualizado.');
+      }
+    } on ExcecaoApi catch (e) {
+      setState(() => _erro = e.mensagem);
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
+  }
+
+  // Convite pendente: reenvia. Conta ativa: manda o link para a pessoa criar uma nova senha.
+  Future<void> _acessoPorEmail() async {
+    final usuario = widget.usuario!;
+    setState(() {
+      _enviando = true;
+      _erro = null;
+    });
+    final estado = context.read<AdministracaoProvider>();
+    try {
+      if (usuario.convitePendente) {
+        await estado.reenviarConvite(usuario.id);
+      } else {
+        await estado.enviarLinkNovaSenha(usuario.id);
+      }
+      if (mounted) {
+        Navigator.of(context).pop();
+        mostrarAviso(context,
+            usuario.convitePendente ? 'Convite reenviado para ${usuario.email}.' : 'Link de nova senha enviado para ${usuario.email}.');
       }
     } on ExcecaoApi catch (e) {
       setState(() => _erro = e.mensagem);
@@ -208,27 +232,24 @@ class _FormularioUsuarioState extends State<_FormularioUsuario> {
                     value: _ativo,
                     onChanged: widget.ehVoce ? null : (valor) => setState(() => _ativo = valor),
                   ),
-                if (!_criando && !_novaSenha)
+                if (_criando)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'A pessoa recebe um convite por e-mail com o endereço do sistema e cria a própria senha. '
+                      'Ninguém, nem você, fica sabendo a senha dela.',
+                      style: TextStyle(fontSize: 13, color: CoresPkLots.textoSecundario),
+                    ),
+                  ),
+                if (!_criando && widget.usuario!.ativo && !widget.ehVoce)
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton.icon(
-                      onPressed: () => setState(() => _novaSenha = true),
-                      icon: const Icon(Icons.key_outlined),
-                      label: const Text('Redefinir senha'),
+                      onPressed: _enviando ? null : _acessoPorEmail,
+                      icon: Icon(widget.usuario!.convitePendente ? Icons.forward_to_inbox_outlined : Icons.key_outlined),
+                      label: Text(widget.usuario!.convitePendente ? 'Reenviar convite' : 'Enviar link de nova senha'),
                     ),
                   ),
-                if (_criando || _novaSenha) ...[
-                  const SizedBox(height: 8),
-                  TextFormField(
-                    controller: _senha,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: _criando ? 'Senha inicial' : 'Nova senha',
-                      helperText: 'Mínimo de 8 caracteres',
-                    ),
-                    validator: Validadores.senha,
-                  ),
-                ],
                 if (_erro != null) ...[
                   const SizedBox(height: 12),
                   Text(_erro!, style: const TextStyle(color: CoresPkLots.erro)),
@@ -245,7 +266,7 @@ class _FormularioUsuarioState extends State<_FormularioUsuario> {
               onPressed: _enviando ? null : _salvar,
               child: _enviando
                   ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Salvar'),
+                  : Text(_criando ? 'Convidar' : 'Salvar'),
             ),
           ),
         ],

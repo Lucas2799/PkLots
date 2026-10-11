@@ -104,7 +104,7 @@ namespace PkLots.Application.Tests
             return await Saida.ConfirmarAsync(UsuarioAtualId, cobranca.Id, new ConfirmarSaidaRequisicao(forma, recebido));
         }
         public ServicoPatios Patios => new(Db, ContextoPatio, Relogio);
-        public ServicoPlataforma Plataforma => new(Db, HashSenha, Relogio);
+        public ServicoPlataforma Plataforma => new(Db, HashSenha, Links, Relogio);
         public ServicoMensalistas Mensalistas => new(Db, ContextoPatio, Links, Relogio);
         public ServicoAcessoMensalista AcessoMensalista => new(Db, HashSenha, GeradorToken, Relogio);
         public ServicoEstadiaPublica EstadiaPublica => new(Db, Relogio);
@@ -112,7 +112,7 @@ namespace PkLots.Application.Tests
         public ImpressoraFalsa Impressora { get; } = new();
         public ServicoImpressao Impressao =>
             new(Db, ContextoPatio, Impressora, Links, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);
-        public ServicoAdministracao Administracao => new(Db, ContextoPatio, Cache, HashSenha, Relogio);
+        public ServicoAdministracao Administracao => new(Db, ContextoPatio, Cache, HashSenha, Links, Relogio);
         public ServicoAutenticacao Autenticacao => new(Db, HashSenha, GeradorToken, Links, Relogio);
 
         // Token que iria no link do último e-mail enviado para o endereço (lido do corpo do e-mail na fila)

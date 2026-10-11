@@ -42,6 +42,15 @@ class ClienteApi {
   Future<void> redefinirSenhaPorEmail(String token, String novaSenha) =>
       _post('/api/auth/redefinir-senha', {'token': token, 'novaSenha': novaSenha});
 
+  // ---------- Convite de admin/operador (link do e-mail, sem login) ----------
+
+  Future<ConviteUsuario> conviteUsuario(String token) async =>
+      ConviteUsuario.deJson(await _get('/api/publico/convites-usuario/${Uri.encodeComponent(token)}'));
+
+  /// Cria a primeira senha e devolve o token (já entra no sistema)
+  Future<Token> ativarConta(String token, String senha) async =>
+      Token.deJson(await _post('/api/auth/ativar-conta', {'token': token, 'senha': senha}));
+
   // ---------- Convite de mensalista (link do e-mail, sem login) ----------
 
   Future<ConviteMensalista> convite(String token) async =>
@@ -175,9 +184,16 @@ class ClienteApi {
 
   Future<List<UsuarioAdmin>> usuarios() async => _lista(await _get('/api/admin/usuarios'), UsuarioAdmin.deJson);
 
-  Future<UsuarioAdmin> criarUsuario(String email, String nomeCompleto, String senha, String perfil, List<String> patiosIds) async =>
+  /// Sem senha: a pessoa recebe um convite por e-mail e cria a dela
+  Future<UsuarioAdmin> criarUsuario(String email, String nomeCompleto, String perfil, List<String> patiosIds) async =>
       UsuarioAdmin.deJson(await _post('/api/admin/usuarios',
-          {'email': email, 'nomeCompleto': nomeCompleto, 'senha': senha, 'perfil': perfil, 'patiosIds': patiosIds}));
+          {'email': email, 'nomeCompleto': nomeCompleto, 'perfil': perfil, 'patiosIds': patiosIds}));
+
+  Future<UsuarioAdmin> reenviarConviteUsuario(String id) async =>
+      UsuarioAdmin.deJson(await _post('/api/admin/usuarios/$id/convite', null));
+
+  /// Envia ao usuário o link para criar uma nova senha (o admin não define a senha de ninguém)
+  Future<void> enviarLinkNovaSenha(String id) => _post('/api/admin/usuarios/$id/link-senha', null);
 
   Future<UsuarioAdmin> atualizarUsuario(String id, String nomeCompleto, String perfil, bool ativo, List<String> patiosIds) async =>
       UsuarioAdmin.deJson(await _enviar('PUT', '/api/admin/usuarios/$id',
@@ -245,8 +261,7 @@ class ClienteApi {
     required String nomePatio,
     required int totalVagas,
     required String nomeAdmin,
-    required String emailAdmin,
-    required String senhaAdmin,
+    required String emailAdmin, // recebe o convite por e-mail para criar a senha
   }) async =>
       EmpresaPlataforma.deJson(await _post('/api/plataforma/empresas', {
         'nome': nome,
@@ -255,15 +270,14 @@ class ClienteApi {
         'totalVagas': totalVagas,
         'nomeAdmin': nomeAdmin,
         'emailAdmin': emailAdmin,
-        'senhaAdmin': senhaAdmin,
       }));
 
   Future<EmpresaPlataforma> atualizarEmpresa(String id, String nome, String? documento, bool ativa) async =>
       EmpresaPlataforma.deJson(
           await _enviar('PUT', '/api/plataforma/empresas/$id', {'nome': nome, 'documento': documento, 'ativa': ativa}));
 
-  Future<void> redefinirSenha(String id, String senha) =>
-      _enviar('PUT', '/api/admin/usuarios/$id/senha', {'senha': senha});
+  Future<EmpresaPlataforma> reenviarConviteEmpresa(String id) async =>
+      EmpresaPlataforma.deJson(await _post('/api/plataforma/empresas/$id/convite', null));
 
   // ---------- Infraestrutura ----------
 

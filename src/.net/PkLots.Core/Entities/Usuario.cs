@@ -15,6 +15,9 @@ namespace PkLots.Core.Entities
         public bool DeveTrocarSenha { get; set; } // senha temporária/padrão: troca obrigatória no próximo acesso
         public int FalhasLogin { get; set; }       // tentativas erradas seguidas
         public DateTime? BloqueadoAte { get; set; } // bloqueio temporário após muitas tentativas
+
+        // Criado por convite e ainda sem senha: não entra até abrir o link do e-mail e criar a própria senha
+        public bool AguardandoAtivacao { get; set; }
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
         public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 

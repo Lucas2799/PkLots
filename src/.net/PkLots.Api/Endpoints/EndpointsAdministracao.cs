@@ -80,12 +80,16 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.AtualizarUsuarioAsync(usuario.ObterUsuarioId(), id, requisicao, ct)))
                 .WithSummary("Altera nome, perfil e situação (ativo/inativo)");
 
-            grupo.MapPut("/usuarios/{id:guid}/senha", async (Guid id, RedefinirSenhaRequisicao requisicao, ClaimsPrincipal usuario, ServicoAdministracao servico, CancellationToken ct) =>
+            grupo.MapPost("/usuarios/{id:guid}/convite", async (Guid id, ClaimsPrincipal usuario, ServicoAdministracao servico, CancellationToken ct) =>
+                    Results.Ok(await servico.ReenviarConviteAsync(usuario.ObterUsuarioId(), id, ct)))
+                .WithSummary("Reenvia o convite de acesso (usuário que ainda não criou a senha)");
+
+            grupo.MapPost("/usuarios/{id:guid}/link-senha", async (Guid id, ClaimsPrincipal usuario, ServicoAdministracao servico, CancellationToken ct) =>
                 {
-                    await servico.RedefinirSenhaAsync(usuario.ObterUsuarioId(), id, requisicao.Senha, ct);
+                    await servico.EnviarLinkNovaSenhaAsync(usuario.ObterUsuarioId(), id, ct);
                     return Results.NoContent();
                 })
-                .WithSummary("Define uma nova senha para o usuário");
+                .WithSummary("Envia ao usuário o link para criar uma nova senha");
         }
     }
 }

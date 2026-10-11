@@ -186,6 +186,16 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'contaCriada': true,
         'token': {'tokenAcesso': tokenFalso(nome: 'Ana Souza'), 'expiraEm': 86400, 'perfil': 'motorista'},
       });
+    case '/api/publico/convites-usuario/ativar-valido':
+      return json({
+        'nomeCompleto': 'Bruno Lima',
+        'email': 'bruno@pklots.local',
+        'nomeEmpresa': 'Empresa Padrão',
+        'perfil': 'operador',
+        'patios': ['Pátio Shopping'],
+      });
+    case '/api/auth/ativar-conta':
+      return json({'tokenAcesso': tokenFalso(nome: 'Bruno Lima', perfil: 'operador'), 'expiraEm': 86400, 'perfil': 'operador'});
     case '/api/publico/convites/convite-usado':
       return json({'title': 'Não encontrado', 'detail': 'Convite inválido, expirado ou já utilizado.'}, 404);
     case '/api/motorista/historico':
@@ -427,6 +437,25 @@ void main() {
     expect(find.text('ENTRAR'), findsOneWidget);
   });
 
+  testWidgets('convite de operador mostra empresa e pátios, cria a senha e entra no painel', (tester) async {
+    await abrirApp(tester, perfil: 'operador', endereco: Uri.parse('https://pklots.teste/?ativar=ativar-valido'));
+
+    expect(find.text('Olá, Bruno!'), findsOneWidget);
+    expect(find.textContaining('Empresa Padrão como Operador(a)'), findsOneWidget);
+    expect(find.text('Pátio Shopping'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Senha'), 'Minha@2026');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Repita a senha'), 'Minha@2026');
+    await tester.tap(find.text('CRIAR SENHA E ENTRAR'));
+    await tester.pumpAndSettle();
+
+    final corpo = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/auth/ativar-conta').body) as Map<String, dynamic>;
+    expect(corpo, {'token': 'ativar-valido', 'senha': 'Minha@2026'});
+    expect(find.text('CRIAR SENHA E ENTRAR'), findsNothing); // saiu da tela de ativação
+    await tester.tap(find.byTooltip('Sair').first);
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('sessão salva é restaurada ao abrir o app', (tester) async {
     SharedPreferences.setMockInitialValues({
       'pklots.token': tokenFalso(nome: 'Ana Souza'),
@@ -612,7 +641,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('admin cadastra operador vinculado a pátios', (tester) async {
+  testWidgets('admin convida operador vinculado a pátios (sem definir senha)', (tester) async {
     await abrirApp(tester, perfil: 'admin');
     await entrar(tester, 'Senha@123');
     await tester.tap(find.byTooltip('Administração'));
@@ -628,22 +657,24 @@ void main() {
     expect(find.text('Motorista'), findsNothing); // mensalistas entram por convite
     await tester.enterText(find.widgetWithText(TextFormField, 'Nome completo'), 'Ana Operadora');
     await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana@pklots.local');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Senha inicial'), 'Senha@123');
+    expect(find.widgetWithText(TextFormField, 'Senha inicial'), findsNothing);
+    expect(find.textContaining('recebe um convite por e-mail'), findsOneWidget);
 
     // Sem pátio marcado não salva
-    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Convidar'));
     await tester.pumpAndSettle();
     expect(find.text('Selecione pelo menos um pátio para o operador.'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(CheckboxListTile, 'Pátio Shopping'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Salvar'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Convidar'));
     await tester.pumpAndSettle();
 
     final post = enviadas.singleWhere((r) => r.url.path == '/api/admin/usuarios');
     final corpo = jsonDecode(post.body) as Map<String, dynamic>;
     expect(corpo['perfil'], 'operador');
     expect(corpo['patiosIds'], ['p2']);
+    expect(corpo.containsKey('senha'), isFalse);
   });
 
   testWidgets('superadmin vê as empresas e cria uma nova', (tester) async {
@@ -659,7 +690,7 @@ void main() {
     await tester.enterText(find.widgetWithText(TextFormField, 'Nome da empresa'), 'Estacionamentos Silva');
     await tester.enterText(find.widgetWithText(TextFormField, 'Nome completo'), 'Maria Silva');
     await tester.enterText(find.widgetWithText(TextFormField, 'E-mail (login)'), 'maria@silva.com');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Senha inicial'), 'Senha@123');
+    expect(find.widgetWithText(TextFormField, 'Senha inicial'), findsNothing);
     await tester.tap(find.text('Criar empresa'));
     await tester.pumpAndSettle();
 
@@ -668,6 +699,7 @@ void main() {
     expect(corpo['nomePatio'], 'Pátio Principal');
     expect(corpo['totalVagas'], 30);
     expect(corpo['emailAdmin'], 'maria@silva.com');
+    expect(corpo.containsKey('senhaAdmin'), isFalse);
 
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();

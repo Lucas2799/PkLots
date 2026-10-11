@@ -8,12 +8,13 @@ using PkLots.Core.Entities;
 namespace PkLots.Application.Servicos
 {
     // Gestão da plataforma (superadmin): empresas clientes e o primeiro administrador de cada uma
-    public class ServicoPlataforma(IPkLotsDbContext db, IHashSenha hashSenha, TimeProvider relogio)
+    public class ServicoPlataforma(IPkLotsDbContext db, IHashSenha hashSenha, LinksPublicos links, TimeProvider relogio)
     {
         public async Task<IReadOnlyList<EmpresaDto>> ListarEmpresasAsync(CancellationToken ct = default) =>
             await db.Empresas
                 .OrderByDescending(e => e.Ativa).ThenBy(e => e.Nome)
-                .Select(e => new EmpresaDto(e.Id, e.Nome, e.Documento, e.Ativa, e.Patios.Count(p => p.Ativo), e.Usuarios.Count(u => u.Ativo), e.CriadoEm))
+                .Select(e => new EmpresaDto(e.Id, e.Nome, e.Documento, e.Ativa, e.Patios.Count(p => p.Ativo), e.Usuarios.Count(u => u.Ativo), e.CriadoEm,
+                    e.Usuarios.Count(u => u.Ativo && u.AguardandoAtivacao)))
                 .ToListAsync(ct);
 
         // Cria a empresa com o primeiro pátio (vagas já criadas) e o administrador
@@ -25,7 +26,6 @@ namespace PkLots.Application.Servicos
             ServicoPatios.ValidarQuantidadeVagas(requisicao.TotalVagas);
             var emailAdmin = RegrasUsuario.NormalizarEmail(requisicao.EmailAdmin);
             var nomeAdmin = RegrasUsuario.ValidarNome(requisicao.NomeAdmin);
-            RegrasUsuario.ValidarSenha(requisicao.SenhaAdmin);
 
             if (await db.Empresas.AnyAsync(e => e.Nome.ToLower() == nome.ToLower(), ct))
                 throw new ExcecaoConflito($"Já existe uma empresa chamada \"{nome}\".");
@@ -47,8 +47,8 @@ namespace PkLots.Application.Servicos
                 Email = emailAdmin,
                 NomeCompleto = nomeAdmin,
                 Perfil = Perfis.Admin,
-                SenhaHash = hashSenha.Gerar(requisicao.SenhaAdmin),
-                DeveTrocarSenha = true,
+                SenhaHash = ConvitesUsuario.SenhaInutilizavel(hashSenha),
+                AguardandoAtivacao = true, // cria a senha pelo convite enviado por e-mail
                 CriadoEm = agora,
                 AtualizadoEm = agora
             };
@@ -58,9 +58,27 @@ namespace PkLots.Application.Servicos
             db.Usuarios.Add(admin);
             Auditoria.Registrar(db, patio.Id, AcoesAuditoria.EmpresaCriada, SituacaoAuditoria.Sucesso, null, agora,
                 new() { ["superAdminId"] = superAdminId.ToString(), ["empresa"] = nome, ["admin"] = emailAdmin });
+            await ConvitesUsuario.EnviarAsync(db, links, admin, agora, ct);
 
             await db.SaveChangesAsync(ct);
-            return new EmpresaDto(empresa.Id, empresa.Nome, empresa.Documento, true, 1, 1, agora);
+            return new EmpresaDto(empresa.Id, empresa.Nome, empresa.Documento, true, 1, 1, agora, 1);
+        }
+
+        // Reenvia o convite aos administradores da empresa que ainda não criaram a senha
+        public async Task<EmpresaDto> ReenviarConvitesAsync(Guid superAdminId, Guid empresaId, CancellationToken ct = default)
+        {
+            var pendentes = await db.Usuarios.IgnoreQueryFilters()
+                .Include(u => u.Patios)
+                .Where(u => u.EmpresaId == empresaId && u.Ativo && u.AguardandoAtivacao && u.Perfil == Perfis.Admin)
+                .ToListAsync(ct);
+            if (pendentes.Count == 0)
+                throw new ExcecaoConflito("Nenhum administrador desta empresa está aguardando o convite.");
+
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            foreach (var admin in pendentes)
+                await ConvitesUsuario.EnviarAsync(db, links, admin, agora, ct);
+            await db.SaveChangesAsync(ct);
+            return (await ListarEmpresasAsync(ct)).First(e => e.Id == empresaId);
         }
 
         // Desativar a empresa bloqueia na hora o acesso de todos os seus usuários

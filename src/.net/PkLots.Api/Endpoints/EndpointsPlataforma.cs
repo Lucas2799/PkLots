@@ -24,6 +24,10 @@ namespace PkLots.Api.Endpoints
             grupo.MapPut("/empresas/{id:guid}", async (Guid id, AtualizarEmpresaRequisicao requisicao, ClaimsPrincipal usuario, ServicoPlataforma servico, CancellationToken ct) =>
                 Results.Ok(await servico.AtualizarEmpresaAsync(usuario.ObterUsuarioId(), id, requisicao, ct)))
                 .WithSummary("Renomeia ou ativa/desativa a empresa (desativada: usuários perdem o acesso na hora)");
+
+            grupo.MapPost("/empresas/{id:guid}/convite", async (Guid id, ClaimsPrincipal usuario, ServicoPlataforma servico, CancellationToken ct) =>
+                Results.Ok(await servico.ReenviarConvitesAsync(usuario.ObterUsuarioId(), id, ct)))
+                .WithSummary("Reenvia o convite aos administradores que ainda não criaram a senha");
         }
     }
 }

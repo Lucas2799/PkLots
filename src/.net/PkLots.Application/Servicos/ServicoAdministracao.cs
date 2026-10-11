@@ -13,6 +13,7 @@ namespace PkLots.Application.Servicos
         IContextoPatio contextoPatio,
         ICacheVagas cache,
         IHashSenha hashSenha,
+        LinksPublicos links,
         TimeProvider relogio)
     {
         public const decimal ValorHoraMaximo = 1000m;
@@ -160,7 +161,7 @@ namespace PkLots.Application.Servicos
                 .Where(u => u.EmpresaId == empresaId)
                 .OrderByDescending(u => u.Ativo).ThenBy(u => u.NomeCompleto)
                 .Select(u => new UsuarioDto(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm,
-                    u.Patios.Select(up => up.PatioId).ToList()))
+                    u.Patios.Select(up => up.PatioId).ToList(), u.AguardandoAtivacao))
                 .ToListAsync(ct);
         }
 
@@ -169,7 +170,6 @@ namespace PkLots.Application.Servicos
             var email = RegrasUsuario.NormalizarEmail(requisicao.Email);
             var nome = RegrasUsuario.ValidarNome(requisicao.NomeCompleto);
             var perfil = RegrasUsuario.ValidarPerfilDeEmpresa(requisicao.Perfil);
-            RegrasUsuario.ValidarSenha(requisicao.Senha);
             var patiosIds = await ValidarPatiosAsync(perfil, requisicao.PatiosIds, ct);
 
             if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
@@ -182,8 +182,8 @@ namespace PkLots.Application.Servicos
                 Email = email,
                 NomeCompleto = nome,
                 Perfil = perfil,
-                SenhaHash = hashSenha.Gerar(requisicao.Senha),
-                DeveTrocarSenha = true, // senha definida pelo admin: o usuário escolhe a dele no primeiro acesso
+                SenhaHash = ConvitesUsuario.SenhaInutilizavel(hashSenha),
+                AguardandoAtivacao = true, // entra só depois de criar a senha pelo convite
                 CriadoEm = agora,
                 AtualizadoEm = agora
             };
@@ -193,7 +193,25 @@ namespace PkLots.Application.Servicos
 
             Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.UsuarioCriado, SituacaoAuditoria.Sucesso, null, agora,
                 new() { ["adminId"] = adminId.ToString(), ["usuarioId"] = usuario.Id.ToString(), ["email"] = email, ["perfil"] = perfil });
+            await ConvitesUsuario.EnviarAsync(db, links, usuario, agora, ct);
 
+            await db.SaveChangesAsync(ct);
+            return ParaDto(usuario);
+        }
+
+        // Novo convite para quem ainda não criou a senha (o anterior expirou ou se perdeu)
+        public async Task<UsuarioDto> ReenviarConviteAsync(Guid adminId, Guid usuarioId, CancellationToken ct = default)
+        {
+            var usuario = await ObterUsuarioAsync(usuarioId, ct);
+            if (!usuario.Ativo)
+                throw new ExcecaoConflito("Usuário inativo: reative o cadastro antes de reenviar o convite.");
+            if (!usuario.AguardandoAtivacao)
+                throw new ExcecaoConflito("Este usuário já ativou a conta. Use \"Enviar link de nova senha\" se ele esqueceu a senha.");
+
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            await ConvitesUsuario.EnviarAsync(db, links, usuario, agora, ct);
+            Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.ConviteUsuarioEnviado, SituacaoAuditoria.Sucesso, null, agora,
+                new() { ["adminId"] = adminId.ToString(), ["usuarioId"] = usuario.Id.ToString(), ["email"] = usuario.Email });
             await db.SaveChangesAsync(ct);
             return ParaDto(usuario);
         }
@@ -243,21 +261,19 @@ namespace PkLots.Application.Servicos
             return ParaDto(usuario);
         }
 
-        public async Task RedefinirSenhaAsync(Guid adminId, Guid usuarioId, string senha, CancellationToken ct = default)
+        // O admin não define a senha de ninguém: envia à pessoa o link para ela criar uma nova
+        public async Task EnviarLinkNovaSenhaAsync(Guid adminId, Guid usuarioId, CancellationToken ct = default)
         {
-            RegrasUsuario.ValidarSenha(senha);
             var usuario = await ObterUsuarioAsync(usuarioId, ct);
+            if (!usuario.Ativo)
+                throw new ExcecaoConflito("Usuário inativo: reative o cadastro antes.");
+            if (usuario.AguardandoAtivacao)
+                throw new ExcecaoConflito("Este usuário ainda não ativou a conta. Reenvie o convite.");
+
             var agora = relogio.GetUtcNow().UtcDateTime;
-
-            usuario.SenhaHash = hashSenha.Gerar(senha);
-            usuario.DeveTrocarSenha = true;
-            usuario.FalhasLogin = 0;
-            usuario.BloqueadoAte = null; // redefinir também desbloqueia
-            usuario.AtualizadoEm = agora;
-
+            ServicoAutenticacao.EnfileirarRedefinicao(db, links, usuario, agora);
             Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.SenhaRedefinida, SituacaoAuditoria.Sucesso, null, agora,
                 new() { ["adminId"] = adminId.ToString(), ["usuarioId"] = usuario.Id.ToString() });
-
             await db.SaveChangesAsync(ct);
         }
 
@@ -302,6 +318,7 @@ namespace PkLots.Application.Servicos
                 patio.ValorMensalidade, patio.VagasReservadasMensalistas);
 
         private static UsuarioDto ParaDto(Usuario u) =>
-            new(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm, u.Patios.Select(up => up.PatioId).ToList());
+            new(u.Id, u.Email, u.NomeCompleto, u.Perfil, u.Ativo, u.UltimoLogin, u.CriadoEm, u.Patios.Select(up => up.PatioId).ToList(),
+                u.AguardandoAtivacao);
     }
 }

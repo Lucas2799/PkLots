@@ -32,5 +32,10 @@ namespace PkLots.Application.DTOs
 
     public record EsqueciSenhaRequisicao(string? Email);
 
+    // Convite de admin/operador: o que a pessoa vê antes de criar a senha
+    public record ConviteUsuarioDto(string NomeCompleto, string Email, string NomeEmpresa, string Perfil, IReadOnlyList<string> Patios);
+
+    public record AtivarContaRequisicao(string? Token, string? Senha);
+
     public record RedefinirSenhaPorEmailRequisicao(string? Token, string? NovaSenha);
 }

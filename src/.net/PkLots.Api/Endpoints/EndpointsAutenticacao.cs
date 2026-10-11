@@ -31,6 +31,11 @@ namespace PkLots.Api.Endpoints
                 .AllowAnonymous()
                 .WithSummary("Define a nova senha com o token recebido por e-mail");
 
+            grupo.MapPost("/ativar-conta", async (AtivarContaRequisicao requisicao, ServicoAutenticacao servico, CancellationToken ct) =>
+                Results.Ok(await servico.AtivarContaAsync(requisicao, ct)))
+                .AllowAnonymous()
+                .WithSummary("Cria a primeira senha pelo convite (admin/operador) e retorna o token");
+
             grupo.MapPost("/trocar-senha", async (TrocarSenhaRequisicao requisicao, ClaimsPrincipal usuario, ServicoAutenticacao servico,
                     CancellationToken ct) =>
                 Results.Ok(await servico.TrocarSenhaAsync(usuario.ObterUsuarioId(), requisicao, ct)))
