@@ -63,4 +63,37 @@ namespace PkLots.Application.DTOs
 
     // Situação atual da carteira + o que mudou no período
     public record MensalistasRelatorioDto(int Ativos, int EmDia, int Vencidos, int Novos, int Pagamentos);
+
+    // ---------- Relatório da plataforma (superadmin): uso de cada empresa cliente ----------
+
+    public record RelatorioPlataformaDto(
+        DateOnly De,
+        DateOnly Ate,
+        IndicadoresPlataformaDto Totais,
+        IReadOnlyList<MovimentoDiaDto> PorDia,
+        IReadOnlyList<UsoEmpresaDto> Empresas);
+
+    public record IndicadoresPlataformaDto(
+        int EmpresasAtivas,
+        int EmpresasNovas,
+        int EmpresasSemMovimento, // ativas, sem nenhuma entrada no período
+        int PatiosAtivos,
+        int Vagas,
+        int UsuariosAtivos,
+        int MensalistasAtivos,
+        int Entradas,
+        decimal ValorProcessado); // saídas + mensalidades registradas no sistema
+
+    public record UsoEmpresaDto(
+        Guid Id,
+        string Nome,
+        bool Ativa,
+        DateTime CriadoEm,
+        int Patios,
+        int Vagas,
+        int Usuarios,
+        int MensalistasAtivos,
+        int Entradas,
+        decimal ValorProcessado,
+        DateTime? UltimaEntrada); // de todo o histórico: empresa parada há dias pede contato
 }

@@ -12,6 +12,12 @@ namespace PkLots.Api.Endpoints
                 .WithTags("Relatórios")
                 .RequireAuthorization(Autorizacao.Admin)
                 .WithSummary("Receita, movimento, pátios, operadores, cancelamentos e mensalistas da empresa no período");
+
+            app.MapGet("/api/plataforma/relatorio", async (DateOnly? de, DateOnly? ate, ServicoRelatorios servico, CancellationToken ct) =>
+                    Results.Ok(await servico.ObterDaPlataformaAsync(de, ate, ct)))
+                .WithTags("Plataforma")
+                .RequireAuthorization(Autorizacao.SuperAdmin)
+                .WithSummary("Uso da plataforma por empresa cliente no período");
         }
     }
 }

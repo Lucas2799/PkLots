@@ -7,7 +7,7 @@ using PkLots.Core.Constantes;
 namespace PkLots.Application.Servicos
 {
     // Relatórios por período (datas no fuso de Brasília, fim inclusivo):
-    // o do dono cobre os pátios da empresa dele.
+    // o do dono cobre os pátios da empresa dele; o da plataforma, o uso de cada empresa cliente.
     public class ServicoRelatorios(IPkLotsDbContext db, IContextoPatio contextoPatio, TimeProvider relogio)
     {
         public const int DiasMaximos = 366;
@@ -151,6 +151,76 @@ namespace PkLots.Application.Servicos
 
             return new RelatorioEmpresaDto(inicioData, fimData, nomeEmpresa, patioId is null ? null : patios[0].Nome,
                 totais, porForma, porDia, porHora, porPatio, porOperador, listaCancelamentos, mensalistas);
+        }
+
+        // Superadmin: o DbContext não filtra por empresa (sem claim empresa_id)
+        public async Task<RelatorioPlataformaDto> ObterDaPlataformaAsync(DateOnly? de, DateOnly? ate, CancellationToken ct = default)
+        {
+            var (inicioData, fimData) = Periodo(de, ate);
+            var (inicio, fim) = IntervaloUtc(inicioData, fimData);
+
+            var empresas = await db.Empresas
+                .OrderByDescending(e => e.Ativa).ThenBy(e => e.Nome)
+                .Select(e => new
+                {
+                    e.Id,
+                    e.Nome,
+                    e.Ativa,
+                    e.CriadoEm,
+                    Patios = e.Patios.Count(p => p.Ativo),
+                    Vagas = e.Patios.Where(p => p.Ativo).SelectMany(p => p.Vagas).Count(v => v.Ativa),
+                    Usuarios = e.Usuarios.Count(u => u.Ativo),
+                })
+                .ToListAsync(ct);
+
+            var entradas = await db.EntradasVeiculos
+                .Where(e => e.DataHoraEntrada >= inicio && e.DataHoraEntrada < fim && e.Situacao != SituacaoEntrada.Cancelada)
+                .Select(e => new { e.Patio.EmpresaId, e.DataHoraEntrada })
+                .ToListAsync(ct);
+            var saidas = await db.SaidasVeiculos
+                .Where(s => s.DataHoraSaida >= inicio && s.DataHoraSaida < fim)
+                .Select(s => new { s.Patio.EmpresaId, s.DataHoraSaida, s.ValorTotal })
+                .ToListAsync(ct);
+            var mensalidades = await db.PagamentosMensalidade
+                .Where(p => p.PagoEm >= inicio && p.PagoEm < fim)
+                .Select(p => new { p.Patio.EmpresaId, p.PagoEm, p.Valor })
+                .ToListAsync(ct);
+            var mensalistasAtivos = await db.Mensalistas
+                .Where(m => m.Ativo && m.Patio.Ativo)
+                .GroupBy(m => m.Patio.EmpresaId)
+                .Select(g => new { EmpresaId = g.Key, Total = g.Count() })
+                .ToDictionaryAsync(g => g.EmpresaId, g => g.Total, ct);
+            var ultimasEntradas = await db.EntradasVeiculos
+                .GroupBy(e => e.Patio.EmpresaId)
+                .Select(g => new { EmpresaId = g.Key, Ultima = g.Max(e => e.DataHoraEntrada) })
+                .ToDictionaryAsync(g => g.EmpresaId, g => g.Ultima, ct);
+
+            var uso = empresas.Select(e => new UsoEmpresaDto(
+                    e.Id, e.Nome, e.Ativa, e.CriadoEm, e.Patios, e.Vagas, e.Usuarios,
+                    mensalistasAtivos.GetValueOrDefault(e.Id),
+                    entradas.Count(x => x.EmpresaId == e.Id),
+                    saidas.Where(x => x.EmpresaId == e.Id).Sum(x => x.ValorTotal) + mensalidades.Where(x => x.EmpresaId == e.Id).Sum(x => x.Valor),
+                    ultimasEntradas.TryGetValue(e.Id, out var ultima) ? ultima : null))
+                .ToList();
+
+            var ativas = uso.Where(e => e.Ativa).ToList();
+            var totais = new IndicadoresPlataformaDto(
+                ativas.Count,
+                uso.Count(e => e.CriadoEm >= inicio && e.CriadoEm < fim),
+                ativas.Count(e => e.Entradas == 0),
+                ativas.Sum(e => e.Patios),
+                ativas.Sum(e => e.Vagas),
+                ativas.Sum(e => e.Usuarios),
+                ativas.Sum(e => e.MensalistasAtivos),
+                entradas.Count,
+                saidas.Sum(s => s.ValorTotal) + mensalidades.Sum(p => p.Valor));
+
+            var porDia = PorDia(inicioData, fimData,
+                entradas.Select(e => e.DataHoraEntrada),
+                saidas.Select(s => (s.DataHoraSaida, s.ValorTotal)),
+                mensalidades.Select(p => (p.PagoEm, p.Valor)));
+
+            return new RelatorioPlataformaDto(inicioData, fimData, totais, porDia, uso);
         }
 
         // Sem datas: do dia 1º do mês atual até hoje

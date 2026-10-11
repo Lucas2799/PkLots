@@ -11,6 +11,7 @@ import '../../util/formatadores.dart';
 import '../../util/validadores.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/logo_pklots.dart';
+import '../relatorios/relatorio_plataforma_tela.dart';
 import '../troca_senha_tela.dart';
 
 /// Área do superadmin: empresas clientes da plataforma
@@ -94,6 +95,11 @@ class _PlataformaTelaState extends State<PlataformaTela> {
           Flexible(child: Text('· Plataforma', style: TextStyle(fontSize: 16, color: CoresPkLots.textoSecundario))),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'Relatórios',
+            icon: const Icon(Icons.insights_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RelatorioPlataformaTela())),
+          ),
           IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: _carregar),
           IconButton(
             tooltip: 'Alterar senha',

@@ -137,6 +137,24 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         ],
         'mensalistas': {'ativos': 8, 'emDia': 6, 'vencidos': 2, 'novos': 1, 'pagamentos': 2},
       });
+    case '/api/plataforma/relatorio':
+      return json({
+        'de': req.url.queryParameters['de'], 'ate': req.url.queryParameters['ate'],
+        'totais': {
+          'empresasAtivas': 2, 'empresasNovas': 1, 'empresasSemMovimento': 1, 'patiosAtivos': 3, 'vagas': 70, 'usuariosAtivos': 5,
+          'mensalistasAtivos': 8, 'entradas': 42, 'valorProcessado': 1850.0,
+        },
+        'porDia': [
+          {'data': '2026-09-29', 'entradas': 20, 'saidas': 19, 'receitaAvulsos': 600.0, 'receitaMensalidades': 0.0, 'receita': 600.0},
+          {'data': '2026-09-30', 'entradas': 22, 'saidas': 21, 'receitaAvulsos': 650.0, 'receitaMensalidades': 600.0, 'receita': 1250.0},
+        ],
+        'empresas': [
+          {'id': 'e1', 'nome': 'Empresa Padrão', 'ativa': true, 'criadoEm': '2026-09-01T12:00:00Z', 'patios': 2, 'vagas': 40,
+            'usuarios': 3, 'mensalistasAtivos': 8, 'entradas': 42, 'valorProcessado': 1850.0, 'ultimaEntrada': DateTime.now().toUtc().toIso8601String()},
+          {'id': 'e2', 'nome': 'Estacionamentos Silva', 'ativa': true, 'criadoEm': '2026-09-20T12:00:00Z', 'patios': 1, 'vagas': 30,
+            'usuarios': 2, 'mensalistasAtivos': 0, 'entradas': 0, 'valorProcessado': 0.0, 'ultimaEntrada': null},
+        ],
+      });
     case '/api/motorista/patios':
       return json([
         {'id': 'p1', 'nome': 'Pátio Padrão', 'nomeEmpresa': 'Empresa Padrão', 'disponiveis': 28, 'total': 30},
@@ -776,6 +794,20 @@ void main() {
     await entrar(tester, 'Senha@123');
 
     expect(find.byTooltip('Relatórios'), findsNothing);
+  });
+
+  testWidgets('superadmin vê o uso por empresa e quem está parado', (tester) async {
+    await abrirApp(tester, perfil: 'superadmin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Relatórios'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Relatório da plataforma'), findsOneWidget);
+    expect(find.text('Empresas ativas'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Estacionamentos Silva'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('Nunca'), findsOneWidget);
+    expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget); // só a empresa sem movimento
   });
 
   testWidgets('operador cadastra mensalista e registra o pagamento', (tester) async {

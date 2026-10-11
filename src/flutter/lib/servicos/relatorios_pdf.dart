@@ -93,6 +93,9 @@ class RelatoriosPdf {
   static Future<void> baixarEmpresa(RelatorioEmpresa r) async => Printing.sharePdf(
       bytes: await gerarEmpresa(r), filename: 'relatorio-${_nomeArquivo(r.nomeEmpresa)}-${r.periodo.sufixo}.pdf');
 
+  static Future<void> baixarPlataforma(RelatorioPlataforma r) async =>
+      Printing.sharePdf(bytes: await gerarPlataforma(r), filename: 'relatorio-plataforma-${r.periodo.sufixo}.pdf');
+
   static Future<Uint8List> gerarEmpresa(RelatorioEmpresa r) async {
     final icone = await _icone();
     final t = r.totais;
@@ -171,6 +174,54 @@ class RelatoriosPdf {
           for (final c in r.cancelamentos)
             [Formatadores.dataHoraCompleta(c.canceladaEm), Formatadores.placa(c.placa), c.nomePatio, c.canceladaPor ?? '-', c.motivo ?? '-'],
         ]),
+      ],
+    ));
+
+    return documento.save();
+  }
+
+  static Future<Uint8List> gerarPlataforma(RelatorioPlataforma r) async {
+    final icone = await _icone();
+    final t = r.totais;
+    final documento = pw.Document(title: 'Relatório da plataforma', author: 'PkLots');
+
+    documento.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4.landscape,
+      margin: const pw.EdgeInsets.all(28),
+      footer: _rodape,
+      build: (_) => [
+        _cabecalho(icone, 'Relatório da plataforma', 'Uso por empresa cliente', r.periodo),
+        _indicadores([
+          ('Empresas ativas', '${t.empresasAtivas}'),
+          ('Novas no período', '${t.empresasNovas}'),
+          ('Sem movimento', '${t.empresasSemMovimento}'),
+          ('Pátios ativos', '${t.patiosAtivos}'),
+          ('Vagas', '${t.vagas}'),
+          ('Usuários ativos', '${t.usuariosAtivos}'),
+          ('Mensalistas ativos', '${t.mensalistasAtivos}'),
+          ('Entradas', '${t.entradas}'),
+          ('Valor processado', Formatadores.moeda(t.valorProcessado)),
+        ]),
+        _titulo('Empresas'),
+        _tabela(
+            ['Empresa', 'Cliente desde', 'Pátios', 'Vagas', 'Usuários', 'Mensalistas', 'Entradas', 'Valor processado', 'Último movimento'], [
+          for (final e in r.empresas)
+            [
+              e.ativa ? e.nome : '${e.nome} (desativada)',
+              Formatadores.data(e.criadoEm.toLocal()),
+              '${e.patios}',
+              '${e.vagas}',
+              '${e.usuarios}',
+              '${e.mensalistasAtivos}',
+              '${e.entradas}',
+              Formatadores.moeda(e.valorProcessado),
+              e.ultimaEntrada == null ? 'Nunca' : Formatadores.dataHoraCompleta(e.ultimaEntrada!),
+            ],
+        ], numericas: {2, 3, 4, 5, 6, 7}),
+        _titulo('Movimento por dia'),
+        _tabela(['Dia', 'Entradas', 'Saídas', 'Valor processado'], [
+          for (final d in r.porDia) [_diaCurto.format(d.data), '${d.entradas}', '${d.saidas}', Formatadores.moeda(d.receita)],
+        ], numericas: {1, 2, 3}),
       ],
     ));
 

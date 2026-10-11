@@ -1244,3 +1244,98 @@ class RelatorioEmpresa {
     );
   }
 }
+
+class IndicadoresPlataforma {
+  final int empresasAtivas;
+  final int empresasNovas;
+  final int empresasSemMovimento;
+  final int patiosAtivos;
+  final int vagas;
+  final int usuariosAtivos;
+  final int mensalistasAtivos;
+  final int entradas;
+  final double valorProcessado;
+
+  IndicadoresPlataforma({
+    required this.empresasAtivas,
+    required this.empresasNovas,
+    required this.empresasSemMovimento,
+    required this.patiosAtivos,
+    required this.vagas,
+    required this.usuariosAtivos,
+    required this.mensalistasAtivos,
+    required this.entradas,
+    required this.valorProcessado,
+  });
+
+  factory IndicadoresPlataforma.deJson(Map<String, dynamic> json) => IndicadoresPlataforma(
+        empresasAtivas: json['empresasAtivas'] as int,
+        empresasNovas: json['empresasNovas'] as int,
+        empresasSemMovimento: json['empresasSemMovimento'] as int,
+        patiosAtivos: json['patiosAtivos'] as int,
+        vagas: json['vagas'] as int,
+        usuariosAtivos: json['usuariosAtivos'] as int,
+        mensalistasAtivos: json['mensalistasAtivos'] as int,
+        entradas: json['entradas'] as int,
+        valorProcessado: _numero(json['valorProcessado']),
+      );
+}
+
+class UsoEmpresa {
+  final String id;
+  final String nome;
+  final bool ativa;
+  final DateTime criadoEm;
+  final int patios;
+  final int vagas;
+  final int usuarios;
+  final int mensalistasAtivos;
+  final int entradas;
+  final double valorProcessado;
+  final DateTime? ultimaEntrada;
+
+  UsoEmpresa({
+    required this.id,
+    required this.nome,
+    required this.ativa,
+    required this.criadoEm,
+    required this.patios,
+    required this.vagas,
+    required this.usuarios,
+    required this.mensalistasAtivos,
+    required this.entradas,
+    required this.valorProcessado,
+    this.ultimaEntrada,
+  });
+
+  factory UsoEmpresa.deJson(Map<String, dynamic> json) => UsoEmpresa(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        ativa: json['ativa'] as bool,
+        criadoEm: _data(json['criadoEm']),
+        patios: json['patios'] as int,
+        vagas: json['vagas'] as int,
+        usuarios: json['usuarios'] as int,
+        mensalistasAtivos: json['mensalistasAtivos'] as int,
+        entradas: json['entradas'] as int,
+        valorProcessado: _numero(json['valorProcessado']),
+        ultimaEntrada: _dataOpcional(json['ultimaEntrada']),
+      );
+}
+
+/// Relatório do superadmin: uso de cada empresa cliente
+class RelatorioPlataforma {
+  final PeriodoRelatorio periodo;
+  final IndicadoresPlataforma totais;
+  final List<MovimentoDia> porDia;
+  final List<UsoEmpresa> empresas;
+
+  RelatorioPlataforma({required this.periodo, required this.totais, required this.porDia, required this.empresas});
+
+  factory RelatorioPlataforma.deJson(Map<String, dynamic> json) => RelatorioPlataforma(
+        periodo: PeriodoRelatorio(_data(json['de']), _data(json['ate'])),
+        totais: IndicadoresPlataforma.deJson(json['totais'] as Map<String, dynamic>),
+        porDia: (json['porDia'] as List).map((e) => MovimentoDia.deJson(e as Map<String, dynamic>)).toList(),
+        empresas: (json['empresas'] as List).map((e) => UsoEmpresa.deJson(e as Map<String, dynamic>)).toList(),
+      );
+}

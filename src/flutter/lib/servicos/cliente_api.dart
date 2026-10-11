@@ -261,6 +261,9 @@ class ClienteApi {
     return RelatorioEmpresa.deJson(await _get('/api/relatorios/empresa?$consulta'));
   }
 
+  Future<RelatorioPlataforma> relatorioPlataforma(PeriodoRelatorio periodo) async => RelatorioPlataforma.deJson(
+      await _get('/api/plataforma/relatorio?${Uri(queryParameters: periodo.paraConsulta()).query}'));
+
   Future<List<EmpresaPlataforma>> empresas() async => _lista(await _get('/api/plataforma/empresas'), EmpresaPlataforma.deJson);
 
   Future<EmpresaPlataforma> criarEmpresa({

@@ -45,4 +45,22 @@ void main() {
     expect(relatorio.entradasPorHora[23], 23);
     expect(ehPdf(await RelatoriosPdf.gerarEmpresa(relatorio)), isTrue);
   });
+
+  test('relatório da plataforma em PDF', () async {
+    final relatorio = RelatorioPlataforma.deJson({
+      'de': '2026-09-01', 'ate': '2026-09-30',
+      'totais': {
+        'empresasAtivas': 1, 'empresasNovas': 0, 'empresasSemMovimento': 0, 'patiosAtivos': 1, 'vagas': 30, 'usuariosAtivos': 2,
+        'mensalistasAtivos': 3, 'entradas': 465, 'valorProcessado': 7275.0,
+      },
+      'porDia': dias,
+      'empresas': [
+        {'id': 'e1', 'nome': 'Estacionamentos São João', 'ativa': true, 'criadoEm': '2026-08-01T12:00:00Z', 'patios': 1, 'vagas': 30,
+          'usuarios': 2, 'mensalistasAtivos': 3, 'entradas': 465, 'valorProcessado': 7275.0, 'ultimaEntrada': null},
+      ],
+    });
+
+    expect(relatorio.periodo.dias, 30);
+    expect(ehPdf(await RelatoriosPdf.gerarPlataforma(relatorio)), isTrue);
+  });
 }

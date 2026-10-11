@@ -149,5 +149,26 @@ namespace PkLots.Application.Tests
             Assert.Equal(0, relatorio.Totais.Entradas);
             Assert.Equal(["Shopping"], relatorio.PorPatio.Select(p => p.Nome));
         }
+
+        [Fact]
+        public async Task Plataforma_mostra_uso_de_cada_empresa()
+        {
+            using var cenario = new Cenario();
+            await cenario.Entrada.RegistrarAsync(new RegistrarEntradaRequisicao("AAA1111"));
+            cenario.Relogio.Advance(TimeSpan.FromHours(1));
+            await cenario.SairAsync("AAA1111");
+            var (parada, _) = cenario.CriarOutraEmpresa("Parada Ltda");
+            cenario.PerfilAtual = Perfis.SuperAdmin;
+
+            var relatorio = await cenario.Relatorios.ObterDaPlataformaAsync(Hoje, Hoje);
+
+            Assert.Equal((2, 1, 1, 15m), (relatorio.Totais.EmpresasAtivas, relatorio.Totais.EmpresasSemMovimento,
+                relatorio.Totais.Entradas, relatorio.Totais.ValorProcessado));
+            var ativa = relatorio.Empresas.Single(e => e.Id == cenario.Empresa.Id);
+            Assert.Equal((1, 30, 1, 15m), (ativa.Patios, ativa.Vagas, ativa.Entradas, ativa.ValorProcessado));
+            Assert.Equal(Cenario.Inicio.UtcDateTime, ativa.UltimaEntrada);
+            var semMovimento = relatorio.Empresas.Single(e => e.Id == parada.Id);
+            Assert.Equal((0, 5, null), (semMovimento.Entradas, semMovimento.Vagas, semMovimento.UltimaEntrada));
+        }
     }
 }
