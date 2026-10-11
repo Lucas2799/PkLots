@@ -42,7 +42,7 @@ namespace PkLots.Application.Servicos
 
         public static readonly string[] PerfisDeEmpresa = [Perfis.Admin, Perfis.Operador];
 
-        // Usuários criados pelo admin de uma empresa (motoristas se cadastram pelo app; superadmin é da plataforma)
+        // Usuários criados pelo admin de uma empresa (mensalistas entram por convite; superadmin é da plataforma)
         public static string ValidarPerfilDeEmpresa(string? perfil)
         {
             var normalizado = (perfil ?? "").Trim().ToLowerInvariant();

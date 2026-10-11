@@ -152,33 +152,5 @@ namespace PkLots.Application.Servicos
             await db.SaveChangesAsync(ct);
             logger?.LogInformation("Senha redefinida por e-mail para {Email}", usuario.Email);
         }
-
-        // Cadastro de motorista pelo app ("Criar Conta")
-        public async Task<TokenDto> RegistrarMotoristaAsync(RegistroRequisicao requisicao, CancellationToken ct = default)
-        {
-            var email = RegrasUsuario.NormalizarEmail(requisicao.Email);
-            RegrasUsuario.ValidarSenha(requisicao.Senha);
-            var nome = RegrasUsuario.ValidarNome(requisicao.NomeCompleto);
-
-            if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
-                throw new ExcecaoConflito("E-mail já cadastrado.");
-
-            var agora = relogio.GetUtcNow().UtcDateTime;
-            var usuario = new Usuario
-            {
-                Email = email,
-                SenhaHash = hashSenha.Gerar(requisicao.Senha),
-                NomeCompleto = nome,
-                Perfil = Perfis.Motorista,
-                UltimoLogin = agora,
-                CriadoEm = agora,
-                AtualizadoEm = agora
-            };
-
-            db.Usuarios.Add(usuario);
-            await db.SaveChangesAsync(ct);
-
-            return geradorToken.Gerar(usuario);
-        }
     }
 }

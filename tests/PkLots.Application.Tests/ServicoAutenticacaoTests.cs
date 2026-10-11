@@ -44,27 +44,6 @@ namespace PkLots.Application.Tests
         }
 
         [Fact]
-        public async Task Registro_cria_motorista_e_recusa_email_duplicado()
-        {
-            using var cenario = new Cenario();
-
-            var token = await cenario.Autenticacao.RegistrarMotoristaAsync(new RegistroRequisicao("novo@example.com", "Senha@123", "Novo Motorista"));
-
-            Assert.Equal(Perfis.Motorista, token.Perfil);
-            await Assert.ThrowsAsync<ExcecaoConflito>(() =>
-                cenario.Autenticacao.RegistrarMotoristaAsync(new RegistroRequisicao("NOVO@example.com", "Senha@123", "Outro")));
-        }
-
-        [Fact]
-        public async Task Registro_exige_senha_com_8_caracteres()
-        {
-            using var cenario = new Cenario();
-
-            await Assert.ThrowsAsync<ExcecaoNegocio>(() =>
-                cenario.Autenticacao.RegistrarMotoristaAsync(new RegistroRequisicao("a@b.com", "123", "Nome")));
-        }
-
-        [Fact]
         public async Task Esqueci_senha_envia_link_e_redefine_desbloqueando_a_conta()
         {
             using var cenario = new Cenario();

@@ -105,7 +105,8 @@ namespace PkLots.Application.Tests
         }
         public ServicoPatios Patios => new(Db, ContextoPatio, Relogio);
         public ServicoPlataforma Plataforma => new(Db, HashSenha, Relogio);
-        public ServicoMensalistas Mensalistas => new(Db, ContextoPatio, Relogio);
+        public ServicoMensalistas Mensalistas => new(Db, ContextoPatio, Links, Relogio);
+        public ServicoAcessoMensalista AcessoMensalista => new(Db, HashSenha, GeradorToken, Relogio);
         public ServicoEstadiaPublica EstadiaPublica => new(Db, Relogio);
         public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Mensalistas, Relogio);
         public ImpressoraFalsa Impressora { get; } = new();

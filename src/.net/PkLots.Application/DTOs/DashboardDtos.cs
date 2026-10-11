@@ -14,19 +14,20 @@ namespace PkLots.Application.DTOs
         IReadOnlyList<VeiculoEstacionadoDto> Estacionados,
         ResumoMensalistasDto? Mensalistas = null);
 
-    public record EstacionamentoAtualDto(
-        Guid EntradaId,
-        string Placa,
-        DateTime DataHoraEntrada,
-        string Duracao,
-        string? NumeroVaga,
-        decimal ValorEstimado,
-        string NomePatio = "");
+    // Área do mensalista no app: um contrato por pátio em que a pessoa aceitou o convite
+    public record ContratoMensalistaDto(
+        Guid Id,
+        string NomePatio,
+        string NomeEmpresa,
+        IReadOnlyList<string> Placas,
+        DateOnly? ValidoAte,
+        string Situacao,        // em_dia, vencendo, vencido
+        int? DiasParaVencer,
+        IReadOnlyList<EstadiaAtualDto> Estacionados);
 
-    // Pátios visíveis ao motorista, com a disponibilidade atual
+    // Veículo do contrato no pátio agora (valor zero enquanto coberto pela mensalidade)
+    public record EstadiaAtualDto(string Placa, DateTime DataHoraEntrada, string Duracao, string? NumeroVaga, decimal ValorEstimado);
+
+    // Pátios visíveis no app, com a disponibilidade atual
     public record PatioDisponibilidadeDto(Guid Id, string Nome, string NomeEmpresa, int Disponiveis, int Total);
-
-    public record CadastrarVeiculoRequisicao(string Placa, string? Modelo, string? Cor);
-
-    public record VeiculoDto(Guid Id, string Placa, string? Modelo, string? Cor);
 }

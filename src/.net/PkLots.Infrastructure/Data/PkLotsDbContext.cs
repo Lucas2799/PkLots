@@ -14,8 +14,8 @@ namespace PkLots.Infrastructure.Data
 
         // Empresa (tenant) do usuário autenticado (claim empresa_id), lida a cada consulta: o DbContext é criado
         // no início da requisição, antes da autenticação, então não pode guardar o valor no construtor.
-        // Nula para superadmin, motoristas, requisições anônimas e startup: nesses casos os serviços
-        // filtram explicitamente (ex.: motorista só vê as próprias placas).
+        // Nula para superadmin, mensalistas (perfil motorista), requisições anônimas e startup: nesses casos os
+        // serviços filtram explicitamente (ex.: mensalista só vê os próprios contratos; link do ticket, só aquela estadia).
         private Guid? _empresaId =>
             Guid.TryParse(_httpContext?.HttpContext?.User.FindFirst(ClaimEmpresa)?.Value, out var id) ? id : null;
 
@@ -25,7 +25,6 @@ namespace PkLots.Infrastructure.Data
         public DbSet<Patio> Patios { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<UsuarioPatio> UsuariosPatios { get; set; }
-        public DbSet<VeiculoMotorista> VeiculosMotoristas { get; set; }
         public DbSet<Mensalista> Mensalistas { get; set; }
         public DbSet<MensalistaPlaca> MensalistasPlacas { get; set; }
         public DbSet<PagamentoMensalidade> PagamentosMensalidade { get; set; }
@@ -106,11 +105,6 @@ namespace PkLots.Infrastructure.Data
             modelBuilder.Entity<EmailPendente>()
                 .HasQueryFilter(e => _empresaId == null);
 
-            // Placas dos motoristas são da plataforma: só aparecem para quem não pertence a uma empresa
-            // (o próprio motorista; os serviços filtram pelo UsuarioId)
-            modelBuilder.Entity<VeiculoMotorista>()
-                .HasQueryFilter(v => _empresaId == null);
-
             // Índices
             modelBuilder.Entity<Vaga>()
                 .HasIndex(v => new { v.PatioId, v.Disponivel });
@@ -125,9 +119,6 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Email).IsUnique();
-
-            modelBuilder.Entity<VeiculoMotorista>()
-                .HasIndex(v => v.Placa).IsUnique(); // uma placa pertence a um só motorista
 
             modelBuilder.Entity<UsuarioPatio>()
                 .HasKey(up => new { up.UsuarioId, up.PatioId });
@@ -217,11 +208,20 @@ namespace PkLots.Infrastructure.Data
                 .Property(e => e.TokenAcesso)
                 .HasMaxLength(32);
 
+            // Acesso de mensalistas ao app
+            modelBuilder.Entity<Mensalista>().Property(m => m.Email).HasMaxLength(254);
+            modelBuilder.Entity<Mensalista>().HasIndex(m => m.UsuarioId);
+            modelBuilder.Entity<Mensalista>()
+                .HasOne(m => m.Usuario).WithMany().HasForeignKey(m => m.UsuarioId).OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<TokenUsuario>().HasIndex(t => t.HashToken).IsUnique();
+            modelBuilder.Entity<TokenUsuario>().HasIndex(t => new { t.MensalistaId, t.Tipo });
             modelBuilder.Entity<TokenUsuario>().HasIndex(t => new { t.UsuarioId, t.Tipo });
             modelBuilder.Entity<TokenUsuario>().Property(t => t.Tipo).HasMaxLength(30);
             modelBuilder.Entity<TokenUsuario>().Property(t => t.HashToken).HasMaxLength(64);
             modelBuilder.Entity<TokenUsuario>().Property(t => t.Email).HasMaxLength(254);
+            modelBuilder.Entity<TokenUsuario>()
+                .HasOne(t => t.Mensalista).WithMany().HasForeignKey(t => t.MensalistaId).OnDelete(DeleteBehavior.Cascade);
             modelBuilder.Entity<TokenUsuario>()
                 .HasOne<Usuario>().WithMany().HasForeignKey(t => t.UsuarioId).OnDelete(DeleteBehavior.Cascade);
 
@@ -291,12 +291,6 @@ namespace PkLots.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(e => e.MensalistaId)
                 .OnDelete(DeleteBehavior.SetNull);
-
-            modelBuilder.Entity<VeiculoMotorista>()
-                .HasOne(v => v.Usuario)
-                .WithMany(u => u.Veiculos)
-                .HasForeignKey(v => v.UsuarioId)
-                .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Vaga>()
                 .HasOne(v => v.Patio)

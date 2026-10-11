@@ -9,11 +9,10 @@ import '../../util/formatadores.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/item_historico_tile.dart';
 import '../../widgets/logo_pklots.dart';
-import 'cadastro_veiculo_dialogo.dart';
 import '../troca_senha_tela.dart';
 import 'historico_tela.dart';
 
-/// Tela principal do motorista
+/// Tela principal do mensalista (perfil motorista)
 class InicioMotoristaTela extends StatefulWidget {
   const InicioMotoristaTela({super.key});
 
@@ -75,7 +74,11 @@ class _InicioMotoristaTelaState extends State<InicioMotoristaTela> {
                   const SizedBox(height: 16),
                 ],
                 if (estado.patios != null) ...[
-                  _MeuEstacionamento(estado: estado),
+                  if (estado.contratos.isEmpty) const _SemContrato(),
+                  for (final contrato in estado.contratos) ...[
+                    _Contrato(contrato: contrato),
+                    const SizedBox(height: 16),
+                  ],
                   const SizedBox(height: 16),
                   _Patios(patios: estado.patios!),
                   const SizedBox(height: 16),
@@ -90,81 +93,88 @@ class _InicioMotoristaTelaState extends State<InicioMotoristaTela> {
   }
 }
 
-class _MeuEstacionamento extends StatefulWidget {
-  const _MeuEstacionamento({required this.estado});
+/// Contrato de mensalista: validade da mensalidade, placas e veículos estacionados agora
+class _Contrato extends StatelessWidget {
+  const _Contrato({required this.contrato});
 
-  final MotoristaProvider estado;
+  final ContratoMensalista contrato;
 
-  @override
-  State<_MeuEstacionamento> createState() => _MeuEstacionamentoState();
-}
-
-class _MeuEstacionamentoState extends State<_MeuEstacionamento> {
   @override
   Widget build(BuildContext context) {
-    final atual = widget.estado.atual;
-    final veiculos = widget.estado.veiculos;
+    final c = contrato;
+    final vencido = c.situacao == Mensalista.vencido;
+    final (texto, cor) = switch (c.situacao) {
+      Mensalista.emDia => ('Em dia', CoresPkLots.disponivel),
+      Mensalista.vencendo => ('Vence em breve', CoresPkLots.ambarEscuro),
+      _ => ('Vencida', CoresPkLots.erro),
+    };
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const TituloSecao('Meu estacionamento', icone: Icons.directions_car),
-            if (atual != null) ...[
-              if (atual.nomePatio.isNotEmpty) _Info('Pátio', atual.nomePatio),
-              _Info('Placa', Formatadores.placa(atual.placa), destaque: true),
-              _Info('Entrada', Formatadores.dataHora(atual.dataHoraEntrada)),
-              _Info('Estacionado há', atual.duracao),
-              if (atual.numeroVaga != null) _Info('Vaga', atual.numeroVaga!),
-              _Info('Valor estimado', Formatadores.moeda(atual.valorEstimado), destaque: true),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: CoresPkLots.ambar.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Row(children: [
-                  Icon(Icons.point_of_sale, color: CoresPkLots.azulMarinho),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text('O pagamento é feito na saída do pátio. O valor final é calculado na hora da saída.',
-                        style: TextStyle(color: CoresPkLots.azulMarinho)),
-                  ),
-                ]),
-              ),
-            ] else if (veiculos.isEmpty) ...[
-              const Text('Cadastre a placa do seu veículo para acompanhar o estacionamento por aqui.',
-                  style: TextStyle(color: CoresPkLots.textoSecundario)),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => mostrarCadastroVeiculo(context),
-                icon: const Icon(Icons.add),
-                label: const Text('Cadastrar veículo'),
-              ),
-            ] else ...[
-              const Text('Nenhum veículo estacionado no momento.', style: TextStyle(color: CoresPkLots.textoSecundario)),
-              const SizedBox(height: 12),
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                for (final v in veiculos)
-                  Chip(
-                    avatar: const Icon(Icons.directions_car, size: 18),
-                    label: Text([Formatadores.placa(v.placa), if (v.modelo != null) v.modelo].join(' · ')),
-                  ),
-                ActionChip(
-                  avatar: const Icon(Icons.add, size: 18),
-                  label: const Text('Adicionar'),
-                  onPressed: () => mostrarCadastroVeiculo(context),
-                ),
-              ]),
-            ],
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Expanded(child: TituloSecao(c.nomePatio, icone: Icons.card_membership_outlined)),
+            Chip(
+              label: Text(texto, style: TextStyle(color: cor, fontWeight: FontWeight.w700)),
+              side: BorderSide(color: cor),
+              backgroundColor: Colors.transparent,
+            ),
+          ]),
+          Text(c.nomeEmpresa, style: const TextStyle(fontSize: 12, color: CoresPkLots.textoSuave)),
+          const SizedBox(height: 8),
+          _Info('Mensalidade', c.validoAte == null ? 'Sem pagamento' : 'até ${Formatadores.data(c.validoAte!)}',
+              destaque: true),
+          if (vencido)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text('Enquanto estiver vencida, a estadia é cobrada como avulsa. Regularize no pátio.',
+                  style: TextStyle(color: CoresPkLots.erro)),
+            ),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final placa in c.placas)
+              Chip(avatar: const Icon(Icons.directions_car, size: 18), label: Text(Formatadores.placa(placa))),
+          ]),
+          for (final e in c.estacionados) ...[
+            const Divider(height: 28),
+            Text('Estacionado agora', style: Theme.of(context).textTheme.titleSmall),
+            _Info('Placa', Formatadores.placa(e.placa), destaque: true),
+            _Info('Entrada', Formatadores.dataHora(e.dataHoraEntrada)),
+            _Info('Estacionado há', e.duracao),
+            if (e.numeroVaga != null) _Info('Vaga', e.numeroVaga!),
+            _Info(e.valorEstimado == 0 ? 'Valor' : 'Valor estimado',
+                e.valorEstimado == 0 ? 'Coberto pela mensalidade' : Formatadores.moeda(e.valorEstimado)),
           ],
-        ),
+        ]),
       ),
     );
   }
+}
+
+/// Conta sem contrato ativo (desativado pelo pátio ou e-mail trocado)
+class _SemContrato extends StatelessWidget {
+  const _SemContrato();
+
+  @override
+  Widget build(BuildContext context) => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            TituloSecao('Minha mensalidade', icone: Icons.card_membership_outlined),
+            Text(
+              'Nenhum contrato de mensalista ativo nesta conta. O acesso é liberado pelo estacionamento, '
+              'por convite enviado ao seu e-mail.',
+              style: TextStyle(color: CoresPkLots.textoSecundario),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Estacionou como avulso? Leia o QR do ticket com a câmera do celular para acompanhar o tempo e o valor.',
+              style: TextStyle(color: CoresPkLots.textoSecundario),
+            ),
+          ]),
+        ),
+      );
 }
 
 class _Info extends StatelessWidget {
@@ -215,7 +225,7 @@ class _MeusAcessos extends StatelessWidget {
           if (recentes.isEmpty)
             const Padding(
               padding: EdgeInsets.only(bottom: 12),
-              child: Text('Seus acessos dos últimos 30 dias aparecem aqui.',
+              child: Text('As estadias dos últimos 30 dias nos pátios dos seus contratos aparecem aqui.',
                   style: TextStyle(color: CoresPkLots.textoSecundario)),
             ),
           for (final item in recentes) ItemHistoricoTile(item: item),

@@ -156,22 +156,38 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
           : json({'title': 'Não autorizado', 'detail': 'E-mail ou senha inválidos.'}, 401);
     case '/api/vagas/resumo':
       return json(resumoVagasJson);
-    case '/api/motorista/estacionamento-atual':
-      return json({
-        'entradaId': '1',
-        'placa': 'ABC1234',
-        'dataHoraEntrada': '2026-09-30T10:30:45Z',
-        'duracao': '4h 15m',
-        'numeroVaga': 'A1',
-        'valorEstimado': 63.75,
-        'nomePatio': 'Pátio Padrão',
-      });
-    case '/api/motorista/veiculos':
+    case '/api/motorista/contratos':
       return json([
-        {'id': 'v1', 'placa': 'ABC1234', 'modelo': 'Onix', 'cor': 'Prata'}
+        {
+          'id': 'c1',
+          'nomePatio': 'Pátio Padrão',
+          'nomeEmpresa': 'Empresa Padrão',
+          'placas': ['ABC1234'],
+          'validoAte': '2026-10-30',
+          'situacao': 'vencido',
+          'diasParaVencer': -1,
+          'estacionados': [
+            {'placa': 'ABC1234', 'dataHoraEntrada': '2026-09-30T10:30:45Z', 'duracao': '4h 15m', 'numeroVaga': 'A1', 'valorEstimado': 63.75}
+          ],
+        }
       ]);
     case '/api/auth/esqueci-senha':
       return http.Response('', 204);
+    case '/api/publico/convites/convite-valido':
+      return json({
+        'nomeMensalista': 'Ana Souza',
+        'nomePatio': 'Pátio Padrão',
+        'email': 'ana@exemplo.com',
+        'placasMascaradas': ['ABC-**34'],
+        'contaExistente': false,
+      });
+    case '/api/publico/convites/convite-valido/aceitar':
+      return json({
+        'contaCriada': true,
+        'token': {'tokenAcesso': tokenFalso(nome: 'Ana Souza'), 'expiraEm': 86400, 'perfil': 'motorista'},
+      });
+    case '/api/publico/convites/convite-usado':
+      return json({'title': 'Não encontrado', 'detail': 'Convite inválido, expirado ou já utilizado.'}, 404);
     case '/api/motorista/historico':
       return json([]);
     case '/api/dashboard':
@@ -285,19 +301,20 @@ void main() {
     expect(find.text('E-mail ou senha inválidos.'), findsOneWidget);
   });
 
-  testWidgets('motorista vê vagas e o estacionamento atual', (tester) async {
+  testWidgets('mensalista vê o contrato, o veículo estacionado e as vagas', (tester) async {
     await abrirApp(tester, perfil: 'motorista');
     await entrar(tester, 'Senha@123');
 
     expect(find.text('Olá, Lucas'), findsOneWidget);
-    expect(find.text('28 / 30', findRichText: true), findsOneWidget);
-    expect(find.text('Estacionamentos Silva'), findsOneWidget);
-    expect(find.text('Lotado'), findsOneWidget);
-    expect(find.text('ABC-1234'), findsOneWidget);
+    expect(find.text('Pátio Padrão'), findsWidgets); // contrato e lista de vagas
+    expect(find.text('Vencida'), findsOneWidget);
+    expect(find.textContaining('cobrada como avulsa'), findsOneWidget);
+    expect(find.text('Estacionado agora'), findsOneWidget);
     expect(find.text('R\$ 63,75'), findsOneWidget);
-    // Pagamento só na saída do pátio: o app não registra a saída
-    expect(find.text('INICIAR SAÍDA'), findsNothing);
-    expect(find.textContaining('O pagamento é feito na saída do pátio'), findsOneWidget);
+    expect(find.text('28 / 30', findRichText: true), findsOneWidget);
+    expect(find.text('Lotado'), findsOneWidget);
+    // Sem cadastro de veículos pelo app: o acesso vem do convite do pátio
+    expect(find.text('Cadastrar veículo'), findsNothing);
 
     // Encerra o timer de atualização automática
     await tester.tap(find.byTooltip('Sair'));
@@ -367,9 +384,10 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('login pede o link de nova senha', (tester) async {
+  testWidgets('login não tem cadastro público e pede o link de nova senha', (tester) async {
     await abrirApp(tester, perfil: 'motorista');
 
+    expect(find.text('Criar conta'), findsNothing);
     await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana@exemplo.com');
     await tester.tap(find.text('Esqueci minha senha'));
     await tester.pumpAndSettle();
@@ -378,6 +396,35 @@ void main() {
 
     expect(enviadas.any((r) => r.url.path == '/api/auth/esqueci-senha' && r.body.contains('ana@exemplo.com')), isTrue);
     expect(find.textContaining('Se houver uma conta com ana@exemplo.com'), findsOneWidget);
+  });
+
+  testWidgets('link do convite cria a conta e entra no app', (tester) async {
+    await abrirApp(tester, perfil: 'motorista', endereco: Uri.parse('https://pklots.teste/?convite=convite-valido'));
+
+    expect(find.text('Olá, Ana!'), findsOneWidget);
+    expect(find.text('ABC-**34'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextFormField, 'Senha'), 'curta');
+    await tester.tap(find.text('ATIVAR MEU ACESSO'));
+    await tester.pump();
+    expect(find.text('Mínimo de 8 caracteres'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Senha'), 'Senha@1234');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Repita a senha'), 'Senha@1234');
+    await tester.tap(find.text('ATIVAR MEU ACESSO'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Olá, Ana'), findsOneWidget); // já dentro do app
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('convite já usado mostra o aviso e leva ao login', (tester) async {
+    await abrirApp(tester, perfil: 'motorista', endereco: Uri.parse('https://pklots.teste/?convite=convite-usado'));
+
+    expect(find.text('Convite indisponível'), findsOneWidget);
+    await tester.tap(find.text('IR PARA O LOGIN'));
+    await tester.pumpAndSettle();
+    expect(find.text('ENTRAR'), findsOneWidget);
   });
 
   testWidgets('sessão salva é restaurada ao abrir o app', (tester) async {
@@ -578,7 +625,7 @@ void main() {
 
     await tester.tap(find.text('Novo usuário'));
     await tester.pumpAndSettle();
-    expect(find.text('Motorista'), findsNothing); // motoristas se cadastram pelo app
+    expect(find.text('Motorista'), findsNothing); // mensalistas entram por convite
     await tester.enterText(find.widgetWithText(TextFormField, 'Nome completo'), 'Ana Operadora');
     await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana@pklots.local');
     await tester.enterText(find.widgetWithText(TextFormField, 'Senha inicial'), 'Senha@123');

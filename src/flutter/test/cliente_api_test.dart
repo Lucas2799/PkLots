@@ -37,9 +37,9 @@ void main() {
     expect(resumo.percentualDisponivel, closeTo(0.933, 0.001));
   });
 
-  test('204 em estacionamento atual significa nenhum veículo', () async {
-    final api = apiSimulada((_) async => http.Response('', 204));
-    expect(await api.estacionamentoAtual(), isNull);
+  test('aceitar convite com conta existente não devolve token', () async {
+    final api = apiSimulada((_) async => json({'contaCriada': false, 'token': null}));
+    expect(await api.aceitarConvite('abc'), isNull);
   });
 
   test('erro da API usa o detail do ProblemDetails', () async {

@@ -9,7 +9,6 @@ namespace PkLots.Application.Interfaces
         DbSet<Patio> Patios { get; }
         DbSet<Usuario> Usuarios { get; }
         DbSet<UsuarioPatio> UsuariosPatios { get; }
-        DbSet<VeiculoMotorista> VeiculosMotoristas { get; }
         DbSet<Vaga> Vagas { get; }
         DbSet<Veiculo> Veiculos { get; }
         DbSet<EntradaVeiculo> EntradasVeiculos { get; }

@@ -373,6 +373,10 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("Documento")
                         .HasColumnType("text");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
@@ -386,10 +390,18 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("Telefone")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateOnly?>("ValidoAte")
                         .HasColumnType("date");
 
+                    b.Property<DateTime?>("VinculadoEm")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("UsuarioId");
 
                     b.HasIndex("PatioId", "Nome");
 
@@ -675,6 +687,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<Guid?>("MensalistaId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Tipo")
                         .IsRequired()
                         .HasMaxLength(30)
@@ -690,6 +705,8 @@ namespace PkLots.Infrastructure.Data.Migrations
 
                     b.HasIndex("HashToken")
                         .IsUnique();
+
+                    b.HasIndex("MensalistaId", "Tipo");
 
                     b.HasIndex("UsuarioId", "Tipo");
 
@@ -871,41 +888,6 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.ToTable("Veiculos");
                 });
 
-            modelBuilder.Entity("PkLots.Core.Entities.VeiculoMotorista", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("AtualizadoEm")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Cor")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Modelo")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Placa")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("UsuarioId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Placa")
-                        .IsUnique();
-
-                    b.HasIndex("UsuarioId");
-
-                    b.ToTable("VeiculosMotoristas");
-                });
-
             modelBuilder.Entity("PkLots.Core.Entities.Caixa", b =>
                 {
                     b.HasOne("PkLots.Core.Entities.Usuario", "Operador")
@@ -1004,7 +986,14 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("PkLots.Core.Entities.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Patio");
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.MensalistaPlaca", b =>
@@ -1080,10 +1069,17 @@ namespace PkLots.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("PkLots.Core.Entities.TokenUsuario", b =>
                 {
+                    b.HasOne("PkLots.Core.Entities.Mensalista", "Mensalista")
+                        .WithMany()
+                        .HasForeignKey("MensalistaId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("PkLots.Core.Entities.Usuario", null)
                         .WithMany()
                         .HasForeignKey("UsuarioId")
                         .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Mensalista");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Usuario", b =>
@@ -1137,17 +1133,6 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Navigation("Patio");
                 });
 
-            modelBuilder.Entity("PkLots.Core.Entities.VeiculoMotorista", b =>
-                {
-                    b.HasOne("PkLots.Core.Entities.Usuario", "Usuario")
-                        .WithMany("Veiculos")
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
-                });
-
             modelBuilder.Entity("PkLots.Core.Entities.Caixa", b =>
                 {
                     b.Navigation("Movimentos");
@@ -1183,8 +1168,6 @@ namespace PkLots.Infrastructure.Data.Migrations
             modelBuilder.Entity("PkLots.Core.Entities.Usuario", b =>
                 {
                     b.Navigation("Patios");
-
-                    b.Navigation("Veiculos");
                 });
 #pragma warning restore 612, 618
         }

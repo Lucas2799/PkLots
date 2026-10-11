@@ -91,49 +91,89 @@ class Vaga {
       );
 }
 
-class Veiculo {
+/// Contrato de mensalista visto no app (um por pátio em que a pessoa aceitou o convite)
+class ContratoMensalista {
   final String id;
-  final String placa;
-  final String? modelo;
-  final String? cor;
+  final String nomePatio;
+  final String nomeEmpresa;
+  final List<String> placas;
+  final DateTime? validoAte;
+  final String situacao;
+  final int? diasParaVencer;
+  final List<EstadiaAtual> estacionados;
 
-  Veiculo({required this.id, required this.placa, this.modelo, this.cor});
+  ContratoMensalista({
+    required this.id,
+    required this.nomePatio,
+    required this.nomeEmpresa,
+    required this.placas,
+    this.validoAte,
+    required this.situacao,
+    this.diasParaVencer,
+    required this.estacionados,
+  });
 
-  factory Veiculo.deJson(Map<String, dynamic> json) => Veiculo(
+  factory ContratoMensalista.deJson(Map<String, dynamic> json) => ContratoMensalista(
         id: json['id'] as String,
-        placa: json['placa'] as String,
-        modelo: json['modelo'] as String?,
-        cor: json['cor'] as String?,
+        nomePatio: json['nomePatio'] as String,
+        nomeEmpresa: json['nomeEmpresa'] as String,
+        placas: ((json['placas'] as List?) ?? []).cast<String>(),
+        validoAte: _dataOpcional(json['validoAte']),
+        situacao: json['situacao'] as String,
+        diasParaVencer: json['diasParaVencer'] as int?,
+        estacionados: ((json['estacionados'] as List?) ?? [])
+            .map((e) => EstadiaAtual.deJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }
 
-class EstacionamentoAtual {
-  final String entradaId;
+/// Veículo do contrato estacionado agora (valor zero enquanto coberto pela mensalidade)
+class EstadiaAtual {
   final String placa;
   final DateTime dataHoraEntrada;
   final String duracao;
   final String? numeroVaga;
   final double valorEstimado;
-  final String nomePatio;
 
-  EstacionamentoAtual({
-    required this.entradaId,
+  EstadiaAtual({
     required this.placa,
     required this.dataHoraEntrada,
     required this.duracao,
     this.numeroVaga,
     required this.valorEstimado,
-    this.nomePatio = '',
   });
 
-  factory EstacionamentoAtual.deJson(Map<String, dynamic> json) => EstacionamentoAtual(
-        entradaId: json['entradaId'] as String,
+  factory EstadiaAtual.deJson(Map<String, dynamic> json) => EstadiaAtual(
         placa: json['placa'] as String,
         dataHoraEntrada: _data(json['dataHoraEntrada']),
         duracao: json['duracao'] as String,
         numeroVaga: json['numeroVaga'] as String?,
         valorEstimado: _numero(json['valorEstimado']),
-        nomePatio: (json['nomePatio'] as String?) ?? '',
+      );
+}
+
+/// Convite de mensalista aberto pelo link do e-mail (antes de aceitar)
+class ConviteMensalista {
+  final String nomeMensalista;
+  final String nomePatio;
+  final String email;
+  final List<String> placasMascaradas;
+  final bool contaExistente;
+
+  ConviteMensalista({
+    required this.nomeMensalista,
+    required this.nomePatio,
+    required this.email,
+    required this.placasMascaradas,
+    required this.contaExistente,
+  });
+
+  factory ConviteMensalista.deJson(Map<String, dynamic> json) => ConviteMensalista(
+        nomeMensalista: json['nomeMensalista'] as String,
+        nomePatio: json['nomePatio'] as String,
+        email: json['email'] as String,
+        placasMascaradas: ((json['placasMascaradas'] as List?) ?? []).cast<String>(),
+        contaExistente: json['contaExistente'] as bool,
       );
 }
 
@@ -642,6 +682,14 @@ class Mensalista {
   final bool ativo;
   final bool estacionado;
 
+  /// Acesso ao app: e-mail do convite e situação (sem_email, convite_pendente, ativo)
+  final String? email;
+  final String acessoApp;
+
+  static const semEmail = 'sem_email';
+  static const convitePendente = 'convite_pendente';
+  static const acessoAtivo = 'ativo';
+
   Mensalista({
     required this.id,
     required this.nome,
@@ -654,6 +702,8 @@ class Mensalista {
     this.diasParaVencer,
     required this.ativo,
     required this.estacionado,
+    this.email,
+    this.acessoApp = semEmail,
   });
 
   factory Mensalista.deJson(Map<String, dynamic> json) => Mensalista(
@@ -668,6 +718,8 @@ class Mensalista {
         diasParaVencer: json['diasParaVencer'] as int?,
         ativo: json['ativo'] as bool,
         estacionado: (json['estacionado'] as bool?) ?? false,
+        email: json['email'] as String?,
+        acessoApp: (json['acessoApp'] as String?) ?? semEmail,
       );
 }
 
@@ -906,3 +958,4 @@ class Caixa {
         movimentos: ((json['movimentos'] as List?) ?? []).map((m) => MovimentoCaixa.deJson(m as Map<String, dynamic>)).toList(),
       );
 }
+

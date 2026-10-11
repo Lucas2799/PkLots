@@ -114,10 +114,24 @@ namespace PkLots.Infrastructure.Data
             var operador = NovoUsuario(empresa.Id, "operator@pklots.local", "Operator@123", "Operador", Perfis.Operador, hashSenha);
             operador.Patios.Add(new UsuarioPatio { PatioId = patio.Id });
 
+            // Mensalista com acesso ao app já ativado (no uso real, o vínculo vem do convite por e-mail)
+            var motorista = NovoUsuario(null, "driver@example.com", "Driver@123", "Motorista Exemplo", Perfis.Motorista, hashSenha);
+            var mensalista = new Mensalista
+            {
+                PatioId = patio.Id,
+                Nome = "Motorista Exemplo",
+                Email = motorista.Email,
+                UsuarioId = motorista.Id,
+                VinculadoEm = agora,
+                ValidoAte = DateOnly.FromDateTime(agora).AddMonths(1)
+            };
+            mensalista.Placas.Add(new MensalistaPlaca { MensalistaId = mensalista.Id, PatioId = patio.Id, Placa = "ABC1D23" });
+
             db.Usuarios.AddRange(
                 NovoUsuario(empresa.Id, "admin@pklots.local", "Admin@123", "Administrador", Perfis.Admin, hashSenha),
                 operador,
-                NovoUsuario(null, "driver@example.com", "Driver@123", "Motorista Exemplo", Perfis.Motorista, hashSenha));
+                motorista);
+            db.Mensalistas.Add(mensalista);
 
             await db.SaveChangesAsync(ct);
             logger?.LogWarning("Dados de demonstração criados (senhas públicas, troca obrigatória). Não use em produção.");

@@ -53,9 +53,8 @@ class SessaoProvider extends ChangeNotifier {
     await _iniciar(await _api.login(email.trim(), senha));
   }
 
-  Future<void> registrar(String nome, String email, String senha) async {
-    await _iniciar(await _api.registrar(email.trim(), senha, nome.trim()));
-  }
+  /// Conta criada ao aceitar o convite de mensalista: já entra no app
+  Future<void> entrarComToken(Token token) => _iniciar(token);
 
   /// Troca a própria senha; recebe um token novo e libera o app
   Future<void> trocarSenha(String senhaAtual, String novaSenha) async {

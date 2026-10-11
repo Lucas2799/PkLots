@@ -29,6 +29,10 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.AtualizarAsync(usuario.ObterUsuarioId(), id, requisicao, ct)))
                 .WithSummary("Altera dados, placas ou ativa/desativa");
 
+            grupo.MapPost("/{id:guid}/convite", async (Guid id, ClaimsPrincipal usuario, ServicoMensalistas servico, CancellationToken ct) =>
+                Results.Ok(await servico.ReenviarConviteAsync(usuario.ObterUsuarioId(), id, ct)))
+                .WithSummary("Reenvia o convite de acesso ao app para o e-mail do cadastro");
+
             grupo.MapGet("/{id:guid}/pagamentos", async (Guid id, ServicoMensalistas servico, CancellationToken ct) =>
                 Results.Ok(await servico.ListarPagamentosAsync(id, ct)))
                 .WithSummary("Histórico de pagamentos");

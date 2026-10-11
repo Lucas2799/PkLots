@@ -27,6 +27,7 @@ class _FormularioMensalistaState extends State<_FormularioMensalista> {
   late final _telefone = TextEditingController(text: widget.mensalista?.telefone);
   late final _documento = TextEditingController(text: widget.mensalista?.documento);
   late final _observacoes = TextEditingController(text: widget.mensalista?.observacoes);
+  late final _email = TextEditingController(text: widget.mensalista?.email);
   final _novaPlaca = TextEditingController();
   late final List<String> _placas = [...?widget.mensalista?.placas];
   late bool _ativo = widget.mensalista?.ativo ?? true;
@@ -38,7 +39,7 @@ class _FormularioMensalistaState extends State<_FormularioMensalista> {
 
   @override
   void dispose() {
-    for (final c in [_nome, _telefone, _documento, _observacoes, _novaPlaca]) {
+    for (final c in [_nome, _telefone, _documento, _observacoes, _email, _novaPlaca]) {
       c.dispose();
     }
     super.dispose();
@@ -79,6 +80,7 @@ class _FormularioMensalistaState extends State<_FormularioMensalista> {
             observacoes: texto(_observacoes),
             placas: _placas,
             ativo: _ativo,
+            email: texto(_email),
           );
       if (mounted) Navigator.of(context).pop(salvo);
     } on ExcecaoApi catch (e) {
@@ -118,6 +120,17 @@ class _FormularioMensalistaState extends State<_FormularioMensalista> {
                     child: TextFormField(controller: _documento, decoration: const InputDecoration(labelText: 'CPF/CNPJ (opcional)')),
                   ),
                 ]),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _email,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'E-mail para acesso ao app (opcional)',
+                    helperText: 'Enviamos um convite para este e-mail. Trocar ou apagar o e-mail encerra o acesso atual.',
+                    helperMaxLines: 2,
+                  ),
+                  validator: (v) => v == null || v.trim().isEmpty ? null : Validadores.email(v),
+                ),
                 const SizedBox(height: 16),
                 const Text('Placas', style: TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho)),
                 const SizedBox(height: 8),

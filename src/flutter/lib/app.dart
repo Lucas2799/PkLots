@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'estado/sessao_provider.dart';
 import 'tema/tema_pklots.dart';
+import 'telas/acesso/convite_tela.dart';
 import 'telas/acesso/redefinir_senha_tela.dart';
 import 'telas/gestao/painel_tela.dart';
 import 'telas/login_tela.dart';
@@ -16,7 +17,7 @@ import 'widgets/logo_pklots.dart';
 class PkLotsApp extends StatelessWidget {
   const PkLotsApp({super.key, this.enderecoInicial});
 
-  /// Endereço com que o app foi aberto (web): o link do e-mail de nova senha traz ?redefinir=
+  /// Endereço com que o app foi aberto (web): links dos e-mails trazem ?convite= ou ?redefinir=
   final Uri? enderecoInicial;
 
   @override
@@ -31,8 +32,8 @@ class PkLotsApp extends StatelessWidget {
       );
 }
 
-/// Decide a tela inicial: link recebido por e-mail (nova senha) e, depois, pela sessão:
-/// login, painel de gestão, plataforma ou app do motorista
+/// Decide a tela inicial: link recebido por e-mail (convite de mensalista, nova senha) e, depois, pela sessão:
+/// login, painel de gestão, plataforma ou app do mensalista
 class _Raiz extends StatefulWidget {
   const _Raiz({this.enderecoInicial});
 
@@ -43,11 +44,12 @@ class _Raiz extends StatefulWidget {
 }
 
 class _RaizState extends State<_Raiz> {
+  late String? _convite = widget.enderecoInicial?.queryParameters['convite'];
   late String? _redefinir = widget.enderecoInicial?.queryParameters['redefinir'];
 
   // Tira o token do endereço (não fica no histórico do navegador nem volta no F5)
   void _concluirLink() {
-    setState(() => _redefinir = null);
+    setState(() => _convite = _redefinir = null);
     SystemNavigator.routeInformationUpdated(uri: Uri(path: '/'), replace: true);
   }
 
@@ -55,6 +57,7 @@ class _RaizState extends State<_Raiz> {
   Widget build(BuildContext context) {
     final sessao = context.watch<SessaoProvider>();
     if (sessao.situacao != SituacaoSessao.carregando) {
+      if (_convite case final token?) return ConviteTela(token: token, aoConcluir: _concluirLink);
       if (_redefinir case final token?) return RedefinirSenhaTela(token: token, aoConcluir: _concluirLink);
     }
     return switch (sessao.situacao) {

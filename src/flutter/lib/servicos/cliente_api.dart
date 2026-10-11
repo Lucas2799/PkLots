@@ -36,14 +36,24 @@ class ClienteApi {
   Future<Token> trocarSenha(String senhaAtual, String novaSenha) async =>
       Token.deJson(await _post('/api/auth/trocar-senha', {'senhaAtual': senhaAtual, 'novaSenha': novaSenha}));
 
-  Future<Token> registrar(String email, String senha, String nomeCompleto) async => Token.deJson(
-      await _post('/api/auth/registrar', {'email': email, 'senha': senha, 'nomeCompleto': nomeCompleto}));
-
   /// Envia o link de redefinição (a API responde igual exista ou não a conta)
   Future<void> esqueciSenha(String email) => _post('/api/auth/esqueci-senha', {'email': email});
 
   Future<void> redefinirSenhaPorEmail(String token, String novaSenha) =>
       _post('/api/auth/redefinir-senha', {'token': token, 'novaSenha': novaSenha});
+
+  // ---------- Convite de mensalista (link do e-mail, sem login) ----------
+
+  Future<ConviteMensalista> convite(String token) async =>
+      ConviteMensalista.deJson(await _get('/api/publico/convites/${Uri.encodeComponent(token)}'));
+
+  /// Conta nova: devolve o token (já entra no app). Conta existente: null (entra com a senha de sempre).
+  Future<Token?> aceitarConvite(String token, {String? nomeCompleto, String? senha}) async {
+    final json = await _post('/api/publico/convites/${Uri.encodeComponent(token)}/aceitar',
+        {'nomeCompleto': nomeCompleto, 'senha': senha}) as Map<String, dynamic>;
+    final dados = json['token'];
+    return dados == null ? null : Token.deJson(dados as Map<String, dynamic>);
+  }
 
   // ---------- Vagas ----------
 
@@ -57,20 +67,13 @@ class ClienteApi {
   Future<Vaga> liberarManutencao(String vagaId) async =>
       Vaga.deJson(await _enviar('DELETE', '/api/vagas/$vagaId/manutencao', null));
 
-  // ---------- Motorista ----------
+  // ---------- Mensalista (app) ----------
 
   Future<List<PatioDisponibilidade>> patiosParaMotorista() async =>
       _lista(await _get('/api/motorista/patios'), PatioDisponibilidade.deJson);
 
-  Future<List<Veiculo>> meusVeiculos() async => _lista(await _get('/api/motorista/veiculos'), Veiculo.deJson);
-
-  Future<Veiculo> cadastrarVeiculo(String placa, {String? modelo, String? cor}) async => Veiculo.deJson(
-      await _post('/api/motorista/veiculos', {'placa': placa, 'modelo': modelo, 'cor': cor}));
-
-  Future<EstacionamentoAtual?> estacionamentoAtual() async {
-    final json = await _get('/api/motorista/estacionamento-atual');
-    return json == null ? null : EstacionamentoAtual.deJson(json);
-  }
+  Future<List<ContratoMensalista>> meusContratos() async =>
+      _lista(await _get('/api/motorista/contratos'), ContratoMensalista.deJson);
 
   Future<List<ItemHistorico>> meuHistorico() async =>
       _lista(await _get('/api/motorista/historico'), ItemHistorico.deJson);
@@ -207,6 +210,7 @@ class ClienteApi {
     String? observacoes,
     required List<String> placas,
     bool ativo = true,
+    String? email,
   }) async {
     final corpo = {
       'nome': nome,
@@ -215,10 +219,14 @@ class ClienteApi {
       'observacoes': observacoes,
       'placas': placas,
       'ativo': ativo,
+      'email': email,
     };
     return Mensalista.deJson(
         id == null ? await _post('/api/mensalistas', corpo) : await _enviar('PUT', '/api/mensalistas/$id', corpo));
   }
+
+  /// Novo convite de acesso ao app para o e-mail do cadastro
+  Future<Mensalista> reenviarConvite(String id) async => Mensalista.deJson(await _post('/api/mensalistas/$id/convite', null));
 
   Future<List<PagamentoMensalidade>> pagamentosMensalista(String id) async =>
       _lista(await _get('/api/mensalistas/$id/pagamentos'), PagamentoMensalidade.deJson);

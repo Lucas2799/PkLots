@@ -7,7 +7,7 @@ namespace PkLots.Core.Entities
         public string Email { get; set; } = string.Empty;
         public string SenhaHash { get; set; } = string.Empty;
         public string NomeCompleto { get; set; } = string.Empty;
-        public string Perfil { get; set; } = "motorista"; // superadmin, admin, operador, motorista
+        public string Perfil { get; set; } = "motorista"; // superadmin, admin, operador, motorista (conta de mensalista no app)
         public bool Ativo { get; set; } = true;
         public DateTime? UltimoLogin { get; set; }
 
@@ -20,6 +20,5 @@ namespace PkLots.Core.Entities
 
         public Empresa? Empresa { get; set; }
         public ICollection<UsuarioPatio> Patios { get; set; } = new List<UsuarioPatio>();
-        public ICollection<VeiculoMotorista> Veiculos { get; set; } = new List<VeiculoMotorista>();
     }
 }

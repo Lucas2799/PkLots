@@ -1,85 +1,73 @@
 using Microsoft.EntityFrameworkCore;
 using PkLots.Application.DTOs;
-using PkLots.Application.Excecoes;
 using PkLots.Application.Interfaces;
 using PkLots.Core.Constantes;
 using PkLots.Core.Entities;
 
 namespace PkLots.Application.Servicos
 {
-    // App do motorista: as placas pertencem à conta e valem em qualquer pátio da plataforma
+    // App do mensalista (perfil "motorista"). A conta só enxerga os contratos em que aceitou o convite do pátio,
+    // e de cada contrato só as placas dele, naquele pátio, a partir do vínculo. Fora disso a pessoa é avulsa:
+    // acompanha a estadia pelo link do ticket, como qualquer cliente.
     public class ServicoMotorista(
         IPkLotsDbContext db,
         ServicoVeiculos servicoVeiculos,
         ServicoVagas servicoVagas,
         TimeProvider relogio)
     {
-        public async Task<IReadOnlyList<VeiculoDto>> ListarVeiculosAsync(Guid usuarioId, CancellationToken ct = default) =>
-            await db.VeiculosMotoristas
-                .Where(v => v.UsuarioId == usuarioId)
-                .OrderBy(v => v.Placa)
-                .Select(v => new VeiculoDto(v.Id, v.Placa, v.Modelo, v.Cor))
+        public const int DiasHistorico = 30;
+
+        public async Task<IReadOnlyList<ContratoMensalistaDto>> ListarContratosAsync(Guid usuarioId, CancellationToken ct = default)
+        {
+            var contratos = await ContratosAtivos(usuarioId)
+                .Include(m => m.Placas)
+                .Include(m => m.Patio).ThenInclude(p => p.Empresa)
+                .OrderBy(m => m.Patio.Nome)
                 .ToListAsync(ct);
 
-        public async Task<VeiculoDto> CadastrarVeiculoAsync(Guid usuarioId, CadastrarVeiculoRequisicao requisicao, CancellationToken ct = default)
-        {
-            var placa = ValidadorPlaca.Normalizar(requisicao.Placa)
-                ?? throw new ExcecaoNegocio("Placa inválida. Formatos aceitos: ABC1234 ou ABC1D23.");
             var agora = relogio.GetUtcNow().UtcDateTime;
-
-            var veiculo = await db.VeiculosMotoristas.FirstOrDefaultAsync(v => v.Placa == placa, ct);
-            if (veiculo is null)
+            var hoje = ServicoMensalistas.Hoje(agora);
+            var resultado = new List<ContratoMensalistaDto>(contratos.Count);
+            foreach (var m in contratos)
             {
-                veiculo = new VeiculoMotorista { UsuarioId = usuarioId, Placa = placa, CriadoEm = agora };
-                db.VeiculosMotoristas.Add(veiculo);
-            }
-            else if (veiculo.UsuarioId != usuarioId)
-            {
-                throw new ExcecaoConflito($"O veículo {placa} já está vinculado a outro motorista.");
-            }
+                var placas = m.Placas.Select(p => p.Placa).OrderBy(p => p).ToList();
+                var emDia = ServicoMensalistas.EmDia(m, hoje);
+                var estacionados = await db.EntradasVeiculos
+                    .Where(e => e.PatioId == m.PatioId && e.Situacao == SituacaoEntrada.Ativa && placas.Contains(e.Placa))
+                    .Select(e => new { e.Placa, e.DataHoraEntrada, e.MensalistaId, NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null })
+                    .ToListAsync(ct);
 
-            veiculo.Modelo = requisicao.Modelo ?? veiculo.Modelo;
-            veiculo.Cor = requisicao.Cor ?? veiculo.Cor;
-            veiculo.AtualizadoEm = agora;
-
-            await db.SaveChangesAsync(ct);
-            return new VeiculoDto(veiculo.Id, veiculo.Placa, veiculo.Modelo, veiculo.Cor);
+                resultado.Add(new ContratoMensalistaDto(
+                    m.Id, m.Patio.Nome, m.Patio.Empresa.Nome, placas, m.ValidoAte,
+                    ServicoMensalistas.Situacao(m, hoje),
+                    m.ValidoAte is { } ate ? ate.DayNumber - hoje.DayNumber : null,
+                    estacionados.Select(e =>
+                    {
+                        var tarifa = CalculadoraTarifa.Calcular(e.DataHoraEntrada, agora, m.Patio.ValorHora, m.Patio.MinutosTolerancia);
+                        // Mesma regra da saída: entrou em dia ou está em dia agora → sem cobrança
+                        var coberto = e.MensalistaId is not null || emDia;
+                        return new EstadiaAtualDto(e.Placa, e.DataHoraEntrada, tarifa.DuracaoFormatada, e.NumeroVaga,
+                            coberto ? 0m : tarifa.ValorTotal);
+                    }).ToList()));
+            }
+            return resultado;
         }
 
-        public async Task<EstacionamentoAtualDto?> ObterEstacionamentoAtualAsync(Guid usuarioId, CancellationToken ct = default)
-        {
-            var entrada = await ConsultarEntradaAtiva(usuarioId)
-                .Select(e => new
-                {
-                    e.Id,
-                    e.Placa,
-                    e.DataHoraEntrada,
-                    NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null,
-                    e.Patio.ValorHora,
-                    e.Patio.MinutosTolerancia,
-                    NomePatio = e.Patio.Nome
-                })
-                .FirstOrDefaultAsync(ct);
-
-            if (entrada is null)
-                return null;
-
-            var agora = relogio.GetUtcNow().UtcDateTime;
-            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, entrada.ValorHora, entrada.MinutosTolerancia);
-
-            return new EstacionamentoAtualDto(entrada.Id, entrada.Placa, entrada.DataHoraEntrada,
-                tarifa.DuracaoFormatada, entrada.NumeroVaga, tarifa.ValorTotal, entrada.NomePatio);
-        }
-
-        // Últimos 30 dias de acessos dos veículos do motorista, em todos os pátios
+        // Últimos 30 dias das placas de cada contrato, no pátio do contrato, nunca antes do vínculo
         public async Task<IReadOnlyList<HistoricoVeiculoDto>> ObterHistoricoAsync(Guid usuarioId, CancellationToken ct = default)
         {
-            var placas = await PlacasDoMotorista(usuarioId).ToListAsync(ct);
-            if (placas.Count == 0)
-                return [];
+            var contratos = await ContratosAtivos(usuarioId)
+                .Select(m => new { m.PatioId, m.VinculadoEm, Placas = m.Placas.Select(p => p.Placa).ToList() })
+                .ToListAsync(ct);
 
-            var desde = relogio.GetUtcNow().UtcDateTime.AddDays(-30);
-            return await servicoVeiculos.ConsultarHistorico(null, placas, desde).ToListAsync(ct);
+            var limite = relogio.GetUtcNow().UtcDateTime.AddDays(-DiasHistorico);
+            var historico = new List<HistoricoVeiculoDto>();
+            foreach (var contrato in contratos)
+            {
+                var desde = contrato.VinculadoEm is { } vinculo && vinculo > limite ? vinculo : limite;
+                historico.AddRange(await servicoVeiculos.ConsultarHistorico(contrato.PatioId, contrato.Placas, desde).ToListAsync(ct));
+            }
+            return historico.OrderByDescending(h => h.DataHoraEntrada).ToList();
         }
 
         // Pátios ativos (de empresas ativas) com as vagas disponíveis agora
@@ -100,15 +88,9 @@ namespace PkLots.Application.Servicos
             return resultado;
         }
 
-        private IQueryable<string> PlacasDoMotorista(Guid usuarioId) =>
-            db.VeiculosMotoristas.Where(v => v.UsuarioId == usuarioId).Select(v => v.Placa);
-
-        private IQueryable<EntradaVeiculo> ConsultarEntradaAtiva(Guid usuarioId)
-        {
-            var placas = PlacasDoMotorista(usuarioId);
-            return db.EntradasVeiculos
-                .Where(e => e.Situacao == SituacaoEntrada.Ativa && placas.Contains(e.Placa))
-                .OrderByDescending(e => e.DataHoraEntrada);
-        }
+        // Contrato ativo, vinculado a esta conta, em pátio e empresa ativos
+        private IQueryable<Mensalista> ContratosAtivos(Guid usuarioId) =>
+            db.Mensalistas.Where(m => m.UsuarioId == usuarioId && m.Ativo && m.VinculadoEm != null
+                && m.Patio.Ativo && m.Patio.Empresa.Ativa);
     }
 }

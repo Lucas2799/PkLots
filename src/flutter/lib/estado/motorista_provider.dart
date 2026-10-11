@@ -7,6 +7,7 @@ import '../modelos/modelos.dart';
 import '../servicos/cliente_api.dart';
 import '../servicos/excecao_api.dart';
 
+/// App do mensalista: contratos (com os veículos estacionados agora), histórico e vagas dos pátios
 class MotoristaProvider extends ChangeNotifier {
   MotoristaProvider(this._api);
 
@@ -15,10 +16,10 @@ class MotoristaProvider extends ChangeNotifier {
 
   bool carregando = false;
   String? erro;
+
   /// Pátios da plataforma com vagas livres agora (null até a primeira carga)
   List<PatioDisponibilidade>? patios;
-  EstacionamentoAtual? atual;
-  List<Veiculo> veiculos = [];
+  List<ContratoMensalista> contratos = [];
   List<ItemHistorico> historico = [];
 
   /// Carrega a tela e liga a atualização automática
@@ -36,16 +37,10 @@ class MotoristaProvider extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      final resultados = await Future.wait([
-        _api.patiosParaMotorista(),
-        _api.estacionamentoAtual(),
-        _api.meusVeiculos(),
-        _api.meuHistorico(),
-      ]);
+      final resultados = await Future.wait([_api.patiosParaMotorista(), _api.meusContratos(), _api.meuHistorico()]);
       patios = resultados[0] as List<PatioDisponibilidade>;
-      atual = resultados[1] as EstacionamentoAtual?;
-      veiculos = resultados[2] as List<Veiculo>;
-      historico = resultados[3] as List<ItemHistorico>;
+      contratos = resultados[1] as List<ContratoMensalista>;
+      historico = resultados[2] as List<ItemHistorico>;
       erro = null;
     } on ExcecaoApi catch (e) {
       erro = e.mensagem;
@@ -54,13 +49,6 @@ class MotoristaProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  Future<Veiculo> cadastrarVeiculo(String placa, {String? modelo, String? cor}) async {
-    final veiculo = await _api.cadastrarVeiculo(placa, modelo: modelo, cor: cor);
-    await carregar(silencioso: true);
-    return veiculo;
-  }
-
 
   @override
   void dispose() {

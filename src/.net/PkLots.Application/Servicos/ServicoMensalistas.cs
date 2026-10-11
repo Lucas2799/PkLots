@@ -8,7 +8,7 @@ using PkLots.Core.Entities;
 namespace PkLots.Application.Servicos
 {
     // Mensalistas do pátio selecionado: cadastro, situação e pagamentos (registrados manualmente)
-    public class ServicoMensalistas(IPkLotsDbContext db, IContextoPatio contextoPatio, TimeProvider relogio)
+    public class ServicoMensalistas(IPkLotsDbContext db, IContextoPatio contextoPatio, LinksPublicos links, TimeProvider relogio)
     {
         public const int MesesMaximoPorPagamento = 12;
 
@@ -119,6 +119,7 @@ namespace PkLots.Application.Servicos
             };
             await AtribuirPlacasAsync(mensalista, placas, ct);
             db.Mensalistas.Add(mensalista);
+            ServicoAcessoMensalista.AplicarEmail(db, links, mensalista, requisicao.Email, await NomePatioAsync(patioId, ct), usuarioId, agora);
 
             Auditoria.Registrar(db, patioId, AcoesAuditoria.MensalistaCriado, SituacaoAuditoria.Sucesso, placas[0], agora,
                 new() { ["usuarioId"] = usuarioId.ToString(), ["mensalista"] = nome, ["placas"] = string.Join(",", placas) });
@@ -151,7 +152,26 @@ namespace PkLots.Application.Servicos
             mensalista.Ativo = requisicao.Ativo;
             mensalista.AtualizadoEm = agora;
             await AtribuirPlacasAsync(mensalista, placas, ct);
+            ServicoAcessoMensalista.AplicarEmail(db, links, mensalista, requisicao.Email, await NomePatioAsync(patioId, ct), usuarioId, agora);
 
+            await db.SaveChangesAsync(ct);
+            return ParaDto(mensalista, Hoje(agora), await PlacasEstacionadasAsync(patioId, ct));
+        }
+
+        // Novo convite para o mesmo e-mail (o anterior expirou ou se perdeu)
+        public async Task<MensalistaDto> ReenviarConviteAsync(Guid usuarioId, Guid id, CancellationToken ct = default)
+        {
+            var patioId = await contextoPatio.ObterPatioIdAsync(ct);
+            var mensalista = await ObterEntidadeAsync(id, patioId, ct);
+            if (!mensalista.Ativo)
+                throw new ExcecaoConflito("Mensalista inativo: reative o cadastro antes de enviar o convite.");
+            if (mensalista.Email is null)
+                throw new ExcecaoNegocio("Informe o e-mail do mensalista no cadastro para enviar o convite.");
+            if (mensalista.UsuarioId is not null)
+                throw new ExcecaoConflito("Este mensalista já ativou o acesso ao app.");
+
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            ServicoAcessoMensalista.EnviarConvite(db, links, mensalista, await NomePatioAsync(patioId, ct), usuarioId, agora);
             await db.SaveChangesAsync(ct);
             return ParaDto(mensalista, Hoje(agora), await PlacasEstacionadasAsync(patioId, ct));
         }
@@ -288,8 +308,13 @@ namespace PkLots.Application.Servicos
                 Situacao(m, hoje),
                 m.ValidoAte is { } ate ? ate.DayNumber - hoje.DayNumber : null,
                 m.Ativo,
-                placas.Any(estacionadas.Contains));
+                placas.Any(estacionadas.Contains),
+                m.Email,
+                ServicoAcessoMensalista.SituacaoAcesso(m));
         }
+
+        private Task<string> NomePatioAsync(Guid patioId, CancellationToken ct) =>
+            db.Patios.Where(p => p.Id == patioId).Select(p => p.Nome).FirstAsync(ct);
 
         private static string? Limpar(string? texto) => string.IsNullOrWhiteSpace(texto) ? null : texto.Trim();
     }

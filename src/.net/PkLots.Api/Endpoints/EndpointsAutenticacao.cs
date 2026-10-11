@@ -15,11 +15,6 @@ namespace PkLots.Api.Endpoints
                 .AllowAnonymous()
                 .WithSummary("Autentica e retorna o token JWT (24h)");
 
-            grupo.MapPost("/registrar", async (RegistroRequisicao requisicao, ServicoAutenticacao servico, CancellationToken ct) =>
-                Results.Ok(await servico.RegistrarMotoristaAsync(requisicao, ct)))
-                .AllowAnonymous()
-                .WithSummary("Cria conta de motorista e retorna o token JWT");
-
             grupo.MapPost("/esqueci-senha", async (EsqueciSenhaRequisicao requisicao, ServicoAutenticacao servico, CancellationToken ct) =>
                 {
                     await servico.SolicitarRedefinicaoAsync(requisicao, ct);

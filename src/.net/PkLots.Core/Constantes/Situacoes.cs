@@ -90,6 +90,9 @@ namespace PkLots.Core.Constantes
         public const string EntradaSucesso = "entrada_sucesso";
         public const string EntradaRecusada = "entrada_recusada";
         public const string EntradaCancelada = "entrada_cancelada";
+        public const string ConviteMensalistaEnviado = "convite_mensalista_enviado";
+        public const string ConviteMensalistaAceito = "convite_mensalista_aceito";
+        public const string AcessoMensalistaRevogado = "acesso_mensalista_revogado";
         public const string SaidaSucesso = "saida_sucesso";
         public const string SaidaSemEntrada = "saida_sem_entrada";
         public const string LprFalhou = "lpr_falhou";
@@ -117,9 +120,19 @@ namespace PkLots.Core.Constantes
 
     public static class TiposToken
     {
+        public const string ConviteMensalista = "convite_mensalista";
         public const string RedefinirSenha = "redefinir_senha";
 
+        public static readonly TimeSpan ValidadeConvite = TimeSpan.FromHours(72);
         public static readonly TimeSpan ValidadeRedefinicao = TimeSpan.FromHours(1);
+    }
+
+    // Situação do acesso do mensalista ao app (mostrada ao operador)
+    public static class AcessoAppMensalista
+    {
+        public const string SemEmail = "sem_email";
+        public const string ConvitePendente = "convite_pendente";
+        public const string Ativo = "ativo";
     }
 
     public static class SituacaoAuditoria

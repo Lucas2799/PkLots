@@ -221,6 +221,17 @@ class _DetalheMensalistaState extends State<_DetalheMensalista> {
     await _carregarPagamentos();
   }
 
+  Future<void> _reenviarConvite() async {
+    try {
+      final atualizado = await context.read<ClienteApi>().reenviarConvite(_mensalista.id);
+      if (!mounted) return;
+      setState(() => _mensalista = atualizado);
+      mostrarAviso(context, 'Convite reenviado para ${atualizado.email}');
+    } on ExcecaoApi catch (e) {
+      if (mounted) mostrarAviso(context, e.mensagem, erro: true);
+    }
+  }
+
   Future<void> _editar() async {
     final atualizado = await mostrarFormularioMensalista(context, mensalista: _mensalista);
     if (atualizado != null && mounted) setState(() => _mensalista = atualizado);
@@ -296,6 +307,8 @@ class _DetalheMensalistaState extends State<_DetalheMensalista> {
               ),
             ),
             const SizedBox(height: 16),
+            _AcessoApp(mensalista: m, aoReenviar: _reenviarConvite),
+            const SizedBox(height: 16),
             Card(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
@@ -328,6 +341,50 @@ class _DetalheMensalistaState extends State<_DetalheMensalista> {
             ),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+/// Acesso do mensalista ao app: sem e-mail, convite pendente (com reenvio) ou ativo
+class _AcessoApp extends StatelessWidget {
+  const _AcessoApp({required this.mensalista, required this.aoReenviar});
+
+  final Mensalista mensalista;
+  final VoidCallback aoReenviar;
+
+  @override
+  Widget build(BuildContext context) {
+    final m = mensalista;
+    final (icone, cor, texto) = switch (m.acessoApp) {
+      Mensalista.acessoAtivo => (Icons.verified_user_outlined, CoresPkLots.disponivel, 'Acesso ativo: ${m.email}'),
+      Mensalista.convitePendente =>
+        (Icons.mark_email_unread_outlined, CoresPkLots.ambarEscuro, 'Convite enviado para ${m.email}, ainda não aceito'),
+      _ => (Icons.no_accounts_outlined, CoresPkLots.textoSuave, 'Sem acesso ao app. Informe um e-mail em Editar para enviar o convite.'),
+    };
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const TituloSecao('Acesso ao app', icone: Icons.phone_iphone),
+          Row(children: [
+            Icon(icone, color: cor),
+            const SizedBox(width: 10),
+            Expanded(child: Text(texto, style: const TextStyle(color: CoresPkLots.azulMarinho))),
+          ]),
+          if (m.acessoApp == Mensalista.convitePendente && m.ativo) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: aoReenviar,
+                icon: const Icon(Icons.forward_to_inbox_outlined),
+                label: const Text('Reenviar convite'),
+              ),
+            ),
+          ],
+        ]),
       ),
     );
   }

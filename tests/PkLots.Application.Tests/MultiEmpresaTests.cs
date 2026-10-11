@@ -185,29 +185,27 @@ namespace PkLots.Application.Tests
     public class MotoristaEmVariosPatiosTests
     {
         [Fact]
-        public async Task Placa_do_motorista_vale_em_patios_de_qualquer_empresa()
+        public async Task Contrato_de_mensalista_nao_mostra_a_placa_em_outros_patios()
         {
             using var cenario = new Cenario();
-            var motorista = cenario.CriarUsuario("driver@example.com", "Senha@123");
-            await cenario.Motorista.CadastrarVeiculoAsync(motorista.Id, new CadastrarVeiculoRequisicao("ABC1234", null, null));
+            var motorista = await AcessoMensalistaTests.MensalistaComAcessoAsync(cenario, "ABC1234");
 
-            // Estaciona num pátio de outra empresa
+            // A mesma placa estaciona num pátio de outra empresa: lá ela é avulsa
             var (_, patioOutra) = cenario.CriarOutraEmpresa("Estacionamentos Silva");
             cenario.Db.EntradasVeiculos.Add(new EntradaVeiculo
             {
                 PatioId = patioOutra.Id,
                 Placa = "ABC1234",
-                DataHoraEntrada = Cenario.Inicio.UtcDateTime,
+                DataHoraEntrada = cenario.Relogio.GetUtcNow().UtcDateTime,
                 Situacao = SituacaoEntrada.Ativa
             });
             await cenario.Db.SaveChangesAsync();
             cenario.Relogio.Advance(TimeSpan.FromHours(1));
 
-            var atual = await cenario.Motorista.ObterEstacionamentoAtualAsync(motorista.Id);
-
-            Assert.NotNull(atual);
-            Assert.Equal("Pátio Estacionamentos Silva", atual.NomePatio);
-            Assert.Equal(15.00m, atual.ValorEstimado);
+            var contrato = Assert.Single(await cenario.Motorista.ListarContratosAsync(motorista.Id));
+            Assert.Equal("Pátio Teste", contrato.NomePatio);
+            Assert.Empty(contrato.Estacionados);
+            Assert.Empty(await cenario.Motorista.ObterHistoricoAsync(motorista.Id));
         }
 
         [Fact]

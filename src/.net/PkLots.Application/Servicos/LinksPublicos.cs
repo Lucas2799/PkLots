@@ -10,6 +10,8 @@ namespace PkLots.Application.Servicos
 
         public string Ticket(string token) => UrlBase + CaminhoTicket + token;
 
+        public string Convite(string token) => $"{UrlBase}/?convite={token}";
+
         public string RedefinirSenha(string token) => $"{UrlBase}/?redefinir={token}";
     }
 }

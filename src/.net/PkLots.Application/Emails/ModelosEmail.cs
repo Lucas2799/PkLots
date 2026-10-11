@@ -5,6 +5,18 @@ namespace PkLots.Application.Emails
     // Textos dos e-mails (HTML simples + texto puro para clientes sem HTML)
     public static class ModelosEmail
     {
+        public static MensagemEmail ConviteMensalista(string nome, string nomePatio, string link, TimeSpan validade) =>
+            Montar(
+                $"Seu acesso ao {nomePatio} no PkLots",
+                $"Olá, {nome}!",
+                [
+                    $"O {nomePatio} cadastrou você como mensalista e liberou o acesso ao aplicativo PkLots.",
+                    "Por ele você acompanha a validade da mensalidade e os veículos do seu contrato no pátio."
+                ],
+                "Ativar meu acesso",
+                link,
+                $"O link vale por {Horas(validade)} e só pode ser usado uma vez. Se você não esperava este e-mail, ignore-o: nenhum acesso é liberado sem abrir o link.");
+
         public static MensagemEmail RedefinirSenha(string nome, string link, TimeSpan validade) =>
             Montar(
                 "Redefinição de senha do PkLots",

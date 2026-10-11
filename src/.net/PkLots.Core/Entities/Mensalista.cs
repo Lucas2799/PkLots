@@ -14,7 +14,14 @@ namespace PkLots.Core.Entities
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
         public DateTime AtualizadoEm { get; set; } = DateTime.UtcNow;
 
+        // Acesso ao app: o operador informa o e-mail, o sistema envia um convite e o vínculo
+        // com a conta só existe depois que a pessoa abre o link recebido nesse e-mail
+        public string? Email { get; set; }
+        public Guid? UsuarioId { get; set; }
+        public DateTime? VinculadoEm { get; set; } // o app só mostra estadias a partir daqui
+
         public Patio Patio { get; set; } = null!;
+        public Usuario? Usuario { get; set; }
         public ICollection<MensalistaPlaca> Placas { get; set; } = new List<MensalistaPlaca>();
         public ICollection<PagamentoMensalidade> Pagamentos { get; set; } = new List<PagamentoMensalidade>();
     }

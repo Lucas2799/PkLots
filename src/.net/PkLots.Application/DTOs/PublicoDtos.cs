@@ -17,6 +17,19 @@ namespace PkLots.Application.DTOs
         string? FormaPagamento,
         DateTime ConsultadoEm);
 
+    // Convite de mensalista (antes de aceitar): placas mascaradas para a pessoa conferir se é ela
+    public record ConviteMensalistaDto(
+        string NomeMensalista,
+        string NomePatio,
+        string Email,
+        IReadOnlyList<string> PlacasMascaradas,
+        bool ContaExistente);
+
+    public record AceitarConviteRequisicao(string? NomeCompleto, string? Senha);
+
+    // Conta criada: já entra no app (Token). Conta existente: o contrato aparece no próximo login.
+    public record AceiteConviteDto(bool ContaCriada, TokenDto? Token);
+
     public record EsqueciSenhaRequisicao(string? Email);
 
     public record RedefinirSenhaPorEmailRequisicao(string? Token, string? NovaSenha);

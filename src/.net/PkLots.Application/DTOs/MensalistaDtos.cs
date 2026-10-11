@@ -11,7 +11,9 @@ namespace PkLots.Application.DTOs
         string Situacao,        // em_dia, vencendo, vencido, inativo
         int? DiasParaVencer,    // negativo: vencido há N dias
         bool Ativo,
-        bool Estacionado);
+        bool Estacionado,
+        string? Email = null,
+        string AcessoApp = "sem_email"); // sem_email, convite_pendente, ativo
 
     public record SalvarMensalistaRequisicao(
         string Nome,
@@ -19,7 +21,8 @@ namespace PkLots.Application.DTOs
         string? Documento,
         string? Observacoes,
         IReadOnlyList<string> Placas,
-        bool Ativo = true);
+        bool Ativo = true,
+        string? Email = null); // acesso ao app: um convite é enviado a este e-mail
 
     // Valor nulo: mensalidade do pátio × meses
     public record RegistrarPagamentoRequisicao(int Meses, decimal? Valor, string FormaPagamento, string? Observacao);
