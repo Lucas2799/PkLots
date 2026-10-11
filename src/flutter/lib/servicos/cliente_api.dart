@@ -253,6 +253,14 @@ class ClienteApi {
 
   // ---------- Plataforma (superadmin) ----------
 
+  // ---------- Relatórios ----------
+
+  /// Relatório do dono (admin): todos os pátios da empresa, ou só [patioId]
+  Future<RelatorioEmpresa> relatorioEmpresa(PeriodoRelatorio periodo, {String? patioId}) async {
+    final consulta = Uri(queryParameters: {...periodo.paraConsulta(), 'patioId': ?patioId}).query;
+    return RelatorioEmpresa.deJson(await _get('/api/relatorios/empresa?$consulta'));
+  }
+
   Future<List<EmpresaPlataforma>> empresas() async => _lista(await _get('/api/plataforma/empresas'), EmpresaPlataforma.deJson);
 
   Future<EmpresaPlataforma> criarEmpresa({

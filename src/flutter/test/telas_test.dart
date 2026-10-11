@@ -103,6 +103,40 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         {'id': 'p1', 'nome': 'Pátio Padrão', 'ativo': true, 'totalVagas': 30, 'valorHora': 15.0, 'veiculosEstacionados': 1},
         {'id': 'p2', 'nome': 'Pátio Shopping', 'ativo': true, 'totalVagas': 10, 'valorHora': 12.0, 'veiculosEstacionados': 0},
       ]);
+    case '/api/relatorios/empresa':
+      final umPatio = req.url.queryParameters['patioId'];
+      return json({
+        'de': req.url.queryParameters['de'], 'ate': req.url.queryParameters['ate'], 'nomeEmpresa': 'Empresa Padrão',
+        'nomePatio': umPatio == null ? null : 'Pátio Shopping',
+        'totais': {
+          'entradas': 42, 'saidas': 40, 'saidasCobradas': 35, 'saidasIsentas': 3, 'saidasMensalistas': 2, 'cancelamentos': 1,
+          'receitaAvulsos': 1250.0, 'receitaMensalidades': 600.0, 'receitaTotal': 1850.0, 'ticketMedio': 35.71, 'permanenciaMedia': '2h 10m',
+        },
+        'porForma': [
+          {'forma': 'pix', 'quantidade': 20, 'total': 1100.0},
+          {'forma': 'dinheiro', 'quantidade': 17, 'total': 750.0},
+        ],
+        'porDia': [
+          {'data': '2026-09-29', 'entradas': 20, 'saidas': 19, 'receitaAvulsos': 600.0, 'receitaMensalidades': 0.0, 'receita': 600.0},
+          {'data': '2026-09-30', 'entradas': 22, 'saidas': 21, 'receitaAvulsos': 650.0, 'receitaMensalidades': 600.0, 'receita': 1250.0},
+        ],
+        'entradasPorHora': [for (var h = 0; h < 24; h++) {'hora': h, 'entradas': h == 8 ? 12 : 1}],
+        'porPatio': [
+          {'id': 'p1', 'nome': 'Pátio Padrão', 'ativo': true, 'vagas': 30, 'entradas': 30, 'saidas': 29, 'receitaAvulsos': 900.0,
+            'receitaMensalidades': 600.0, 'giroPorVaga': 0.48},
+          {'id': 'p2', 'nome': 'Pátio Shopping', 'ativo': true, 'vagas': 10, 'entradas': 12, 'saidas': 11, 'receitaAvulsos': 350.0,
+            'receitaMensalidades': 0.0, 'giroPorVaga': 0.55},
+        ],
+        'porOperador': [
+          {'id': 'u2', 'nome': 'Bruno Lima', 'saidas': 35, 'mensalidades': 2, 'recebido': 1850.0, 'caixasFechados': 2,
+            'diferencaCaixa': -5.0, 'cancelamentos': 1},
+        ],
+        'cancelamentos': [
+          {'canceladaEm': '2026-09-30T12:00:00Z', 'placa': 'ABC1234', 'nomePatio': 'Pátio Padrão', 'canceladaPor': 'Bruno Lima',
+            'motivo': 'Placa digitada errada'},
+        ],
+        'mensalistas': {'ativos': 8, 'emDia': 6, 'vencidos': 2, 'novos': 1, 'pagamentos': 2},
+      });
     case '/api/motorista/patios':
       return json([
         {'id': 'p1', 'nome': 'Pátio Padrão', 'nomeEmpresa': 'Empresa Padrão', 'disponiveis': 28, 'total': 30},
@@ -703,6 +737,45 @@ void main() {
 
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('admin abre os relatórios, troca o período e filtra um pátio', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Relatórios'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Receita total'), findsOneWidget);
+    expect(find.text('R\$\u00a01.850,00'), findsWidgets);
+    expect(find.text('Comparativo dos pátios'), findsOneWidget);
+    expect(find.text('Bruno Lima'), findsWidgets);
+    await tester.scrollUntilVisible(find.text('Placa digitada errada'), 300, scrollable: find.byType(Scrollable).first);
+    expect(find.text('ABC-1234'), findsOneWidget);
+
+    List<http.Request> consultas() => recebidas.where((r) => r.url.path == '/api/relatorios/empresa').toList();
+    final primeira = consultas().last.url.queryParameters;
+    final hoje = DateTime.now();
+    expect(primeira['de'], '${hoje.year}-${hoje.month.toString().padLeft(2, '0')}-01');
+    expect(primeira.containsKey('patioId'), isFalse);
+
+    await tester.scrollUntilVisible(find.text('Hoje'), -300, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Hoje'));
+    await tester.pumpAndSettle();
+    expect(consultas().last.url.queryParameters['de'], consultas().last.url.queryParameters['ate']);
+
+    await tester.tap(find.text('Todos os pátios'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Pátio Shopping').last);
+    await tester.pumpAndSettle();
+    expect(consultas().last.url.queryParameters['patioId'], 'p2');
+  });
+
+  testWidgets('operador não vê o botão de relatórios', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+
+    expect(find.byTooltip('Relatórios'), findsNothing);
   });
 
   testWidgets('operador cadastra mensalista e registra o pagamento', (tester) async {

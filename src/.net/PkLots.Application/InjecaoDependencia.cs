@@ -25,6 +25,7 @@ namespace PkLots.Application
             services.AddScoped<ServicoCaixa>();
             services.AddScoped<ServicoEstadiaPublica>();
             services.AddScoped<ServicoAcessoMensalista>();
+            services.AddScoped<ServicoRelatorios>();
             return services;
         }
     }

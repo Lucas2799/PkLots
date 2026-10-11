@@ -10,6 +10,11 @@ class Formatadores {
 
   static String moeda(num valor) => _moeda.format(valor);
 
+  static final _moedaCompacta = NumberFormat.compactCurrency(locale: 'pt_BR', symbol: 'R\$', decimalDigits: 0);
+
+  /// Eixo de gráficos: "R$ 1 mil", "R$ 250"
+  static String moedaCompacta(num valor) => _moedaCompacta.format(valor);
+
   static String hora(DateTime data) => _hora.format(data.toLocal());
 
   static String dataHora(DateTime data) => _dataHora.format(data.toLocal());

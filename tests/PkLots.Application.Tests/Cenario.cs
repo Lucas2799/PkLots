@@ -109,6 +109,7 @@ namespace PkLots.Application.Tests
         public ServicoAcessoMensalista AcessoMensalista => new(Db, HashSenha, GeradorToken, Relogio);
         public ServicoEstadiaPublica EstadiaPublica => new(Db, Relogio);
         public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Mensalistas, Relogio);
+        public ServicoRelatorios Relatorios => new(Db, ContextoPatio, Relogio);
         public ImpressoraFalsa Impressora { get; } = new();
         public ServicoImpressao Impressao =>
             new(Db, ContextoPatio, Impressora, Links, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);

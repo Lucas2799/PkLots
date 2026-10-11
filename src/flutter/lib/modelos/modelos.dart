@@ -993,3 +993,254 @@ class ConviteUsuario {
         patios: ((json['patios'] as List?) ?? []).cast<String>(),
       );
 }
+
+// ---------- Relatórios ----------
+
+String _dataApi(DateTime data) =>
+    '${data.year.toString().padLeft(4, '0')}-${data.month.toString().padLeft(2, '0')}-${data.day.toString().padLeft(2, '0')}';
+
+/// Período do relatório (datas locais, fim inclusivo)
+class PeriodoRelatorio {
+  final DateTime de;
+  final DateTime ate;
+
+  PeriodoRelatorio(DateTime de, DateTime ate)
+      : de = DateTime(de.year, de.month, de.day),
+        ate = DateTime(ate.year, ate.month, ate.day);
+
+  int get dias => ate.difference(de).inDays + 1;
+
+  Map<String, String> paraConsulta() => {'de': _dataApi(de), 'ate': _dataApi(ate)};
+
+  /// Usado no nome do arquivo exportado
+  String get sufixo => '${_dataApi(de)}_${_dataApi(ate)}';
+}
+
+class MovimentoDia {
+  final DateTime data;
+  final int entradas;
+  final int saidas;
+  final double receitaAvulsos;
+  final double receitaMensalidades;
+
+  MovimentoDia({
+    required this.data,
+    required this.entradas,
+    required this.saidas,
+    required this.receitaAvulsos,
+    required this.receitaMensalidades,
+  });
+
+  double get receita => receitaAvulsos + receitaMensalidades;
+
+  factory MovimentoDia.deJson(Map<String, dynamic> json) => MovimentoDia(
+        data: _data(json['data']),
+        entradas: json['entradas'] as int,
+        saidas: json['saidas'] as int,
+        receitaAvulsos: _numero(json['receitaAvulsos']),
+        receitaMensalidades: _numero(json['receitaMensalidades']),
+      );
+}
+
+class IndicadoresPeriodo {
+  final int entradas;
+  final int saidas;
+  final int saidasCobradas;
+  final int saidasIsentas;
+  final int saidasMensalistas;
+  final int cancelamentos;
+  final double receitaAvulsos;
+  final double receitaMensalidades;
+  final double receitaTotal;
+  final double ticketMedio;
+  final String permanenciaMedia;
+
+  IndicadoresPeriodo({
+    required this.entradas,
+    required this.saidas,
+    required this.saidasCobradas,
+    required this.saidasIsentas,
+    required this.saidasMensalistas,
+    required this.cancelamentos,
+    required this.receitaAvulsos,
+    required this.receitaMensalidades,
+    required this.receitaTotal,
+    required this.ticketMedio,
+    required this.permanenciaMedia,
+  });
+
+  factory IndicadoresPeriodo.deJson(Map<String, dynamic> json) => IndicadoresPeriodo(
+        entradas: json['entradas'] as int,
+        saidas: json['saidas'] as int,
+        saidasCobradas: json['saidasCobradas'] as int,
+        saidasIsentas: json['saidasIsentas'] as int,
+        saidasMensalistas: json['saidasMensalistas'] as int,
+        cancelamentos: json['cancelamentos'] as int,
+        receitaAvulsos: _numero(json['receitaAvulsos']),
+        receitaMensalidades: _numero(json['receitaMensalidades']),
+        receitaTotal: _numero(json['receitaTotal']),
+        ticketMedio: _numero(json['ticketMedio']),
+        permanenciaMedia: json['permanenciaMedia'] as String,
+      );
+}
+
+class DesempenhoPatio {
+  final String id;
+  final String nome;
+  final bool ativo;
+  final int vagas;
+  final int entradas;
+  final int saidas;
+  final double receitaAvulsos;
+  final double receitaMensalidades;
+  final double giroPorVaga;
+
+  DesempenhoPatio({
+    required this.id,
+    required this.nome,
+    required this.ativo,
+    required this.vagas,
+    required this.entradas,
+    required this.saidas,
+    required this.receitaAvulsos,
+    required this.receitaMensalidades,
+    required this.giroPorVaga,
+  });
+
+  double get receita => receitaAvulsos + receitaMensalidades;
+
+  factory DesempenhoPatio.deJson(Map<String, dynamic> json) => DesempenhoPatio(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        ativo: json['ativo'] as bool,
+        vagas: json['vagas'] as int,
+        entradas: json['entradas'] as int,
+        saidas: json['saidas'] as int,
+        receitaAvulsos: _numero(json['receitaAvulsos']),
+        receitaMensalidades: _numero(json['receitaMensalidades']),
+        giroPorVaga: _numero(json['giroPorVaga']),
+      );
+}
+
+class DesempenhoOperador {
+  final String id;
+  final String nome;
+  final int saidas;
+  final int mensalidades;
+  final double recebido;
+  final int caixasFechados;
+  final double diferencaCaixa;
+  final int cancelamentos;
+
+  DesempenhoOperador({
+    required this.id,
+    required this.nome,
+    required this.saidas,
+    required this.mensalidades,
+    required this.recebido,
+    required this.caixasFechados,
+    required this.diferencaCaixa,
+    required this.cancelamentos,
+  });
+
+  factory DesempenhoOperador.deJson(Map<String, dynamic> json) => DesempenhoOperador(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        saidas: json['saidas'] as int,
+        mensalidades: json['mensalidades'] as int,
+        recebido: _numero(json['recebido']),
+        caixasFechados: json['caixasFechados'] as int,
+        diferencaCaixa: _numero(json['diferencaCaixa']),
+        cancelamentos: json['cancelamentos'] as int,
+      );
+}
+
+class CancelamentoRelatorio {
+  final DateTime canceladaEm;
+  final String placa;
+  final String nomePatio;
+  final String? canceladaPor;
+  final String? motivo;
+
+  CancelamentoRelatorio({required this.canceladaEm, required this.placa, required this.nomePatio, this.canceladaPor, this.motivo});
+
+  factory CancelamentoRelatorio.deJson(Map<String, dynamic> json) => CancelamentoRelatorio(
+        canceladaEm: _data(json['canceladaEm']),
+        placa: json['placa'] as String,
+        nomePatio: json['nomePatio'] as String,
+        canceladaPor: json['canceladaPor'] as String?,
+        motivo: json['motivo'] as String?,
+      );
+}
+
+class MensalistasRelatorio {
+  final int ativos;
+  final int emDia;
+  final int vencidos;
+  final int novos;
+  final int pagamentos;
+
+  MensalistasRelatorio({required this.ativos, required this.emDia, required this.vencidos, required this.novos, required this.pagamentos});
+
+  factory MensalistasRelatorio.deJson(Map<String, dynamic> json) => MensalistasRelatorio(
+        ativos: json['ativos'] as int,
+        emDia: json['emDia'] as int,
+        vencidos: json['vencidos'] as int,
+        novos: json['novos'] as int,
+        pagamentos: json['pagamentos'] as int,
+      );
+}
+
+/// Relatório do dono: todos os pátios da empresa ou um só
+class RelatorioEmpresa {
+  final PeriodoRelatorio periodo;
+  final String nomeEmpresa;
+  final String? nomePatio;
+  final IndicadoresPeriodo totais;
+  final List<RecebimentoPorForma> porForma;
+  final List<MovimentoDia> porDia;
+
+  /// Entradas por hora local (índice 0–23)
+  final List<int> entradasPorHora;
+  final List<DesempenhoPatio> porPatio;
+  final List<DesempenhoOperador> porOperador;
+  final List<CancelamentoRelatorio> cancelamentos;
+  final MensalistasRelatorio mensalistas;
+
+  RelatorioEmpresa({
+    required this.periodo,
+    required this.nomeEmpresa,
+    this.nomePatio,
+    required this.totais,
+    required this.porForma,
+    required this.porDia,
+    required this.entradasPorHora,
+    required this.porPatio,
+    required this.porOperador,
+    required this.cancelamentos,
+    required this.mensalistas,
+  });
+
+  factory RelatorioEmpresa.deJson(Map<String, dynamic> json) {
+    final horas = List.filled(24, 0);
+    for (final h in (json['entradasPorHora'] as List).cast<Map<String, dynamic>>()) {
+      horas[h['hora'] as int] = h['entradas'] as int;
+    }
+    List<T> lista<T>(String chave, T Function(Map<String, dynamic>) conversor) =>
+        (json[chave] as List).map((e) => conversor(e as Map<String, dynamic>)).toList();
+
+    return RelatorioEmpresa(
+      periodo: PeriodoRelatorio(_data(json['de']), _data(json['ate'])),
+      nomeEmpresa: json['nomeEmpresa'] as String,
+      nomePatio: json['nomePatio'] as String?,
+      totais: IndicadoresPeriodo.deJson(json['totais'] as Map<String, dynamic>),
+      porForma: lista('porForma', RecebimentoPorForma.deJson),
+      porDia: lista('porDia', MovimentoDia.deJson),
+      entradasPorHora: horas,
+      porPatio: lista('porPatio', DesempenhoPatio.deJson),
+      porOperador: lista('porOperador', DesempenhoOperador.deJson),
+      cancelamentos: lista('cancelamentos', CancelamentoRelatorio.deJson),
+      mensalistas: MensalistasRelatorio.deJson(json['mensalistas'] as Map<String, dynamic>),
+    );
+  }
+}
