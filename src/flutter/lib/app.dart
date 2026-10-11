@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'estado/sessao_provider.dart';
 import 'tema/tema_pklots.dart';
+import 'telas/acesso/redefinir_senha_tela.dart';
 import 'telas/gestao/painel_tela.dart';
 import 'telas/login_tela.dart';
 import 'telas/troca_senha_tela.dart';
@@ -12,7 +14,10 @@ import 'telas/motorista/inicio_motorista_tela.dart';
 import 'widgets/logo_pklots.dart';
 
 class PkLotsApp extends StatelessWidget {
-  const PkLotsApp({super.key});
+  const PkLotsApp({super.key, this.enderecoInicial});
+
+  /// Endereço com que o app foi aberto (web): o link do e-mail de nova senha traz ?redefinir=
+  final Uri? enderecoInicial;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -22,17 +27,36 @@ class PkLotsApp extends StatelessWidget {
         locale: const Locale('pt', 'BR'),
         supportedLocales: const [Locale('pt', 'BR')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        home: const _Raiz(),
+        home: _Raiz(enderecoInicial: enderecoInicial),
       );
 }
 
-/// Decide a tela inicial pela sessão: login, painel de gestão ou app do motorista
-class _Raiz extends StatelessWidget {
-  const _Raiz();
+/// Decide a tela inicial: link recebido por e-mail (nova senha) e, depois, pela sessão:
+/// login, painel de gestão, plataforma ou app do motorista
+class _Raiz extends StatefulWidget {
+  const _Raiz({this.enderecoInicial});
+
+  final Uri? enderecoInicial;
+
+  @override
+  State<_Raiz> createState() => _RaizState();
+}
+
+class _RaizState extends State<_Raiz> {
+  late String? _redefinir = widget.enderecoInicial?.queryParameters['redefinir'];
+
+  // Tira o token do endereço (não fica no histórico do navegador nem volta no F5)
+  void _concluirLink() {
+    setState(() => _redefinir = null);
+    SystemNavigator.routeInformationUpdated(uri: Uri(path: '/'), replace: true);
+  }
 
   @override
   Widget build(BuildContext context) {
     final sessao = context.watch<SessaoProvider>();
+    if (sessao.situacao != SituacaoSessao.carregando) {
+      if (_redefinir case final token?) return RedefinirSenhaTela(token: token, aoConcluir: _concluirLink);
+    }
     return switch (sessao.situacao) {
       SituacaoSessao.carregando => const Scaffold(body: Center(child: LogoPkLots(tamanho: 180))),
       SituacaoSessao.deslogado => const LoginTela(),

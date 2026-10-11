@@ -20,6 +20,13 @@ class Validadores {
     return texto.length < 8 ? 'A senha deve ter pelo menos 8 caracteres' : null;
   }
 
+  /// Senha nova: mesma política da API (8+ caracteres, letras e números)
+  static String? novaSenha(String? senha) {
+    if (senha == null || senha.length < 8) return 'Mínimo de 8 caracteres';
+    if (!senha.contains(RegExp(r'[A-Za-z]')) || !senha.contains(RegExp(r'\d'))) return 'Use letras e números';
+    return null;
+  }
+
   static String? obrigatorio(String? texto, String campo) =>
       texto == null || texto.trim().isEmpty ? 'Informe $campo' : null;
 }

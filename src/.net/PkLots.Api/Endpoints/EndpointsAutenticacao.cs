@@ -20,6 +20,22 @@ namespace PkLots.Api.Endpoints
                 .AllowAnonymous()
                 .WithSummary("Cria conta de motorista e retorna o token JWT");
 
+            grupo.MapPost("/esqueci-senha", async (EsqueciSenhaRequisicao requisicao, ServicoAutenticacao servico, CancellationToken ct) =>
+                {
+                    await servico.SolicitarRedefinicaoAsync(requisicao, ct);
+                    return Results.NoContent();
+                })
+                .AllowAnonymous()
+                .WithSummary("Envia o link de redefinição de senha (mesma resposta exista ou não a conta)");
+
+            grupo.MapPost("/redefinir-senha", async (RedefinirSenhaPorEmailRequisicao requisicao, ServicoAutenticacao servico, CancellationToken ct) =>
+                {
+                    await servico.RedefinirSenhaAsync(requisicao, ct);
+                    return Results.NoContent();
+                })
+                .AllowAnonymous()
+                .WithSummary("Define a nova senha com o token recebido por e-mail");
+
             grupo.MapPost("/trocar-senha", async (TrocarSenhaRequisicao requisicao, ClaimsPrincipal usuario, ServicoAutenticacao servico,
                     CancellationToken ct) =>
                 Results.Ok(await servico.TrocarSenhaAsync(usuario.ObterUsuarioId(), requisicao, ct)))

@@ -26,6 +26,6 @@ Future<void> main() async {
       ChangeNotifierProvider(create: (_) => GestaoProvider(api)),
       ChangeNotifierProvider(create: (_) => AdministracaoProvider(api)),
     ],
-    child: const PkLotsApp(),
+    child: PkLotsApp(enderecoInicial: Uri.base),
   ));
 }

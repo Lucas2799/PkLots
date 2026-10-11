@@ -170,6 +170,8 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
       return json([
         {'id': 'v1', 'placa': 'ABC1234', 'modelo': 'Onix', 'cor': 'Prata'}
       ]);
+    case '/api/auth/esqueci-senha':
+      return http.Response('', 204);
     case '/api/motorista/historico':
       return json([]);
     case '/api/dashboard':
@@ -226,7 +228,8 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
   return json({'title': 'Não encontrado'}, 404);
 }
 
-Future<void> abrirApp(WidgetTester tester, {required String perfil, Size tela = const Size(1400, 2400)}) async {
+Future<void> abrirApp(WidgetTester tester,
+    {required String perfil, Size tela = const Size(1400, 2400), Uri? endereco}) async {
   tester.view.physicalSize = tela;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -243,7 +246,7 @@ Future<void> abrirApp(WidgetTester tester, {required String perfil, Size tela = 
       ChangeNotifierProvider(create: (_) => GestaoProvider(api)),
       ChangeNotifierProvider(create: (_) => AdministracaoProvider(api)),
     ],
-    child: const PkLotsApp(),
+    child: PkLotsApp(enderecoInicial: endereco),
   ));
   await tester.pumpAndSettle();
 }
@@ -362,6 +365,19 @@ void main() {
 
     await tester.tap(find.byTooltip('Sair'));
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('login pede o link de nova senha', (tester) async {
+    await abrirApp(tester, perfil: 'motorista');
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'E-mail'), 'ana@exemplo.com');
+    await tester.tap(find.text('Esqueci minha senha'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Enviar link'));
+    await tester.pumpAndSettle();
+
+    expect(enviadas.any((r) => r.url.path == '/api/auth/esqueci-senha' && r.body.contains('ana@exemplo.com')), isTrue);
+    expect(find.textContaining('Se houver uma conta com ana@exemplo.com'), findsOneWidget);
   });
 
   testWidgets('sessão salva é restaurada ao abrir o app', (tester) async {

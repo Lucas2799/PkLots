@@ -115,6 +115,13 @@ namespace PkLots.Core.Constantes
         public const string ImpressaoFalhou = "impressao_falhou";
     }
 
+    public static class TiposToken
+    {
+        public const string RedefinirSenha = "redefinir_senha";
+
+        public static readonly TimeSpan ValidadeRedefinicao = TimeSpan.FromHours(1);
+    }
+
     public static class SituacaoAuditoria
     {
         public const string Sucesso = "sucesso";

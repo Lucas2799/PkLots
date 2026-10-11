@@ -16,4 +16,8 @@ namespace PkLots.Application.DTOs
         DateTime? DataHoraSaida,
         string? FormaPagamento,
         DateTime ConsultadoEm);
+
+    public record EsqueciSenhaRequisicao(string? Email);
+
+    public record RedefinirSenhaPorEmailRequisicao(string? Token, string? NovaSenha);
 }

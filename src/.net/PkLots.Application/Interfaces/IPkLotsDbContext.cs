@@ -22,6 +22,8 @@ namespace PkLots.Application.Interfaces
         DbSet<Caixa> Caixas { get; }
         DbSet<MovimentoCaixa> MovimentosCaixa { get; }
         DbSet<CobrancaSaida> CobrancasSaida { get; }
+        DbSet<TokenUsuario> TokensUsuario { get; }
+        DbSet<EmailPendente> EmailsPendentes { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

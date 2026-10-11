@@ -73,6 +73,7 @@ namespace PkLots.Application.Tests
         }
         public ICacheVagas Cache => new CacheFalso();
         public LinksPublicos Links { get; } = new("https://pklots.teste");
+        public GeradorTokenFalso GeradorToken { get; } = new();
 
         public ReconhecedorPlaca Reconhecedor => new(Lpr, Db, ContextoPatio, Relogio);
         public ServicoEntrada Entrada => new(Db, ContextoPatio, Cache, Reconhecedor, Relogio);
@@ -111,7 +112,16 @@ namespace PkLots.Application.Tests
         public ServicoImpressao Impressao =>
             new(Db, ContextoPatio, Impressora, Links, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);
         public ServicoAdministracao Administracao => new(Db, ContextoPatio, Cache, HashSenha, Relogio);
-        public ServicoAutenticacao Autenticacao => new(Db, HashSenha, new GeradorTokenFalso(), Relogio);
+        public ServicoAutenticacao Autenticacao => new(Db, HashSenha, GeradorToken, Links, Relogio);
+
+        // Token que iria no link do último e-mail enviado para o endereço (lido do corpo do e-mail na fila)
+        public string TokenDoUltimoEmail(string para, string parametro)
+        {
+            var email = Db.EmailsPendentes.Where(e => e.Para == para).OrderBy(e => e.CriadoEm).AsEnumerable().Last();
+            var marcador = $"?{parametro}=";
+            var inicio = email.CorpoTexto!.IndexOf(marcador, StringComparison.Ordinal) + marcador.Length;
+            return new string(email.CorpoTexto[inicio..].TakeWhile(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_').ToArray());
+        }
 
         // admin/operador pertencem à empresa (operador vinculado ao pátio); motorista é conta da plataforma
         public Usuario CriarUsuario(string email, string senha, string perfil = Perfis.Motorista)

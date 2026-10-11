@@ -92,8 +92,15 @@ services:
       Swagger__Habilitado: ${SWAGGER_HABILITADO:-false}
       Jwt__SecretKey: ${JWT_CHAVE:?Defina JWT_CHAVE no docker/.env (openssl rand -base64 48)}
       Plataforma__CriarDadosDemonstracao: ${DADOS_DEMONSTRACAO:-false}
-      # Endereço público (vai no QR do ticket)
+      # Endereço público (vai no QR do ticket e nos links dos e-mails)
       Plataforma__UrlPublica: ${URL_PUBLICA:-http://localhost:8000}
+      # SMTP dos convites de mensalista e da redefinição de senha (sem host: e-mails ficam na fila)
+      Email__Host: ${EMAIL_HOST:-}
+      Email__Porta: ${EMAIL_PORTA:-25}
+      Email__Usuario: ${EMAIL_USUARIO:-}
+      Email__Senha: ${EMAIL_SENHA:-}
+      Email__Remetente: ${EMAIL_REMETENTE:-nao-responda@pklots.local}
+      Email__Seguranca: ${EMAIL_SEGURANCA:-auto}
     ports:
       - "127.0.0.1:${API_PORTA:-8080}:8080"
     volumes:
@@ -142,6 +149,21 @@ services:
       interval: 30s
       timeout: 3s
       retries: 3
+    restart: unless-stopped
+
+  # =========================================
+  # 6. smtp4dev (só desenvolvimento): captura os e-mails sem entregar
+  #    Subir com: podman compose -f docker/podman-compose.yml --profile dev up -d
+  #    Caixa de entrada: http://localhost:5080 · no .env: EMAIL_HOST=pklots-smtp4dev
+  # =========================================
+  pklots-smtp4dev:
+    image: docker.io/rnwood/smtp4dev:v3
+    container_name: pklots-smtp4dev
+    profiles: ["dev"]
+    ports:
+      - "127.0.0.1:${SMTP4DEV_PORTA:-5080}:80"
+    networks:
+      - pklots-network
     restart: unless-stopped
 
 networks:

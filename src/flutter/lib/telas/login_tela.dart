@@ -6,6 +6,7 @@ import '../servicos/excecao_api.dart';
 import '../tema/cores.dart';
 import '../util/validadores.dart';
 import '../widgets/layout_autenticacao.dart';
+import 'acesso/esqueci_senha_dialogo.dart';
 import 'registro_tela.dart';
 
 class LoginTela extends StatefulWidget {
@@ -92,7 +93,11 @@ class _LoginTelaState extends State<LoginTela> {
                       ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
                       : const Text('ENTRAR'),
                 ),
-                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _enviando ? null : () => mostrarEsqueciSenha(context, emailInicial: _email.text),
+                  child: const Text('Esqueci minha senha'),
+                ),
+                const SizedBox(height: 4),
                 OutlinedButton(
                   onPressed: _enviando
                       ? null

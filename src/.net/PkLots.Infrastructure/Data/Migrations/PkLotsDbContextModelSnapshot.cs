@@ -166,6 +166,50 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.ToTable("ConfiguracoesPagamento");
                 });
 
+            modelBuilder.Entity("PkLots.Core.Entities.EmailPendente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Assunto")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CorpoHtml")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CorpoTexto")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EnviadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Para")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<DateTime>("ProximaTentativaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Tentativas")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UltimoErro")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnviadoEm", "ProximaTentativaEm");
+
+                    b.ToTable("EmailsPendentes");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.Empresa", b =>
                 {
                     b.Property<Guid>("Id")
@@ -609,6 +653,49 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.ToTable("SaidasVeiculos");
                 });
 
+            modelBuilder.Entity("PkLots.Core.Entities.TokenUsuario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
+                    b.Property<DateTime>("ExpiraEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HashToken")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<DateTime?>("UsadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HashToken")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId", "Tipo");
+
+                    b.ToTable("TokensUsuario");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.Usuario", b =>
                 {
                     b.Property<Guid>("Id")
@@ -989,6 +1076,14 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Navigation("EntradaVeiculo");
 
                     b.Navigation("Patio");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.TokenUsuario", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.Usuario", b =>

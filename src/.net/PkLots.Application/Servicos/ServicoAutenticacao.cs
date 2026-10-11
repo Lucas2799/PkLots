@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PkLots.Application.DTOs;
+using PkLots.Application.Emails;
 using PkLots.Application.Excecoes;
 using PkLots.Application.Interfaces;
 using PkLots.Core.Constantes;
@@ -12,6 +13,7 @@ namespace PkLots.Application.Servicos
         IPkLotsDbContext db,
         IHashSenha hashSenha,
         IGeradorToken geradorToken,
+        LinksPublicos links,
         TimeProvider relogio,
         ILogger<ServicoAutenticacao>? logger = null)
     {
@@ -81,6 +83,74 @@ namespace PkLots.Application.Servicos
             await db.SaveChangesAsync(ct);
 
             return geradorToken.Gerar(usuario);
+        }
+
+        // "Esqueci minha senha": responde igual exista ou não a conta (não revela quem tem cadastro).
+        // Superadmin recupera o acesso só pelo servidor (comando criar-superadmin).
+        public async Task SolicitarRedefinicaoAsync(EsqueciSenhaRequisicao requisicao, CancellationToken ct = default)
+        {
+            var email = (requisicao.Email ?? "").Trim().ToLowerInvariant();
+            if (email.Length == 0)
+                throw new ExcecaoNegocio("Informe o e-mail.");
+
+            var usuario = await db.Usuarios.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Email == email && u.Ativo && u.Perfil != Perfis.SuperAdmin
+                    && (u.Empresa == null || u.Empresa.Ativa), ct);
+            if (usuario is null)
+            {
+                logger?.LogInformation("Redefinição de senha pedida para e-mail sem conta ativa: {Email}", email);
+                return;
+            }
+
+            EnfileirarRedefinicao(db, links, usuario, relogio.GetUtcNow().UtcDateTime);
+            await db.SaveChangesAsync(ct);
+        }
+
+        // Link de nova senha
+        internal static void EnfileirarRedefinicao(IPkLotsDbContext db, LinksPublicos links, Usuario usuario, DateTime agora)
+        {
+            db.TokensUsuario.RemoveRange(db.TokensUsuario.IgnoreQueryFilters().Where(t => t.UsuarioId == usuario.Id && t.Tipo == TiposToken.RedefinirSenha));
+            var token = TokenSeguro.Gerar(TokenSeguro.BytesEmail);
+            db.TokensUsuario.Add(new TokenUsuario
+            {
+                Tipo = TiposToken.RedefinirSenha,
+                HashToken = TokenSeguro.Hash(token),
+                Email = usuario.Email,
+                UsuarioId = usuario.Id,
+                ExpiraEm = agora + TiposToken.ValidadeRedefinicao,
+                CriadoEm = agora
+            });
+            FilaEmails.Enfileirar(db, usuario.Email,
+                ModelosEmail.RedefinirSenha(usuario.NomeCompleto, links.RedefinirSenha(token), TiposToken.ValidadeRedefinicao), agora);
+        }
+
+        // Nova senha pelo link do e-mail: também desbloqueia a conta e encerra a senha temporária
+        public async Task RedefinirSenhaAsync(RedefinirSenhaPorEmailRequisicao requisicao, CancellationToken ct = default)
+        {
+            const string invalido = "Link inválido, expirado ou já utilizado. Peça uma nova redefinição de senha.";
+            if (!TokenSeguro.FormatoValido(requisicao.Token, TokenSeguro.BytesEmail))
+                throw new ExcecaoNaoEncontrado(invalido);
+
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            var hash = TokenSeguro.Hash(requisicao.Token!);
+            var pedido = await db.TokensUsuario.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.HashToken == hash && t.Tipo == TiposToken.RedefinirSenha, ct);
+            if (pedido is null || pedido.UsadoEm is not null || pedido.ExpiraEm <= agora)
+                throw new ExcecaoNaoEncontrado(invalido);
+
+            var usuario = await db.Usuarios.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Id == pedido.UsuarioId && u.Ativo && u.Email == pedido.Email, ct)
+                ?? throw new ExcecaoNaoEncontrado(invalido);
+
+            RegrasUsuario.ValidarSenha(requisicao.NovaSenha);
+            usuario.SenhaHash = hashSenha.Gerar(requisicao.NovaSenha!);
+            usuario.DeveTrocarSenha = false;
+            usuario.FalhasLogin = 0;
+            usuario.BloqueadoAte = null;
+            usuario.AtualizadoEm = agora;
+            pedido.UsadoEm = agora;
+
+            await db.SaveChangesAsync(ct);
+            logger?.LogInformation("Senha redefinida por e-mail para {Email}", usuario.Email);
         }
 
         // Cadastro de motorista pelo app ("Criar Conta")

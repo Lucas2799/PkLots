@@ -13,7 +13,7 @@ namespace PkLots.Infrastructure.Data
         // Empresa/pátio/usuários de demonstração em banco vazio (somente desenvolvimento)
         public bool CriarDadosDemonstracao { get; set; }
 
-        // Endereço público do gateway (QR do ticket), ex.: https://pklots.com.br
+        // Endereço público do gateway (QR do ticket e links dos e-mails), ex.: https://pklots.com.br
         public string? UrlPublica { get; set; }
     }
 

@@ -38,6 +38,8 @@ namespace PkLots.Infrastructure.Data
         public DbSet<EntradaVeiculo> EntradasVeiculos { get; set; }
         public DbSet<SaidaVeiculo> SaidasVeiculos { get; set; }
         public DbSet<LogAuditoria> LogsAuditoria { get; set; }
+        public DbSet<TokenUsuario> TokensUsuario { get; set; }
+        public DbSet<EmailPendente> EmailsPendentes { get; set; }
 
         public PkLotsDbContext(DbContextOptions<PkLotsDbContext> options, IHttpContextAccessor? httpContext = null)
             : base(options)
@@ -97,6 +99,12 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<CobrancaSaida>()
                 .HasQueryFilter(c => _empresaId == null || c.Patio.EmpresaId == _empresaId);
+
+            // Tokens de e-mail e fila de envio são da plataforma: nunca aparecem para usuários de empresa
+            modelBuilder.Entity<TokenUsuario>()
+                .HasQueryFilter(t => _empresaId == null);
+            modelBuilder.Entity<EmailPendente>()
+                .HasQueryFilter(e => _empresaId == null);
 
             // Placas dos motoristas são da plataforma: só aparecem para quem não pertence a uma empresa
             // (o próprio motorista; os serviços filtram pelo UsuarioId)
@@ -208,6 +216,18 @@ namespace PkLots.Infrastructure.Data
             modelBuilder.Entity<EntradaVeiculo>()
                 .Property(e => e.TokenAcesso)
                 .HasMaxLength(32);
+
+            modelBuilder.Entity<TokenUsuario>().HasIndex(t => t.HashToken).IsUnique();
+            modelBuilder.Entity<TokenUsuario>().HasIndex(t => new { t.UsuarioId, t.Tipo });
+            modelBuilder.Entity<TokenUsuario>().Property(t => t.Tipo).HasMaxLength(30);
+            modelBuilder.Entity<TokenUsuario>().Property(t => t.HashToken).HasMaxLength(64);
+            modelBuilder.Entity<TokenUsuario>().Property(t => t.Email).HasMaxLength(254);
+            modelBuilder.Entity<TokenUsuario>()
+                .HasOne<Usuario>().WithMany().HasForeignKey(t => t.UsuarioId).OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<EmailPendente>().HasIndex(e => new { e.EnviadoEm, e.ProximaTentativaEm });
+            modelBuilder.Entity<EmailPendente>().Property(e => e.Para).HasMaxLength(254);
+            modelBuilder.Entity<EmailPendente>().Property(e => e.Assunto).HasMaxLength(200);
 
             modelBuilder.Entity<LogAuditoria>()
                 .HasIndex(l => new { l.PatioId, l.CriadoEm });

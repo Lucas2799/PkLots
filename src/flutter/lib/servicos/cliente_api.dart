@@ -39,6 +39,12 @@ class ClienteApi {
   Future<Token> registrar(String email, String senha, String nomeCompleto) async => Token.deJson(
       await _post('/api/auth/registrar', {'email': email, 'senha': senha, 'nomeCompleto': nomeCompleto}));
 
+  /// Envia o link de redefinição (a API responde igual exista ou não a conta)
+  Future<void> esqueciSenha(String email) => _post('/api/auth/esqueci-senha', {'email': email});
+
+  Future<void> redefinirSenhaPorEmail(String token, String novaSenha) =>
+      _post('/api/auth/redefinir-senha', {'token': token, 'novaSenha': novaSenha});
+
   // ---------- Vagas ----------
 
   Future<ResumoVagas> resumoVagas() async => ResumoVagas.deJson(await _get('/api/vagas/resumo'));

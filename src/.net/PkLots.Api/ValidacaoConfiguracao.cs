@@ -25,7 +25,7 @@ public static class ValidacaoConfiguracao
         var urlPublica = configuracao["Plataforma:UrlPublica"];
         if (!string.IsNullOrWhiteSpace(urlPublica)
             && (!Uri.TryCreate(urlPublica, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")))
-            problemas.Add("Plataforma__UrlPublica deve ser um endereço completo, ex.: https://pklots.com.br (vai no QR do ticket).");
+            problemas.Add("Plataforma__UrlPublica deve ser um endereço completo, ex.: https://pklots.com.br (vai no QR do ticket e nos e-mails).");
 
         if (!ambiente.IsDevelopment())
         {
