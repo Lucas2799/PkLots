@@ -108,8 +108,10 @@ class _PlataformaTelaState extends State<PlataformaTela> {
           IconButton(
             tooltip: 'Faturas',
             icon: const Icon(Icons.request_quote_outlined),
-            onPressed: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => FaturasTela(empresas: _empresas ?? const []))),
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => FaturasTela(empresas: _empresas ?? const [])));
+              await _carregar(); // baixa ou cancelamento mudam a situação de cobrança das empresas
+            },
           ),
           IconButton(
             tooltip: 'Planos',
