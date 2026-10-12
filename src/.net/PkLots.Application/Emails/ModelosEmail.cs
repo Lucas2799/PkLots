@@ -42,6 +42,22 @@ namespace PkLots.Application.Emails
                 link,
                 $"O link vale por {Horas(validade)} e só pode ser usado uma vez. Se você não pediu a redefinição, ignore este e-mail: sua senha continua a mesma.");
 
+        // Fatura do aluguel do PkLots para os administradores da empresa
+        public static MensagemEmail FaturaEmitida(string nomeEmpresa, string descricao, string valor, DateOnly vencimento,
+            string? pixCopiaECola, string enderecoSistema)
+        {
+            var paragrafos = new List<string>
+            {
+                $"A fatura do PkLots da {nomeEmpresa} está disponível.",
+                $"{descricao}: {valor}, com vencimento em {vencimento:dd/MM/yyyy}."
+            };
+            paragrafos.Add(pixCopiaECola is null
+                ? "Os dados para pagamento estão no sistema, em Administração > Assinatura."
+                : $"Para pagar por PIX, use o código copia e cola abaixo (ou o QR Code em Administração > Assinatura): {pixCopiaECola}");
+            return Montar($"Fatura do PkLots: {descricao} ({valor})", "Olá!", [.. paragrafos], "Abrir o PkLots", enderecoSistema,
+                "Depois do pagamento, a baixa é feita pela equipe do PkLots. Se já pagou, desconsidere este e-mail.");
+        }
+
         private static string Horas(TimeSpan validade) =>
             validade.TotalHours == 1 ? "1 hora" : $"{validade.TotalHours:0} horas";
 

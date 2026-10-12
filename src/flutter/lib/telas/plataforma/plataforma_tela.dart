@@ -13,6 +13,7 @@ import '../../widgets/estados_tela.dart';
 import '../../widgets/logo_pklots.dart';
 import '../relatorios/relatorio_plataforma_tela.dart';
 import 'assinatura_dialogo.dart';
+import 'faturas_tela.dart';
 import 'planos_tela.dart';
 import '../troca_senha_tela.dart';
 
@@ -104,6 +105,12 @@ class _PlataformaTelaState extends State<PlataformaTela> {
           Flexible(child: Text('· Plataforma', style: TextStyle(fontSize: 16, color: CoresPkLots.textoSecundario))),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'Faturas',
+            icon: const Icon(Icons.request_quote_outlined),
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => FaturasTela(empresas: _empresas ?? const []))),
+          ),
           IconButton(
             tooltip: 'Planos',
             icon: const Icon(Icons.workspace_premium_outlined),

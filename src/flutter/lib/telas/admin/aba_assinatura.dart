@@ -7,6 +7,7 @@ import '../../servicos/excecao_api.dart';
 import '../../tema/cores.dart';
 import '../../util/formatadores.dart';
 import '../../widgets/estados_tela.dart';
+import '../../widgets/fatura_widgets.dart';
 
 /// Plano contratado pela empresa: valor, vencimento, uso dos limites e recursos liberados
 class AbaAssinatura extends StatefulWidget {
@@ -18,6 +19,7 @@ class AbaAssinatura extends StatefulWidget {
 
 class _AbaAssinaturaState extends State<AbaAssinatura> {
   MinhaAssinatura? _assinatura;
+  List<Fatura> _faturas = [];
   String? _erro;
 
   @override
@@ -28,10 +30,12 @@ class _AbaAssinaturaState extends State<AbaAssinatura> {
 
   Future<void> _carregar() async {
     try {
-      final assinatura = await context.read<ClienteApi>().minhaAssinatura();
+      final api = context.read<ClienteApi>();
+      final resultados = await Future.wait([api.minhaAssinatura(), api.minhasFaturas()]);
       if (mounted) {
         setState(() {
-          _assinatura = assinatura;
+          _assinatura = resultados[0] as MinhaAssinatura;
+          _faturas = resultados[1] as List<Fatura>;
           _erro = null;
         });
       }
@@ -85,6 +89,40 @@ class _AbaAssinaturaState extends State<AbaAssinatura> {
                   Text('Período de teste até ${Formatadores.data(a.testeAte!)}',
                       style: const TextStyle(color: CoresPkLots.disponivel, fontWeight: FontWeight.w600)),
                 ]),
+              ],
+            ]),
+          ),
+        ),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const TituloSecao('Faturas', icone: Icons.request_quote_outlined),
+              if (_faturas.isEmpty)
+                const Text('Nenhuma fatura até agora.', style: TextStyle(color: CoresPkLots.textoSuave)),
+              for (final (i, f) in _faturas.indexed) ...[
+                if (i > 0) const Divider(height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(f.descricao),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(spacing: 12, runSpacing: 4, children: [
+                      SituacaoFatura(fatura: f),
+                      Text(f.pagaEm != null ? 'Paga em ${Formatadores.data(f.pagaEm!.toLocal())}' : 'Vence ${Formatadores.data(f.vencimento)}'),
+                    ]),
+                  ),
+                  trailing: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.end, children: [
+                    Text(Formatadores.moeda(f.valor), style: const TextStyle(fontWeight: FontWeight.w700, color: CoresPkLots.azulMarinho)),
+                    if (f.emAberto && f.pixCopiaECola != null)
+                      TextButton.icon(
+                        style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
+                        onPressed: () => mostrarPixFatura(context, f),
+                        icon: const Icon(Icons.qr_code_2, size: 18),
+                        label: const Text('Pagar com PIX'),
+                      ),
+                  ]),
+                ),
               ],
             ]),
           ),

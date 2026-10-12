@@ -1514,3 +1514,86 @@ class MinhaAssinatura {
         ],
       );
 }
+
+/// Fatura do aluguel do PkLots
+class Fatura {
+  static const aberta = 'aberta';
+  static const vencida = 'vencida';
+  static const paga = 'paga';
+  static const cancelada = 'cancelada';
+
+  final String id;
+  final String empresaId;
+  final String nomeEmpresa;
+  final String tipo; // mensalidade, avulsa
+  final String descricao;
+  final double valor;
+  final DateTime vencimento;
+  final String situacao;
+  final int diasEmAtraso;
+  final int? patiosCobrados;
+  final double? precoPorPatio;
+  final DateTime? pagaEm;
+  final String? formaPagamento;
+  final double? valorPago;
+  final String? observacao;
+  final String? motivoCancelamento;
+  final String? pixCopiaECola;
+
+  Fatura({
+    required this.id,
+    required this.empresaId,
+    required this.nomeEmpresa,
+    required this.tipo,
+    required this.descricao,
+    required this.valor,
+    required this.vencimento,
+    required this.situacao,
+    this.diasEmAtraso = 0,
+    this.patiosCobrados,
+    this.precoPorPatio,
+    this.pagaEm,
+    this.formaPagamento,
+    this.valorPago,
+    this.observacao,
+    this.motivoCancelamento,
+    this.pixCopiaECola,
+  });
+
+  bool get emAberto => situacao == aberta || situacao == vencida;
+
+  factory Fatura.deJson(Map<String, dynamic> json) => Fatura(
+        id: json['id'] as String,
+        empresaId: json['empresaId'] as String,
+        nomeEmpresa: json['nomeEmpresa'] as String,
+        tipo: json['tipo'] as String,
+        descricao: json['descricao'] as String,
+        valor: _numero(json['valor']),
+        vencimento: _data(json['vencimento']),
+        situacao: json['situacao'] as String,
+        diasEmAtraso: (json['diasEmAtraso'] as int?) ?? 0,
+        patiosCobrados: json['patiosCobrados'] as int?,
+        precoPorPatio: (json['precoPorPatio'] as num?)?.toDouble(),
+        pagaEm: _dataOpcional(json['pagaEm']),
+        formaPagamento: json['formaPagamento'] as String?,
+        valorPago: (json['valorPago'] as num?)?.toDouble(),
+        observacao: json['observacao'] as String?,
+        motivoCancelamento: json['motivoCancelamento'] as String?,
+        pixCopiaECola: json['pixCopiaECola'] as String?,
+      );
+}
+
+/// Chave PIX do PkLots, usada nas faturas
+class RecebimentoPlataforma {
+  final String? chavePix;
+  final String? nomeRecebedor;
+  final String? cidadeRecebedor;
+
+  RecebimentoPlataforma({this.chavePix, this.nomeRecebedor, this.cidadeRecebedor});
+
+  factory RecebimentoPlataforma.deJson(Map<String, dynamic> json) => RecebimentoPlataforma(
+        chavePix: json['chavePix'] as String?,
+        nomeRecebedor: json['nomeRecebedor'] as String?,
+        cidadeRecebedor: json['cidadeRecebedor'] as String?,
+      );
+}

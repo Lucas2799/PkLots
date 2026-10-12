@@ -57,6 +57,7 @@ namespace PkLots.Infrastructure
             services.Configure<OpcoesEmail>(configuracao.GetSection("Email"));
             services.AddScoped<EnviadorEmailSmtp>();
             services.AddHostedService<ProcessadorFilaEmails>();
+            services.AddHostedService<ProcessadorFaturas>();
 
             return services;
         }

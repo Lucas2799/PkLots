@@ -25,6 +25,8 @@ namespace PkLots.Application.Interfaces
         DbSet<EmailPendente> EmailsPendentes { get; }
         DbSet<Plano> Planos { get; }
         DbSet<Assinatura> Assinaturas { get; }
+        DbSet<Fatura> Faturas { get; }
+        DbSet<ConfiguracaoPlataforma> ConfiguracoesPlataforma { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

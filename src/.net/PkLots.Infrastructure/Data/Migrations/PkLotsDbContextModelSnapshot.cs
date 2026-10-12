@@ -202,6 +202,33 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.ToTable("ConfiguracoesPagamento");
                 });
 
+            modelBuilder.Entity("PkLots.Core.Entities.ConfiguracaoPlataforma", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AtualizadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ChavePix")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CidadeRecebedor")
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<string>("NomeRecebedor")
+                        .HasMaxLength(25)
+                        .HasColumnType("character varying(25)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ConfiguracoesPlataforma");
+                });
+
             modelBuilder.Entity("PkLots.Core.Entities.EmailPendente", b =>
                 {
                     b.Property<Guid>("Id")
@@ -355,6 +382,86 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .HasFilter("\"Situacao\" = 'ativa'");
 
                     b.ToTable("EntradasVeiculos");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.Fatura", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("BaixadaPorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CanceladaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly?>("Competencia")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("CriadoEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<Guid>("EmpresaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FormaPagamento")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("NomePlano")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Observacao")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<DateTime?>("PagaEm")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("PatiosCobrados")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal?>("PrecoPorPatio")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<string>("Situacao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<decimal?>("ValorPago")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)");
+
+                    b.Property<DateOnly>("Vencimento")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId", "Competencia")
+                        .IsUnique()
+                        .HasFilter("\"Tipo\" = 'mensalidade'");
+
+                    b.HasIndex("Situacao", "Vencimento");
+
+                    b.ToTable("Faturas");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.LogAuditoria", b =>
@@ -1075,6 +1182,17 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Navigation("Vaga");
 
                     b.Navigation("Veiculo");
+                });
+
+            modelBuilder.Entity("PkLots.Core.Entities.Fatura", b =>
+                {
+                    b.HasOne("PkLots.Core.Entities.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("PkLots.Core.Entities.LogAuditoria", b =>

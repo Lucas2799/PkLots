@@ -292,6 +292,39 @@ class ClienteApi {
 
   Future<MinhaAssinatura> minhaAssinatura() async => MinhaAssinatura.deJson(await _get('/api/admin/assinatura'));
 
+  // ---------- Faturas do PkLots ----------
+
+  Future<List<Fatura>> faturas({String? empresaId, String? situacao}) async {
+    final consulta = Uri(queryParameters: {'empresaId': ?empresaId, 'situacao': ?situacao}).query;
+    return _lista(await _get('/api/plataforma/faturas${consulta.isEmpty ? '' : '?$consulta'}'), Fatura.deJson);
+  }
+
+  Future<int> emitirFaturas() async => ((await _post('/api/plataforma/faturas/emitir', null)) as Map<String, dynamic>)['emitidas'] as int;
+
+  Future<Fatura> lancarFatura(String empresaId, String descricao, double valor, DateTime vencimento) async => Fatura.deJson(
+      await _post('/api/plataforma/empresas/$empresaId/faturas', {'descricao': descricao, 'valor': valor, 'vencimento': dataApi(vencimento)}));
+
+  Future<Fatura> baixarFatura(String id, {required String forma, DateTime? pagaEm, double? valorPago, String? observacao}) async =>
+      Fatura.deJson(await _post('/api/plataforma/faturas/$id/pagamento', {
+        'formaPagamento': forma,
+        'pagaEm': pagaEm == null ? null : dataApi(pagaEm),
+        'valorPago': valorPago,
+        'observacao': observacao,
+      }));
+
+  Future<Fatura> cancelarFatura(String id, String motivo) async =>
+      Fatura.deJson(await _post('/api/plataforma/faturas/$id/cancelar', {'motivo': motivo}));
+
+  Future<RecebimentoPlataforma> recebimentoPlataforma() async =>
+      RecebimentoPlataforma.deJson(await _get('/api/plataforma/recebimento'));
+
+  Future<RecebimentoPlataforma> salvarRecebimentoPlataforma(String? chave, String? nome, String? cidade) async =>
+      RecebimentoPlataforma.deJson(await _enviar('PUT', '/api/plataforma/recebimento',
+          {'chavePix': chave, 'nomeRecebedor': nome, 'cidadeRecebedor': cidade}));
+
+  /// Faturas da empresa do admin logado (com o PIX das abertas)
+  Future<List<Fatura>> minhasFaturas() async => _lista(await _get('/api/admin/faturas'), Fatura.deJson);
+
   Future<List<EmpresaPlataforma>> empresas() async => _lista(await _get('/api/plataforma/empresas'), EmpresaPlataforma.deJson);
 
   Future<EmpresaPlataforma> criarEmpresa({

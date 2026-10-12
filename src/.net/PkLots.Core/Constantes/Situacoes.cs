@@ -114,6 +114,8 @@ namespace PkLots.Core.Constantes
         public const string EmpresaCriada = "empresa_criada";
         public const string EmpresaAlterada = "empresa_alterada";
         public const string AssinaturaAlterada = "assinatura_alterada";
+        public const string FaturaPaga = "fatura_paga";
+        public const string FaturaCancelada = "fatura_cancelada";
         public const string PatioCriado = "patio_criado";
         public const string PatioAlterado = "patio_alterado";
         public const string ConfiguracaoImpressaoAlterada = "configuracao_impressao_alterada";
@@ -143,6 +145,24 @@ namespace PkLots.Core.Constantes
         public const string Sucesso = "sucesso";
         public const string Erro = "erro";
         public const string Alerta = "alerta";
+    }
+
+    public static class SituacaoFatura
+    {
+        public const string Aberta = "aberta";
+        public const string Paga = "paga";
+        public const string Cancelada = "cancelada";
+        public const string Vencida = "vencida"; // calculada: aberta com vencimento passado (não é gravada)
+    }
+
+    public static class TipoFatura
+    {
+        public const string Mensalidade = "mensalidade";
+        public const string Avulsa = "avulsa";
+
+        // Emitida alguns dias antes do vencimento, para dar tempo de pagar
+        public const int DiasAntecedenciaEmissao = 10;
+        public const int TamanhoMaximoDescricao = 120;
     }
 
     // Recursos que um plano pode liberar. Cada código tem um ponto de bloqueio no sistema;

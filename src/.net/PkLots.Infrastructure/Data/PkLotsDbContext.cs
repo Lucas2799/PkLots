@@ -41,6 +41,8 @@ namespace PkLots.Infrastructure.Data
         public DbSet<EmailPendente> EmailsPendentes { get; set; }
         public DbSet<Plano> Planos { get; set; }
         public DbSet<Assinatura> Assinaturas { get; set; }
+        public DbSet<Fatura> Faturas { get; set; }
+        public DbSet<ConfiguracaoPlataforma> ConfiguracoesPlataforma { get; set; }
 
         public PkLotsDbContext(DbContextOptions<PkLotsDbContext> options, IHttpContextAccessor? httpContext = null)
             : base(options)
@@ -156,6 +158,23 @@ namespace PkLots.Infrastructure.Data
             modelBuilder.Entity<Plano>().Property(p => p.Descricao).HasMaxLength(300);
             modelBuilder.Entity<Plano>().Property(p => p.PrecoPorPatio).HasPrecision(10, 2);
             modelBuilder.Entity<Plano>().HasIndex(p => p.Nome).IsUnique();
+
+            modelBuilder.Entity<Fatura>()
+                .HasQueryFilter(f => _empresaId == null || f.EmpresaId == _empresaId);
+            modelBuilder.Entity<Fatura>()
+                .HasOne(f => f.Empresa).WithMany().HasForeignKey(f => f.EmpresaId).OnDelete(DeleteBehavior.Cascade);
+            // Uma mensalidade por empresa e mês
+            modelBuilder.Entity<Fatura>()
+                .HasIndex(f => new { f.EmpresaId, f.Competencia }).IsUnique().HasFilter($"\"Tipo\" = '{TipoFatura.Mensalidade}'");
+            modelBuilder.Entity<Fatura>().HasIndex(f => new { f.Situacao, f.Vencimento });
+            modelBuilder.Entity<Fatura>().Property(f => f.Descricao).HasMaxLength(TipoFatura.TamanhoMaximoDescricao);
+            modelBuilder.Entity<Fatura>().Property(f => f.Valor).HasPrecision(10, 2);
+            modelBuilder.Entity<Fatura>().Property(f => f.ValorPago).HasPrecision(10, 2);
+            modelBuilder.Entity<Fatura>().Property(f => f.PrecoPorPatio).HasPrecision(10, 2);
+            modelBuilder.Entity<Fatura>().Property(f => f.Observacao).HasMaxLength(300);
+            modelBuilder.Entity<Fatura>().Property(f => f.MotivoCancelamento).HasMaxLength(300);
+            modelBuilder.Entity<ConfiguracaoPlataforma>().Property(c => c.NomeRecebedor).HasMaxLength(25);
+            modelBuilder.Entity<ConfiguracaoPlataforma>().Property(c => c.CidadeRecebedor).HasMaxLength(15);
 
             modelBuilder.Entity<ConfiguracaoPagamento>().HasKey(c => c.EmpresaId);
             modelBuilder.Entity<ConfiguracaoPagamento>()

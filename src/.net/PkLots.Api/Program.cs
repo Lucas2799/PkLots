@@ -213,6 +213,7 @@ app.MapearCaixa();
 app.MapearPublicos();
 app.MapearRelatorios();
 app.MapearPlanos();
+app.MapearFaturas();
 
 // Migração e dados iniciais
 using (var scope = app.Services.CreateScope())

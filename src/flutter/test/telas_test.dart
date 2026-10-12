@@ -31,6 +31,15 @@ bool caixaAberto = false;
 List<String> recursosLiberados = [];
 const todosRecursos = ['lpr', 'mensalistas', 'app_mensalista', 'relatorios', 'impressora_rede'];
 
+Map<String, dynamic> faturaJson(String id, String situacao, {String? pix, int atraso = 0}) => {
+      'id': id, 'empresaId': 'e1', 'nomeEmpresa': 'Empresa Padrão', 'tipo': 'mensalidade', 'competencia': '2026-10-01',
+      'descricao': 'Mensalidade 10/2026 · plano Básico', 'valor': 99.0, 'vencimento': '2026-10-05', 'situacao': situacao,
+      'diasEmAtraso': atraso, 'patiosCobrados': 1, 'precoPorPatio': 99.0, 'nomePlano': 'Básico',
+      'pagaEm': situacao == 'paga' ? '2026-09-05T15:00:00Z' : null, 'formaPagamento': situacao == 'paga' ? 'pix' : null,
+      'valorPago': situacao == 'paga' ? 99.0 : null, 'observacao': null, 'canceladaEm': null, 'motivoCancelamento': null,
+      'pixCopiaECola': pix, 'criadoEm': '2026-09-25T12:00:00Z',
+    };
+
 Map<String, dynamic> planoJson(String id, String nome, double preco, {int? patios, List<String> recursos = todosRecursos}) => {
       'id': id, 'nome': nome, 'descricao': null, 'precoPorPatio': preco, 'maximoPatios': patios, 'maximoVagasPorPatio': null,
       'maximoUsuarios': 3, 'recursos': recursos, 'diasCarencia': 7, 'ativo': true, 'empresas': 1,
@@ -141,6 +150,12 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'empresaId': 'e1', 'planoId': 'pl1', 'nomePlano': 'Cortesia', 'precoPorPatioPlano': 0.0, 'precoPorPatioNegociado': null,
         'diaVencimento': 10, 'testeAte': null, 'observacoes': null, 'patiosAtivos': 2, 'valorMensal': 0.0,
       });
+    case '/api/admin/faturas':
+      return json([faturaJson('f1', 'vencida', pix: '00020126PIXDOPKLOTS6304ABCD', atraso: 3), faturaJson('f0', 'paga')]);
+    case '/api/plataforma/faturas':
+      return json([faturaJson('f1', 'vencida', atraso: 3)]);
+    case '/api/plataforma/faturas/f1/pagamento':
+      return json(faturaJson('f1', 'paga'));
     case '/api/relatorios/empresa':
       final umPatio = req.url.queryParameters['patioId'];
       return json({
@@ -902,6 +917,26 @@ void main() {
     expect(assinatura['diaVencimento'], 10);
   });
 
+  testWidgets('superadmin dá baixa numa fatura vencida', (tester) async {
+    await abrirApp(tester, perfil: 'superadmin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Faturas'));
+    await tester.pumpAndSettle();
+    expect(find.text('Vencida há 3 dia(s)'), findsOneWidget);
+    expect(recebidas.last.url.queryParameters['situacao'], 'aberta');
+
+    await tester.tap(find.text('Dar baixa'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Confirmar'));
+    await tester.pumpAndSettle();
+
+    final corpo = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/plataforma/faturas/f1/pagamento').body) as Map<String, dynamic>;
+    expect(corpo['formaPagamento'], 'pix');
+    expect(corpo['valorPago'], 99.0);
+    expect(corpo['pagaEm'], isNotNull);
+  });
+
   testWidgets('plano sem leitura de placa e sem relatórios esconde esses botões', (tester) async {
     recursosLiberados = ['mensalistas'];
     await abrirApp(tester, perfil: 'admin');
@@ -922,6 +957,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Plano Básico'), findsOneWidget);
+    expect(find.text('Vencida há 3 dia(s)'), findsOneWidget);
+    expect(find.text('Paga'), findsOneWidget);
+    await tester.tap(find.text('Pagar com PIX'));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('QR Code PIX da fatura'), findsOneWidget);
+    await tester.tap(find.text('Fechar'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('1 de 1'), 300, scrollable: find.byType(Scrollable).last);
     expect(find.text('1 de 1'), findsOneWidget);
     expect(find.text('30 · sem limite'), findsOneWidget);
     expect(find.text('Não incluído'), findsOneWidget);
