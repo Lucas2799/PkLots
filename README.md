@@ -10,9 +10,9 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)
 ![Podman](https://img.shields.io/badge/Podman-compose-892CA0)
 
-O PkLots é um sistema **multiempresa (SaaS)** para administrar estacionamentos. Ele controla entrada e saída de veículos (pela placa digitada, pela foto com leitura automática ou pelo ticket com QR code), ocupação das vagas em tempo real, cobrança com caixa por operador e PIX, mensalistas e impressão de tickets. Tudo isso para vários pátios por empresa.
+O PkLots é um sistema **multiempresa (SaaS)** para administrar estacionamentos. Ele controla entrada e saída de veículos (pela placa digitada, pela foto com leitura automática ou pelo ticket com QR code), ocupação das vagas em tempo real, cobrança com caixa por operador e PIX, mensalistas, impressão de tickets e relatórios. Tudo isso para vários pátios por empresa.
 
-O fornecedor do sistema (você) opera a plataforma. Cada **empresa** cliente (dono do estacionamento) tem os seus pátios, usuários, preços e a **própria** chave PIX/contrato de pagamento.
+O fornecedor do sistema (você) opera a plataforma e **aluga** o PkLots: cada **empresa** cliente (dono do estacionamento) assina um plano, paga uma mensalidade por pátio e tem os seus pátios, usuários, preços e a **própria** chave PIX para receber dos clientes dela.
 
 ---
 
@@ -21,6 +21,7 @@ O fornecedor do sistema (você) opera a plataforma. Cada **empresa** cliente (do
 - [O que o sistema faz](#o-que-o-sistema-faz)
 - [Perfis de acesso](#perfis-de-acesso)
 - [Como funciona](#como-funciona)
+- [Planos e cobrança do aluguel](#planos-e-cobrança-do-aluguel)
 - [Arquitetura](#arquitetura)
 - [Deploy (produção / piloto)](#deploy-produção--piloto)
 - [Operação do dia a dia](#operação-do-dia-a-dia)
@@ -33,25 +34,29 @@ O fornecedor do sistema (você) opera a plataforma. Cada **empresa** cliente (do
 
 | Área | Funcionalidades |
 |---|---|
-| **Entrada** | Pela placa digitada ou pela foto da placa (leitura automática, LPR). Aloca a vaga livre e gera o ticket com código e QR code. |
+| **Entrada** | Pela placa digitada ou pela foto da placa (leitura automática, LPR). Aloca a vaga livre e gera o ticket com código e QR code. Entrada registrada por engano pode ser cancelada com motivo (operador até 10 min, admin a qualquer momento). |
 | **Saída** | Pela placa, pela foto ou lendo o ticket (leitor USB ou câmera do celular). Calcula o valor e só libera o veículo após o pagamento. |
 | **Cobrança** | Valor por hora proporcional ao minuto e tolerância inicial gratuita. Dinheiro (com troco), PIX (QR "copia e cola" gerado pelo próprio sistema) ou cartão (maquininha do pátio). |
 | **Caixa** | Caixa por operador: abertura com troco inicial, sangria, suprimento e fechamento com conferência (esperado × contado). |
+| **Link do ticket** | O QR do ticket abre uma página pública leve (`/t/...`) com tempo e valor parcial da estadia. O cliente avulso não precisa de app nem de cadastro; o link expira 24h após a saída. |
 | **Mensalistas** | Mensalidade por pátio, várias placas por mensalista, registro de pagamentos (estende a validade) e vagas reservadas. Mensalista em dia entra e sai sem cobrança; vencido é cobrado como avulso. |
 | **Painel** | Resumo do dia, gráfico de ocupação 24h, mapa de vagas (com manutenção), veículos estacionados e histórico por placa. |
 | **Impressão** | Ticket de entrada e recibo de saída em impressora térmica de rede (ESC/POS) ou em PDF pelo navegador. |
-| **Administração** | Pátios, preço e tolerância, quantidade de vagas, usuários e perfis, pagamentos (chave PIX, formas aceitas) e impressora. |
-| **Motorista** | O motorista vê as vagas disponíveis, o próprio estacionamento (tempo e valor estimado), os veículos e o histórico. |
-| **Plataforma** | O superadmin cria e ativa/desativa as empresas clientes e o primeiro admin de cada uma. |
+| **Relatórios** | Para o dono: receita (avulsos + mensalidades), formas de pagamento, movimento por dia e por hora, comparativo de pátios, desempenho e diferença de caixa por operador, cancelamentos e mensalistas, com exportação em PDF. |
+| **Administração** | Pátios, preço e tolerância, quantidade de vagas, usuários (convidados por e-mail), pagamentos (chave PIX, formas aceitas), impressora e a **assinatura** do PkLots (plano, uso, faturas). |
+| **App do mensalista** | O mensalista recebe um convite por e-mail do pátio e acompanha os contratos dele: validade, veículos estacionados e histórico (só das placas do contrato, naquele pátio). Não há cadastro público. |
+| **Plataforma** | O superadmin cria e ativa/desativa as empresas clientes, define planos, assinaturas e faturas, e vê o relatório de uso de cada empresa. |
 
 ## Perfis de acesso
 
 | Perfil | Quem é | O que acessa |
 |---|---|---|
-| `superadmin` | Fornecedor do sistema | Tela da plataforma: empresas clientes |
+| `superadmin` | Fornecedor do sistema | Tela da plataforma: empresas, planos, faturas e relatório |
 | `admin` | Dono/gerente de uma empresa | Todos os pátios da empresa, painel, caixa, mensalistas e **Administração** |
 | `operador` | Funcionário do pátio | Apenas os pátios a que foi vinculado: painel, entrada/saída, caixa e mensalistas |
-| `motorista` | Cliente final | App do motorista |
+| `motorista` | Mensalista com convite aceito | App do mensalista (só os próprios contratos) |
+
+Ninguém recebe senha por terceiros: admins, operadores e mensalistas são **convidados por e-mail** e criam a própria senha pelo link. "Esqueci minha senha" envia um link de redefinição.
 
 Os dados de cada empresa são isolados no banco (filtro por empresa em todas as consultas). O pátio em uso vai em cada requisição (cabeçalho `X-Patio-Id`) e é validado contra as permissões do usuário.
 
@@ -98,6 +103,10 @@ Microsserviço Python com [fast-alpr](https://github.com/ankandrew/fast-alpr): d
 - Os modelos são baixados no build da imagem, com verificação de SHA-256.
 - Tenta rotações da imagem e só aceita leituras acima de um limiar de confiança.
 
+### E-mails
+
+Convites, redefinição de senha e faturas vão para uma fila no banco (`EmailsPendentes`), gravada na mesma transação da regra de negócio, e são enviados em segundo plano por SMTP com novas tentativas. Falha no SMTP nunca desfaz um cadastro. Os links dos e-mails e do QR usam o endereço público `URL_PUBLICA`.
+
 ### Segurança
 
 - Senhas com BCrypt, política de senha forte e bloqueio de 15 min após 5 erros de login. O login também é limitado a 10 tentativas por minuto por IP.
@@ -109,19 +118,56 @@ Microsserviço Python com [fast-alpr](https://github.com/ankandrew/fast-alpr): d
 
 ---
 
+## Planos e cobrança do aluguel
+
+O superadmin cadastra os **planos** em *Plataforma → Planos* (tudo editável):
+
+| Campo do plano | Para quê |
+|---|---|
+| Preço por pátio/mês | A mensalidade da empresa é `pátios ativos × preço` |
+| Limites | Máximo de pátios, de vagas por pátio e de usuários (admins + operadores). Em branco = sem limite |
+| Recursos | Leitura automática de placa, mensalistas, app do mensalista, relatórios e impressora térmica de rede |
+| Carência | Dias após o vencimento até o bloqueio parcial (padrão: 7) |
+
+- **Assinatura** (*Plataforma → ícone de assinatura na empresa*): plano, preço negociado por pátio (opcional), dia do vencimento (1 a 28), período de teste e observações.
+- **Limites e recursos** valem na hora. O que passa do limite é recusado com mensagem clara e o app esconde os recursos fora do plano. Baixar de plano não apaga nada: só impede criar além do novo limite.
+- **Empresas já existentes** foram colocadas no plano **Cortesia** (tudo liberado, sem limites, sem cobrança).
+
+**Faturas** (*Plataforma → Faturas*):
+- A mensalidade é emitida sozinha **10 dias antes do vencimento** (verificação a cada hora; o botão "Emitir mensalidades agora" força a emissão). Não há fatura no período de teste nem em plano gratuito.
+- Também dá para lançar **cobrança avulsa** (ex.: taxa de implantação).
+- Com a **chave PIX do PkLots** cadastrada (ícone PIX na tela de faturas), cada fatura em aberto traz PIX copia e cola e QR Code. O admin da empresa vê e paga em *Administração → Assinatura*.
+- A **baixa é manual**: ao receber, o superadmin clica em "Dar baixa" (forma, data e valor). Cancelamento exige motivo.
+
+**Avisos e inadimplência:**
+
+| Quando | O que acontece |
+|---|---|
+| Emissão, 5 dias antes e no vencimento | E-mail para os admins da empresa, com o PIX |
+| Vencida, dentro da carência | Faixa de aviso no painel do admin. Tudo funciona |
+| Carência esgotada | **Bloqueio parcial**: novas entradas e mudanças na Administração são recusadas. Saídas, caixa e mensalidades continuam liberados (nenhum carro fica preso). Admin e operadores veem o aviso; os admins recebem um e-mail |
+| Pagou (baixa) | Libera na hora |
+| Suspensão total | Manual: desativar a empresa na Plataforma |
+
+A lista de empresas e o relatório da plataforma mostram a situação de cobrança, a receita recorrente e o valor em aberto.
+
+---
+
 ## Arquitetura
 
 ```
                     ┌──────────────────────────────────────────────┐
   Navegador ───────▶│  pklots-gateway (Nginx)  :8000 / :8443        │
   App Android ─────▶│   /        → app Flutter web                  │
+  QR do ticket ────▶│   /t/*     → página pública do ticket         │
                     │   /api/*   → API .NET                         │
                     └───────────────┬──────────────────────────────┘
                                     ▼
                     ┌──────────────────────────────┐      ┌──────────────────────┐
                     │ pklots-backend (.NET 8 API)  │─────▶│ pklots-lpr (Python)  │
-                    │ regras, JWT, migrations      │      │ leitura de placas    │
-                    └───────┬───────────────┬──────┘      └──────────────────────┘
+                    │ regras, JWT, migrations,     │      │ leitura de placas    │
+                    │ fila de e-mails, faturas     │      └──────────────────────┘
+                    └───────┬───────────────┬──────┘─────▶ SMTP (provedor de e-mail)
                             ▼               ▼
                  ┌────────────────┐  ┌───────────────┐
                  │ PostgreSQL 16  │  │ Redis 7       │
@@ -136,6 +182,7 @@ Microsserviço Python com [fast-alpr](https://github.com/ankandrew/fast-alpr): d
 | LPR | Python, Flask + gunicorn, fast-alpr | `pklots-python-lpr` | `127.0.0.1:5000` |
 | Banco | PostgreSQL 16 | `pklots-postgres` | `127.0.0.1:5432` |
 | Cache | Redis 7 | `pklots-redis` | (só rede interna) |
+| E-mail de teste | smtp4dev (só com `--profile dev`) | `pklots-smtp4dev` | `127.0.0.1:5080` |
 
 A API segue camadas: `Core` (entidades), `Application` (regras/serviços), `Infrastructure` (EF, Redis, JWT, LPR, impressora) e `Api` (endpoints).
 
@@ -173,6 +220,9 @@ Outras opções do `.env`:
 | `SWAGGER_HABILITADO` | `false` | Documentação da API em `/swagger` (deixe `false` em produção) |
 | `DADOS_DEMONSTRACAO` | `false` | Cria empresa/pátio/usuários de teste com senhas públicas. **Nunca em produção.** |
 | `AMBIENTE` | `Production` | Ambiente da API |
+| `URL_PUBLICA` | `http://localhost:8000` | Endereço público (domínio com HTTPS em produção). Vai no QR do ticket e nos links dos e-mails: se mudar, tickets já impressos param de abrir |
+| `EMAIL_HOST` / `EMAIL_PORTA` / `EMAIL_SEGURANCA` | vazio / `25` / `auto` | SMTP para convites, senhas e faturas (Brevo, Amazon SES, Resend...). Configure SPF/DKIM no domínio. Sem host, os e-mails ficam na fila |
+| `EMAIL_USUARIO` / `EMAIL_SENHA` / `EMAIL_REMETENTE` | | Credenciais e remetente do SMTP |
 
 > O `docker/.env` não vai para o git. Guarde uma cópia segura: sem a `POSTGRES_SENHA` você não acessa o banco.
 
@@ -209,11 +259,12 @@ O comando mostra uma **senha temporária**. No primeiro login o sistema exige a 
 ### 6. Cadastrar o primeiro cliente
 
 1. Entre em `https://seu-dominio:8443` (ou `http://IP:8000`) com o superadmin.
-2. Crie a **empresa** e o **admin** dela.
-3. O admin entra, troca a senha e configura em **Administração** (ícone de engrenagem):
+2. Em **Planos**, revise ou crie os planos. Em **Faturas → ícone PIX**, cadastre a chave PIX do PkLots.
+3. Crie a **empresa**, escolhendo o plano, o primeiro pátio e o **admin** dela. Ajuste vencimento, preço negociado ou período de teste no ícone de assinatura da empresa.
+4. O admin recebe um **convite por e-mail**, cria a senha e configura em **Administração** (ícone de engrenagem):
    - **Pátios**: nome, endereço, vagas e mensalidade.
    - **Preço**: valor/hora e tolerância.
-   - **Usuários**: operadores, vinculados aos pátios.
+   - **Usuários**: operadores, vinculados aos pátios (cada um recebe o convite por e-mail).
    - **Pagamentos**: chave PIX e formas aceitas.
    - **Impressão**: impressora de rede (IP/porta, largura do papel) ou PDF pelo navegador.
 
@@ -267,6 +318,8 @@ Os dados ficam nos volumes `postgres_data`, `redis_data` (cache) e `api_logs`.
 | Reiniciar tudo | `podman compose -f docker/podman-compose.yml restart` |
 | Recuperar acesso do superadmin | `podman exec -it pklots-dotnet-api ./PkLots.Api criar-superadmin --email ...` |
 | Testar a leitura de placas | Abrir `http://localhost:5000/` **no próprio servidor** (página de teste) |
+| E-mails parados | Tabela `EmailsPendentes` (tentativas e último erro); verifique `EMAIL_HOST` e o log da API |
+| Receber o aluguel | *Plataforma → Faturas*: filtre "Vencidas" e dê baixa ao receber |
 | Acessar o banco (DBeaver etc.) | `localhost:5432`, banco `pklots_core`, usuário `pklots_admin`, senha do `docker/.env`. Só a partir do servidor ou por túnel SSH: `ssh -L 5432:localhost:5432 usuario@servidor` |
 
 **No pátio**, o operador:
@@ -285,6 +338,14 @@ No celular, as ações ficam na barra inferior (Painel, Caixa, Mensalistas e Mai
 
 - .NET SDK 8, Flutter (stable), Python 3.11+ e Podman.
 - Para Android: JDK 17+ (com `javac`) e Android SDK.
+
+### Stack completa com e-mail de teste
+
+```bash
+EMAIL_HOST=pklots-smtp4dev podman compose -f docker/podman-compose.yml --profile dev up -d --build
+```
+
+Os e-mails (convites, senhas, faturas) aparecem em `http://localhost:5080`. Para não repetir a variável, coloque `EMAIL_HOST=pklots-smtp4dev` no `docker/.env`.
 
 ### Subir só a infraestrutura e rodar a API localmente
 
@@ -339,16 +400,17 @@ PkLots/
 │   ├── Dockerfile.api           # API .NET enxuta (self-contained, alpine)
 │   ├── Dockerfile.lpr           # serviço de leitura de placas
 │   ├── Dockerfile.gateway       # compila o Flutter web e serve com Nginx
-│   ├── nginx/                   # rotas, cabeçalhos de segurança, HTTP/HTTPS
+│   ├── nginx/                   # rotas, cabeçalhos de segurança, HTTP/HTTPS, página do ticket
 │   └── ssl/                     # certificado HTTPS (não versionado)
 ├── src/
 │   ├── .net/
 │   │   ├── PkLots.Core/         # entidades e constantes
-│   │   ├── PkLots.Application/  # serviços e regras (tarifa, entrada, saída, caixa, mensalistas, PIX...)
-│   │   ├── PkLots.Infrastructure/ # EF Core + migrations, Redis, JWT, LPR, impressora TCP
+│   │   ├── PkLots.Application/  # serviços e regras (tarifa, entrada, saída, caixa, mensalistas, PIX, relatórios, planos, faturas...)
+│   │   ├── PkLots.Infrastructure/ # EF Core + migrations, Redis, JWT, LPR, impressora TCP, SMTP, tarefas em segundo plano
 │   │   └── PkLots.Api/          # endpoints, autenticação, middlewares, comandos de servidor
 │   ├── python/                  # microsserviço LPR (Flask + fast-alpr)
-│   └── flutter/                 # app web/Android (motorista, gestão, administração, plataforma)
+│   ├── web-publico/             # página pública do ticket (HTML leve, sem Flutter)
+│   └── flutter/                 # app web/Android (mensalista, gestão, administração, relatórios, plataforma)
 ├── tests/                       # testes .NET
 └── docs/                        # documentação do projeto
 ```
