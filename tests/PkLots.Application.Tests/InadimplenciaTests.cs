@@ -42,6 +42,19 @@ namespace PkLots.Application.Tests
         }
 
         [Fact]
+        public async Task Calcula_a_carencia_sem_o_plano_carregado_no_contexto()
+        {
+            using var cenario = await CenarioComFaturaAsync();
+            Dia(cenario, 13);
+            // Contexto novo, como numa requisição: nada rastreado, a navegação Plano não vem preenchida
+            using var db = cenario.DbDaEmpresa(cenario.Empresa.Id);
+
+            var situacoes = await Inadimplencia.ObterTodasAsync(db, new DateOnly(2026, 10, 13), default);
+
+            Assert.Equal(SituacaoAssinatura.Bloqueada, situacoes[cenario.Empresa.Id].Situacao);
+        }
+
+        [Fact]
         public async Task Bloqueio_barra_entradas_mas_deixa_sair_e_libera_ao_pagar()
         {
             using var cenario = await CenarioComFaturaAsync();

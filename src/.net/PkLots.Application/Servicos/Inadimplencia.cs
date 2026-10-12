@@ -32,7 +32,8 @@ namespace PkLots.Application.Servicos
             var empresas = vencidas.Select(v => v.EmpresaId).Distinct().ToList();
             var carencias = await db.Assinaturas.IgnoreQueryFilters()
                 .Where(a => empresas.Contains(a.EmpresaId))
-                .ToDictionaryAsync(a => a.EmpresaId, a => a.Plano.DiasCarencia, ct);
+                .Select(a => new { a.EmpresaId, a.Plano.DiasCarencia }) // projeção no banco: a navegação não vem carregada
+                .ToDictionaryAsync(a => a.EmpresaId, a => a.DiasCarencia, ct);
 
             return vencidas.GroupBy(v => v.EmpresaId).ToDictionary(g => g.Key, g =>
             {
