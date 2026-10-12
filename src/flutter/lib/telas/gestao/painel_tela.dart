@@ -84,7 +84,8 @@ class _PainelTelaState extends State<PainelTela> {
         return SafeArea(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             if (sessao.ehAdmin) opcao(Icons.settings_outlined, 'Administração', _abrirAdministracao),
-            if (sessao.ehAdmin) opcao(Icons.insights_outlined, 'Relatórios', _abrirRelatorios),
+            if (sessao.ehAdmin && _estado.temRecurso(Recursos.relatorios))
+              opcao(Icons.insights_outlined, 'Relatórios', _abrirRelatorios),
             opcao(Icons.manage_search, 'Histórico por placa', () => mostrarBuscaPlaca(context)),
             opcao(Icons.key_outlined, 'Alterar senha', _abrirTrocaSenha),
             const Divider(height: 1),
@@ -122,7 +123,7 @@ class _PainelTelaState extends State<PainelTela> {
                     icon: const Icon(Icons.settings_outlined),
                     onPressed: _abrirAdministracao,
                   ),
-                if (sessao.ehAdmin)
+                if (sessao.ehAdmin && estado.temRecurso(Recursos.relatorios))
                   IconButton(tooltip: 'Relatórios', icon: const Icon(Icons.insights_outlined), onPressed: _abrirRelatorios),
                 IconButton(
                   tooltip: estado.caixa == null ? 'Caixa (fechado)' : 'Caixa (aberto)',

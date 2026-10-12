@@ -44,6 +44,12 @@ namespace PkLots.Application.Tests
             Patio = new Patio { EmpresaId = Empresa.Id, Nome = "Pátio Teste", ValorHora = 15.00m, CriadoEm = criacao };
             Db.Empresas.Add(Empresa);
             Db.Patios.Add(Patio);
+            // Como a migration: plano Cortesia (sem limites) e a empresa do cenário nele
+            Db.Planos.Add(new Plano
+            {
+                Id = RecursosPlano.PlanoCortesiaId, Nome = "Cortesia", PrecoPorPatio = 0, Recursos = [.. RecursosPlano.Todos], CriadoEm = criacao
+            });
+            Db.Assinaturas.Add(new Assinatura { EmpresaId = Empresa.Id, PlanoId = RecursosPlano.PlanoCortesiaId, CriadoEm = criacao });
             foreach (var fileira in new[] { 'A', 'B', 'C' })
                 for (var i = 1; i <= vagasPorFileira; i++)
                     Db.Vagas.Add(new Vaga { PatioId = Patio.Id, Numero = $"{fileira}{i}", Fileira = fileira, Indice = i });
@@ -110,6 +116,7 @@ namespace PkLots.Application.Tests
         public ServicoEstadiaPublica EstadiaPublica => new(Db, Relogio);
         public ServicoDashboard Dashboard => new(Db, ContextoPatio, Vagas, Mensalistas, Relogio);
         public ServicoRelatorios Relatorios => new(Db, ContextoPatio, Relogio);
+        public ServicoPlanos Planos => new(Db, ContextoPatio, Relogio);
         public ImpressoraFalsa Impressora { get; } = new();
         public ServicoImpressao Impressao =>
             new(Db, ContextoPatio, Impressora, Links, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);

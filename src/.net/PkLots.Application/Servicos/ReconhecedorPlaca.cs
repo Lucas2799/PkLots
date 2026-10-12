@@ -14,6 +14,7 @@ namespace PkLots.Application.Servicos
     {
         public async Task<ResultadoLprDto> ReconhecerAsync(Stream imagem, string nomeArquivo, string origem, CancellationToken ct = default)
         {
+            await RegrasPlano.ExigirRecursoAsync(db, contextoPatio.EmpresaId, RecursosPlano.Lpr, ct);
             var resultado = await lpr.AnalisarAsync(imagem, nomeArquivo, ct);
             var placa = ValidadorPlaca.Normalizar(resultado.Placa);
 

@@ -212,6 +212,7 @@ app.MapearMensalistas();
 app.MapearCaixa();
 app.MapearPublicos();
 app.MapearRelatorios();
+app.MapearPlanos();
 
 // Migração e dados iniciais
 using (var scope = app.Services.CreateScope())

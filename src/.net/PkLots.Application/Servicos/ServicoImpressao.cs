@@ -40,6 +40,8 @@ namespace PkLots.Application.Servicos
                 throw new ExcecaoNegocio("Informe o IP ou nome da impressora de rede (ex.: 192.168.0.50).");
 
             var patio = await ObterPatioAsync(ct);
+            if (modo == ModoImpressao.Rede && patio.ModoImpressao != ModoImpressao.Rede)
+                await RegrasPlano.ExigirRecursoAsync(db, patio.EmpresaId, RecursosPlano.ImpressoraRede, ct);
             var agora = relogio.GetUtcNow().UtcDateTime;
 
             Auditoria.Registrar(db, patio.Id, AcoesAuditoria.ConfiguracaoImpressaoAlterada, SituacaoAuditoria.Sucesso, null, agora,

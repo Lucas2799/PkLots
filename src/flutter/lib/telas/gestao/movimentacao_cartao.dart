@@ -199,31 +199,34 @@ class _MovimentacaoCartaoState extends State<MovimentacaoCartao> {
                   ),
                 ),
               ]),
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Row(children: [
-                  Expanded(child: Divider()),
-                  Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('ou pela foto da placa')),
-                  Expanded(child: Divider()),
+              // Leitura automática de placa: só se o plano incluir
+              if (context.watch<GestaoProvider>().temRecurso(Recursos.lpr)) ...[
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Row(children: [
+                    Expanded(child: Divider()),
+                    Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('ou pela foto da placa')),
+                    Expanded(child: Divider()),
+                  ]),
+                ),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _enviando ? null : () => _porFoto(entrada: true),
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('Entrada'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _enviando ? null : () => _porFoto(entrada: false),
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('Saída'),
+                    ),
+                  ),
                 ]),
-              ),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _enviando ? null : () => _porFoto(entrada: true),
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('Entrada'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _enviando ? null : () => _porFoto(entrada: false),
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('Saída'),
-                  ),
-                ),
-              ]),
+              ],
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Row(children: [

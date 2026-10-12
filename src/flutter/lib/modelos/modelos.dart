@@ -592,6 +592,7 @@ class EmpresaPlataforma {
 
   /// Usuários convidados que ainda não criaram a senha
   final int convitesPendentes;
+  final String? nomePlano;
 
   EmpresaPlataforma({
     required this.id,
@@ -602,6 +603,7 @@ class EmpresaPlataforma {
     required this.usuarios,
     required this.criadoEm,
     this.convitesPendentes = 0,
+    this.nomePlano,
   });
 
   factory EmpresaPlataforma.deJson(Map<String, dynamic> json) => EmpresaPlataforma(
@@ -613,6 +615,7 @@ class EmpresaPlataforma {
         usuarios: json['usuarios'] as int,
         criadoEm: _data(json['criadoEm']),
         convitesPendentes: (json['convitesPendentes'] as int?) ?? 0,
+        nomePlano: json['nomePlano'] as String?,
       );
 }
 
@@ -996,7 +999,8 @@ class ConviteUsuario {
 
 // ---------- Relatórios ----------
 
-String _dataApi(DateTime data) =>
+/// Data (sem hora) no formato da API: AAAA-MM-DD
+String dataApi(DateTime data) =>
     '${data.year.toString().padLeft(4, '0')}-${data.month.toString().padLeft(2, '0')}-${data.day.toString().padLeft(2, '0')}';
 
 /// Período do relatório (datas locais, fim inclusivo)
@@ -1010,10 +1014,10 @@ class PeriodoRelatorio {
 
   int get dias => ate.difference(de).inDays + 1;
 
-  Map<String, String> paraConsulta() => {'de': _dataApi(de), 'ate': _dataApi(ate)};
+  Map<String, String> paraConsulta() => {'de': dataApi(de), 'ate': dataApi(ate)};
 
   /// Usado no nome do arquivo exportado
-  String get sufixo => '${_dataApi(de)}_${_dataApi(ate)}';
+  String get sufixo => '${dataApi(de)}_${dataApi(ate)}';
 }
 
 class MovimentoDia {
@@ -1337,5 +1341,176 @@ class RelatorioPlataforma {
         totais: IndicadoresPlataforma.deJson(json['totais'] as Map<String, dynamic>),
         porDia: (json['porDia'] as List).map((e) => MovimentoDia.deJson(e as Map<String, dynamic>)).toList(),
         empresas: (json['empresas'] as List).map((e) => UsoEmpresa.deJson(e as Map<String, dynamic>)).toList(),
+      );
+}
+
+// ---------- Planos e assinatura ----------
+
+/// Recurso que um plano pode liberar (catálogo vindo da API)
+class RecursoPlano {
+  final String codigo;
+  final String nome;
+  final String descricao;
+
+  RecursoPlano({required this.codigo, required this.nome, required this.descricao});
+
+  factory RecursoPlano.deJson(Map<String, dynamic> json) =>
+      RecursoPlano(codigo: json['codigo'] as String, nome: json['nome'] as String, descricao: json['descricao'] as String);
+}
+
+/// Códigos dos recursos que o app esconde quando o plano não inclui
+class Recursos {
+  static const lpr = 'lpr';
+  static const mensalistas = 'mensalistas';
+  static const appMensalista = 'app_mensalista';
+  static const relatorios = 'relatorios';
+  static const impressoraRede = 'impressora_rede';
+}
+
+class Plano {
+  final String id;
+  final String nome;
+  final String? descricao;
+  final double precoPorPatio;
+
+  /// Limites (nulo: sem limite)
+  final int? maximoPatios;
+  final int? maximoVagasPorPatio;
+  final int? maximoUsuarios;
+  final List<String> recursos;
+  final int diasCarencia;
+  final bool ativo;
+  final int empresas;
+
+  Plano({
+    required this.id,
+    required this.nome,
+    this.descricao,
+    required this.precoPorPatio,
+    this.maximoPatios,
+    this.maximoVagasPorPatio,
+    this.maximoUsuarios,
+    required this.recursos,
+    required this.diasCarencia,
+    required this.ativo,
+    this.empresas = 0,
+  });
+
+  factory Plano.deJson(Map<String, dynamic> json) => Plano(
+        id: json['id'] as String,
+        nome: json['nome'] as String,
+        descricao: json['descricao'] as String?,
+        precoPorPatio: _numero(json['precoPorPatio']),
+        maximoPatios: json['maximoPatios'] as int?,
+        maximoVagasPorPatio: json['maximoVagasPorPatio'] as int?,
+        maximoUsuarios: json['maximoUsuarios'] as int?,
+        recursos: (json['recursos'] as List).cast<String>(),
+        diasCarencia: json['diasCarencia'] as int,
+        ativo: json['ativo'] as bool,
+        empresas: (json['empresas'] as int?) ?? 0,
+      );
+
+  Map<String, dynamic> paraJson() => {
+        'nome': nome,
+        'descricao': descricao,
+        'precoPorPatio': precoPorPatio,
+        'maximoPatios': maximoPatios,
+        'maximoVagasPorPatio': maximoVagasPorPatio,
+        'maximoUsuarios': maximoUsuarios,
+        'recursos': recursos,
+        'diasCarencia': diasCarencia,
+        'ativo': ativo,
+      };
+}
+
+/// Assinatura de uma empresa (visão do superadmin)
+class AssinaturaEmpresa {
+  final String empresaId;
+  final String planoId;
+  final String nomePlano;
+  final double precoPorPatioPlano;
+  final double? precoPorPatioNegociado;
+  final int diaVencimento;
+  final DateTime? testeAte;
+  final String? observacoes;
+  final int patiosAtivos;
+  final double valorMensal;
+
+  AssinaturaEmpresa({
+    required this.empresaId,
+    required this.planoId,
+    required this.nomePlano,
+    required this.precoPorPatioPlano,
+    this.precoPorPatioNegociado,
+    required this.diaVencimento,
+    this.testeAte,
+    this.observacoes,
+    required this.patiosAtivos,
+    required this.valorMensal,
+  });
+
+  factory AssinaturaEmpresa.deJson(Map<String, dynamic> json) => AssinaturaEmpresa(
+        empresaId: json['empresaId'] as String,
+        planoId: json['planoId'] as String,
+        nomePlano: json['nomePlano'] as String,
+        precoPorPatioPlano: _numero(json['precoPorPatioPlano']),
+        precoPorPatioNegociado: (json['precoPorPatioNegociado'] as num?)?.toDouble(),
+        diaVencimento: json['diaVencimento'] as int,
+        testeAte: _dataOpcional(json['testeAte']),
+        observacoes: json['observacoes'] as String?,
+        patiosAtivos: json['patiosAtivos'] as int,
+        valorMensal: _numero(json['valorMensal']),
+      );
+}
+
+class UsoLimite {
+  final int usado;
+  final int? maximo; // nulo: sem limite
+
+  UsoLimite(this.usado, this.maximo);
+
+  factory UsoLimite.deJson(Map<String, dynamic> json) => UsoLimite(json['usado'] as int, json['maximo'] as int?);
+}
+
+/// O plano da empresa, visto pelo admin
+class MinhaAssinatura {
+  final String nomePlano;
+  final String? descricaoPlano;
+  final double precoPorPatio;
+  final double valorMensal;
+  final int diaVencimento;
+  final DateTime? testeAte;
+  final UsoLimite patios;
+  final UsoLimite usuarios;
+  final UsoLimite vagasNoMaiorPatio;
+  final List<({String codigo, String nome, bool liberado})> recursos;
+
+  MinhaAssinatura({
+    required this.nomePlano,
+    this.descricaoPlano,
+    required this.precoPorPatio,
+    required this.valorMensal,
+    required this.diaVencimento,
+    this.testeAte,
+    required this.patios,
+    required this.usuarios,
+    required this.vagasNoMaiorPatio,
+    required this.recursos,
+  });
+
+  factory MinhaAssinatura.deJson(Map<String, dynamic> json) => MinhaAssinatura(
+        nomePlano: json['nomePlano'] as String,
+        descricaoPlano: json['descricaoPlano'] as String?,
+        precoPorPatio: _numero(json['precoPorPatio']),
+        valorMensal: _numero(json['valorMensal']),
+        diaVencimento: json['diaVencimento'] as int,
+        testeAte: _dataOpcional(json['testeAte']),
+        patios: UsoLimite.deJson(json['patios'] as Map<String, dynamic>),
+        usuarios: UsoLimite.deJson(json['usuarios'] as Map<String, dynamic>),
+        vagasNoMaiorPatio: UsoLimite.deJson(json['vagasNoMaiorPatio'] as Map<String, dynamic>),
+        recursos: [
+          for (final r in (json['recursos'] as List).cast<Map<String, dynamic>>())
+            (codigo: r['codigo'] as String, nome: r['nome'] as String, liberado: r['liberado'] as bool),
+        ],
       );
 }

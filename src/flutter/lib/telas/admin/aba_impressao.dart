@@ -4,6 +4,7 @@ import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
 import '../../estado/administracao_provider.dart';
+import '../../estado/gestao_provider.dart';
 import '../../modelos/modelos.dart';
 import '../../servicos/documentos_pdf.dart';
 import '../../servicos/excecao_api.dart';
@@ -29,6 +30,8 @@ class _AbaImpressaoState extends State<AbaImpressao> {
   late bool _automatica = widget.configuracao.imprimirEntradaAutomaticamente;
   bool _salvando = false;
   bool _testando = false;
+  late final _redeLiberada = widget.configuracao.modo == ConfiguracaoImpressao.rede ||
+      context.read<GestaoProvider>().temRecurso(Recursos.impressoraRede);
 
   static const _modos = [
     (ConfiguracaoImpressao.desativada, 'Desativada', 'Nenhum ticket é impresso', Icons.print_disabled_outlined),
@@ -117,13 +120,23 @@ class _AbaImpressaoState extends State<AbaImpressao> {
                 onChanged: (valor) => setState(() => _modo = valor ?? _modo),
                 child: Column(children: [
                   for (final (valor, rotulo, descricao, icone) in _modos)
-                    RadioListTile<String>(
-                      value: valor,
-                      contentPadding: EdgeInsets.zero,
-                      secondary: Icon(icone),
-                      title: Text(rotulo),
-                      subtitle: Text(descricao),
-                    ),
+                    if (valor == ConfiguracaoImpressao.rede && !_redeLiberada)
+                      RadioListTile<String>(
+                        value: valor,
+                        enabled: false,
+                        contentPadding: EdgeInsets.zero,
+                        secondary: Icon(icone),
+                        title: Text(rotulo),
+                        subtitle: const Text('Não incluída no plano da empresa'),
+                      )
+                    else
+                      RadioListTile<String>(
+                        value: valor,
+                        contentPadding: EdgeInsets.zero,
+                        secondary: Icon(icone),
+                        title: Text(rotulo),
+                        subtitle: Text(descricao),
+                      ),
                 ]),
               ),
             ]),

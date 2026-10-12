@@ -46,6 +46,8 @@ namespace PkLots.Application.Servicos
 
             var empresaId = ObterEmpresaId();
             await GarantirNomeUnicoAsync(empresaId, nome, null, ct);
+            await RegrasPlano.ExigirPatioAdicionalAsync(db, empresaId, ct);
+            await RegrasPlano.ExigirVagasAsync(db, empresaId, requisicao.TotalVagas, ct);
 
             var agora = relogio.GetUtcNow().UtcDateTime;
             var patio = NovoPatio(empresaId, nome, requisicao.TotalVagas, agora);
@@ -76,6 +78,9 @@ namespace PkLots.Application.Servicos
                 if (!await db.Patios.AnyAsync(p => p.EmpresaId == empresaId && p.Id != patioId && p.Ativo, ct))
                     throw new ExcecaoConflito("A empresa precisa ter pelo menos um pátio ativo.");
             }
+
+            if (!patio.Ativo && requisicao.Ativo)
+                await RegrasPlano.ExigirPatioAdicionalAsync(db, empresaId, ct);
 
             var agora = relogio.GetUtcNow().UtcDateTime;
             Auditoria.Registrar(db, patio.Id, AcoesAuditoria.PatioAlterado, SituacaoAuditoria.Sucesso, null, agora,

@@ -93,6 +93,8 @@ namespace PkLots.Application.Servicos
             var agora = relogio.GetUtcNow().UtcDateTime;
             var vagas = await db.Vagas.Where(v => v.PatioId == patio.Id).ToDictionaryAsync(v => v.Numero, ct);
             var totalAnterior = vagas.Values.Count(v => v.Ativa);
+            if (total > totalAnterior)
+                await RegrasPlano.ExigirVagasAsync(db, ObterEmpresaId(), total, ct); // reduzir é sempre permitido
 
             // Vagas que ficariam fora da nova quantidade
             var numerosMantidos = Enumerable.Range(0, total).Select(LayoutPatio.Numero).ToHashSet();
@@ -174,6 +176,7 @@ namespace PkLots.Application.Servicos
 
             if (await db.Usuarios.IgnoreQueryFilters().AnyAsync(u => u.Email == email, ct))
                 throw new ExcecaoConflito("E-mail já cadastrado.");
+            await RegrasPlano.ExigirUsuarioAdicionalAsync(db, ObterEmpresaId(), ct);
 
             var agora = relogio.GetUtcNow().UtcDateTime;
             var usuario = new Usuario
@@ -233,6 +236,8 @@ namespace PkLots.Application.Servicos
                 if (outrosAdmins == 0)
                     throw new ExcecaoConflito("A empresa precisa ter pelo menos um administrador ativo.");
             }
+            if (!usuario.Ativo && requisicao.Ativo)
+                await RegrasPlano.ExigirUsuarioAdicionalAsync(db, usuario.EmpresaId!.Value, ct);
 
             var agora = relogio.GetUtcNow().UtcDateTime;
             Auditoria.Registrar(db, await contextoPatio.ObterPatioIdAsync(ct), AcoesAuditoria.UsuarioAlterado, SituacaoAuditoria.Sucesso, null, agora,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../estado/gestao_provider.dart';
 import '../../modelos/modelos.dart';
 import '../../servicos/cliente_api.dart';
 import '../../servicos/excecao_api.dart';
@@ -28,6 +29,7 @@ class _FormularioMensalistaState extends State<_FormularioMensalista> {
   late final _documento = TextEditingController(text: widget.mensalista?.documento);
   late final _observacoes = TextEditingController(text: widget.mensalista?.observacoes);
   late final _email = TextEditingController(text: widget.mensalista?.email);
+  late final _appLiberado = context.read<GestaoProvider>().temRecurso(Recursos.appMensalista);
   final _novaPlaca = TextEditingController();
   late final List<String> _placas = [...?widget.mensalista?.placas];
   late bool _ativo = widget.mensalista?.ativo ?? true;
@@ -123,10 +125,13 @@ class _FormularioMensalistaState extends State<_FormularioMensalista> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _email,
+                  enabled: _appLiberado,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'E-mail para acesso ao app (opcional)',
-                    helperText: 'Enviamos um convite para este e-mail. Trocar ou apagar o e-mail encerra o acesso atual.',
+                    helperText: _appLiberado
+                        ? 'Enviamos um convite para este e-mail. Trocar ou apagar o e-mail encerra o acesso atual.'
+                        : 'O app do mensalista não está incluído no plano da empresa.',
                     helperMaxLines: 2,
                   ),
                   validator: (v) => v == null || v.trim().isEmpty ? null : Validadores.email(v),

@@ -14,7 +14,8 @@ namespace PkLots.Application.Servicos
             await db.Empresas
                 .OrderByDescending(e => e.Ativa).ThenBy(e => e.Nome)
                 .Select(e => new EmpresaDto(e.Id, e.Nome, e.Documento, e.Ativa, e.Patios.Count(p => p.Ativo), e.Usuarios.Count(u => u.Ativo), e.CriadoEm,
-                    e.Usuarios.Count(u => u.Ativo && u.AguardandoAtivacao)))
+                    e.Usuarios.Count(u => u.Ativo && u.AguardandoAtivacao),
+                    db.Assinaturas.Where(a => a.EmpresaId == e.Id).Select(a => a.Plano.Nome).FirstOrDefault()))
                 .ToListAsync(ct);
 
         // Cria a empresa com o primeiro pátio (vagas já criadas) e o administrador
@@ -53,7 +54,12 @@ namespace PkLots.Application.Servicos
                 AtualizadoEm = agora
             };
 
+            var plano = await ServicoPlanos.PlanoParaNovaEmpresaAsync(db, requisicao.PlanoId, ct);
+            if (plano.MaximoVagasPorPatio is { } maximoVagas && requisicao.TotalVagas > maximoVagas)
+                throw new ExcecaoNegocio($"O plano {plano.Nome} permite até {maximoVagas} vagas por pátio.");
+
             db.Empresas.Add(empresa);
+            db.Assinaturas.Add(ServicoPlanos.NovaAssinatura(empresa.Id, plano, agora));
             db.Patios.Add(patio);
             db.Usuarios.Add(admin);
             Auditoria.Registrar(db, patio.Id, AcoesAuditoria.EmpresaCriada, SituacaoAuditoria.Sucesso, null, agora,
@@ -61,7 +67,7 @@ namespace PkLots.Application.Servicos
             await ConvitesUsuario.EnviarAsync(db, links, admin, agora, ct);
 
             await db.SaveChangesAsync(ct);
-            return new EmpresaDto(empresa.Id, empresa.Nome, empresa.Documento, true, 1, 1, agora, 1);
+            return new EmpresaDto(empresa.Id, empresa.Nome, empresa.Documento, true, 1, 1, agora, 1, plano.Nome);
         }
 
         // Reenvia o convite aos administradores da empresa que ainda não criaram a senha

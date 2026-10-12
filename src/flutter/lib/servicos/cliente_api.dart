@@ -264,6 +264,34 @@ class ClienteApi {
   Future<RelatorioPlataforma> relatorioPlataforma(PeriodoRelatorio periodo) async => RelatorioPlataforma.deJson(
       await _get('/api/plataforma/relatorio?${Uri(queryParameters: periodo.paraConsulta()).query}'));
 
+  // ---------- Planos e assinatura ----------
+
+  Future<List<RecursoPlano>> recursosDePlano() async => _lista(await _get('/api/plataforma/recursos'), RecursoPlano.deJson);
+
+  Future<List<Plano>> planos() async => _lista(await _get('/api/plataforma/planos'), Plano.deJson);
+
+  Future<Plano> salvarPlano(Plano plano, {String? id}) async => Plano.deJson(id == null
+      ? await _post('/api/plataforma/planos', plano.paraJson())
+      : await _enviar('PUT', '/api/plataforma/planos/$id', plano.paraJson()));
+
+  Future<AssinaturaEmpresa> assinaturaEmpresa(String empresaId) async =>
+      AssinaturaEmpresa.deJson(await _get('/api/plataforma/empresas/$empresaId/assinatura'));
+
+  Future<AssinaturaEmpresa> salvarAssinatura(String empresaId,
+          {required String planoId, double? precoNegociado, required int diaVencimento, DateTime? testeAte, String? observacoes}) async =>
+      AssinaturaEmpresa.deJson(await _enviar('PUT', '/api/plataforma/empresas/$empresaId/assinatura', {
+        'planoId': planoId,
+        'precoPorPatioNegociado': precoNegociado,
+        'diaVencimento': diaVencimento,
+        'testeAte': testeAte == null ? null : dataApi(testeAte),
+        'observacoes': observacoes,
+      }));
+
+  /// Códigos dos recursos liberados pelo plano da empresa do usuário
+  Future<Set<String>> recursosLiberados() async => ((await _get('/api/assinatura/recursos')) as List).cast<String>().toSet();
+
+  Future<MinhaAssinatura> minhaAssinatura() async => MinhaAssinatura.deJson(await _get('/api/admin/assinatura'));
+
   Future<List<EmpresaPlataforma>> empresas() async => _lista(await _get('/api/plataforma/empresas'), EmpresaPlataforma.deJson);
 
   Future<EmpresaPlataforma> criarEmpresa({
@@ -273,6 +301,7 @@ class ClienteApi {
     required int totalVagas,
     required String nomeAdmin,
     required String emailAdmin, // recebe o convite por e-mail para criar a senha
+    String? planoId,
   }) async =>
       EmpresaPlataforma.deJson(await _post('/api/plataforma/empresas', {
         'nome': nome,
@@ -281,6 +310,7 @@ class ClienteApi {
         'totalVagas': totalVagas,
         'nomeAdmin': nomeAdmin,
         'emailAdmin': emailAdmin,
+        'planoId': planoId,
       }));
 
   Future<EmpresaPlataforma> atualizarEmpresa(String id, String nome, String? documento, bool ativa) async =>

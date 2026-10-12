@@ -101,13 +101,16 @@ class _MensalistasTelaState extends State<MensalistasTela> {
         ]),
         actions: [IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: _carregar)],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _novo,
-        backgroundColor: CoresPkLots.azulMarinho,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.person_add_alt),
-        label: const Text('Novo mensalista'),
-      ),
+      // Novo cadastro só se o plano incluir mensalistas (os já cadastrados seguem visíveis)
+      floatingActionButton: context.watch<GestaoProvider>().temRecurso(Recursos.mensalistas)
+          ? FloatingActionButton.extended(
+              onPressed: _novo,
+              backgroundColor: CoresPkLots.azulMarinho,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.person_add_alt),
+              label: const Text('Novo mensalista'),
+            )
+          : null,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 820),

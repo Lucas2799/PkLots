@@ -12,6 +12,8 @@ import '../../util/validadores.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/logo_pklots.dart';
 import '../relatorios/relatorio_plataforma_tela.dart';
+import 'assinatura_dialogo.dart';
+import 'planos_tela.dart';
 import '../troca_senha_tela.dart';
 
 /// Área do superadmin: empresas clientes da plataforma
@@ -82,6 +84,13 @@ class _PlataformaTelaState extends State<PlataformaTela> {
     }
   }
 
+  Future<void> _abrirAssinatura(EmpresaPlataforma empresa) async {
+    final salvou = await showDialog<bool>(context: context, builder: (_) => AssinaturaDialogo(empresa: empresa));
+    if (salvou != true) return;
+    await _carregar();
+    if (mounted) mostrarAviso(context, 'Assinatura de ${empresa.nome} atualizada.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessao = context.watch<SessaoProvider>();
@@ -95,6 +104,14 @@ class _PlataformaTelaState extends State<PlataformaTela> {
           Flexible(child: Text('· Plataforma', style: TextStyle(fontSize: 16, color: CoresPkLots.textoSecundario))),
         ]),
         actions: [
+          IconButton(
+            tooltip: 'Planos',
+            icon: const Icon(Icons.workspace_premium_outlined),
+            onPressed: () async {
+              await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlanosTela()));
+              await _carregar();
+            },
+          ),
           IconButton(
             tooltip: 'Relatórios',
             icon: const Icon(Icons.insights_outlined),
@@ -153,6 +170,7 @@ class _PlataformaTelaState extends State<PlataformaTela> {
                             )),
                         subtitle: Text([
                           ?empresa.documento,
+                          if (empresa.nomePlano != null) 'Plano ${empresa.nomePlano}',
                           '${empresa.patios} pátio(s)',
                           '${empresa.usuarios} usuário(s)',
                           'desde ${Formatadores.dataCurta(empresa.criadoEm)}',
@@ -166,6 +184,11 @@ class _PlataformaTelaState extends State<PlataformaTela> {
                               icon: const Icon(Icons.forward_to_inbox_outlined),
                               onPressed: () => _reenviarConvite(empresa),
                             ),
+                          IconButton(
+                            tooltip: 'Assinatura',
+                            icon: const Icon(Icons.receipt_long_outlined),
+                            onPressed: () => _abrirAssinatura(empresa),
+                          ),
                           Switch(
                             value: empresa.ativa,
                             onChanged: (_) => _alternarAtiva(empresa),
@@ -199,8 +222,25 @@ class _NovaEmpresaState extends State<_NovaEmpresa> {
   final _vagas = TextEditingController(text: '30');
   final _nomeAdmin = TextEditingController();
   final _emailAdmin = TextEditingController();
+  List<Plano>? _planos;
+  String? _planoId;
   bool _enviando = false;
   String? _erro;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _carregarPlanos());
+  }
+
+  Future<void> _carregarPlanos() async {
+    try {
+      final planos = (await context.read<ClienteApi>().planos()).where((p) => p.ativo).toList();
+      if (mounted) setState(() => _planos = planos);
+    } on ExcecaoApi catch (e) {
+      if (mounted) setState(() => _erro = e.mensagem);
+    }
+  }
 
   @override
   void dispose() {
@@ -224,6 +264,7 @@ class _NovaEmpresaState extends State<_NovaEmpresa> {
             totalVagas: int.parse(_vagas.text),
             nomeAdmin: _nomeAdmin.text.trim(),
             emailAdmin: _emailAdmin.text.trim(),
+            planoId: _planoId,
           );
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -253,6 +294,18 @@ class _NovaEmpresaState extends State<_NovaEmpresa> {
                 ),
                 const SizedBox(height: 12),
                 TextFormField(controller: _documento, decoration: const InputDecoration(labelText: 'CNPJ/CPF (opcional)')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _planoId,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: 'Plano', helperText: _planos?.isEmpty == true ? 'Cadastre um plano antes' : null),
+                  items: [
+                    for (final p in _planos ?? <Plano>[])
+                      DropdownMenuItem(value: p.id, child: Text('${p.nome} · ${Formatadores.moeda(p.precoPorPatio)}/pátio')),
+                  ],
+                  onChanged: (id) => setState(() => _planoId = id),
+                  validator: (v) => v == null ? 'Escolha o plano' : null,
+                ),
                 const SizedBox(height: 20),
                 const TituloSecao('Primeiro pátio', icone: Icons.local_parking),
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

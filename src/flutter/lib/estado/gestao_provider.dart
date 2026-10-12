@@ -26,6 +26,11 @@ class GestaoProvider extends ChangeNotifier {
 
   static const _chavePatio = 'pklots.patio';
 
+  /// Recursos liberados pelo plano da empresa (nulo enquanto não carregou: nada fica escondido)
+  Set<String>? recursos;
+
+  bool temRecurso(String codigo) => recursos?.contains(codigo) ?? true;
+
   void iniciar() {
     _iniciar();
     _atualizacao?.cancel();
@@ -33,6 +38,7 @@ class GestaoProvider extends ChangeNotifier {
   }
 
   Future<void> _iniciar() async {
+    unawaited(_carregarRecursos());
     await carregarPatios();
     await carregar();
   }
@@ -48,6 +54,15 @@ class GestaoProvider extends ChangeNotifier {
     } on ExcecaoApi catch (e) {
       erro = e.mensagem;
       notifyListeners();
+    }
+  }
+
+  Future<void> _carregarRecursos() async {
+    try {
+      recursos = await _api.recursosLiberados();
+      notifyListeners();
+    } on ExcecaoApi {
+      // Sem a lista o app mostra tudo; a API continua barrando o que o plano não inclui
     }
   }
 

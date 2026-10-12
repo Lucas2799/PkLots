@@ -110,6 +110,8 @@ namespace PkLots.Infrastructure.Data
             var patio = ServicoPatios.NovoPatio(empresa.Id, "Pátio Padrão", 30, agora);
             db.Empresas.Add(empresa);
             db.Patios.Add(patio);
+            // Plano Cortesia, criado pela migration
+            db.Assinaturas.Add(new Assinatura { EmpresaId = empresa.Id, PlanoId = RecursosPlano.PlanoCortesiaId, CriadoEm = agora, AtualizadoEm = agora });
 
             var operador = NovoUsuario(empresa.Id, "operator@pklots.local", "Operator@123", "Operador", Perfis.Operador, hashSenha);
             operador.Patios.Add(new UsuarioPatio { PatioId = patio.Id });

@@ -31,7 +31,7 @@ namespace PkLots.Application.DTOs
     // ---------- Plataforma (superadmin) ----------
 
     public record EmpresaDto(Guid Id, string Nome, string? Documento, bool Ativa, int Patios, int Usuarios, DateTime CriadoEm,
-        int ConvitesPendentes = 0);
+        int ConvitesPendentes = 0, string? NomePlano = null);
 
     public record CriarEmpresaRequisicao(
         string Nome,
@@ -39,7 +39,8 @@ namespace PkLots.Application.DTOs
         string NomePatio,
         int TotalVagas,
         string NomeAdmin,
-        string EmailAdmin); // o admin recebe um convite por e-mail para criar a senha
+        string EmailAdmin, // o admin recebe um convite por e-mail para criar a senha
+        Guid? PlanoId = null);
 
     public record AtualizarEmpresaRequisicao(string Nome, string? Documento, bool Ativa);
 }

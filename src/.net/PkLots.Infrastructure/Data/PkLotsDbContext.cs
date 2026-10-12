@@ -39,6 +39,8 @@ namespace PkLots.Infrastructure.Data
         public DbSet<LogAuditoria> LogsAuditoria { get; set; }
         public DbSet<TokenUsuario> TokensUsuario { get; set; }
         public DbSet<EmailPendente> EmailsPendentes { get; set; }
+        public DbSet<Plano> Planos { get; set; }
+        public DbSet<Assinatura> Assinaturas { get; set; }
 
         public PkLotsDbContext(DbContextOptions<PkLotsDbContext> options, IHttpContextAccessor? httpContext = null)
             : base(options)
@@ -140,6 +142,21 @@ namespace PkLots.Infrastructure.Data
                 .Property(p => p.ValorMensalidade).HasPrecision(10, 2);
 
             // Pagamentos e caixa
+            // Planos são da plataforma (sem filtro); a assinatura é da empresa
+            modelBuilder.Entity<Assinatura>()
+                .HasQueryFilter(a => _empresaId == null || a.EmpresaId == _empresaId);
+            modelBuilder.Entity<Assinatura>().HasKey(a => a.EmpresaId);
+            modelBuilder.Entity<Assinatura>()
+                .HasOne(a => a.Empresa).WithOne().HasForeignKey<Assinatura>(a => a.EmpresaId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<Assinatura>()
+                .HasOne(a => a.Plano).WithMany().HasForeignKey(a => a.PlanoId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Assinatura>().Property(a => a.PrecoPorPatioNegociado).HasPrecision(10, 2);
+            modelBuilder.Entity<Assinatura>().Property(a => a.Observacoes).HasMaxLength(500);
+            modelBuilder.Entity<Plano>().Property(p => p.Nome).HasMaxLength(60);
+            modelBuilder.Entity<Plano>().Property(p => p.Descricao).HasMaxLength(300);
+            modelBuilder.Entity<Plano>().Property(p => p.PrecoPorPatio).HasPrecision(10, 2);
+            modelBuilder.Entity<Plano>().HasIndex(p => p.Nome).IsUnique();
+
             modelBuilder.Entity<ConfiguracaoPagamento>().HasKey(c => c.EmpresaId);
             modelBuilder.Entity<ConfiguracaoPagamento>()
                 .HasOne(c => c.Empresa).WithOne().HasForeignKey<ConfiguracaoPagamento>(c => c.EmpresaId).OnDelete(DeleteBehavior.Cascade);

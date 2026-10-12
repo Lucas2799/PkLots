@@ -16,6 +16,7 @@ namespace PkLots.Application.Servicos
         public async Task<RelatorioEmpresaDto> ObterDaEmpresaAsync(DateOnly? de, DateOnly? ate, Guid? patioId, CancellationToken ct = default)
         {
             var empresaId = contextoPatio.EmpresaId ?? throw new ExcecaoProibido("Relatório disponível só para usuários de uma empresa.");
+            await RegrasPlano.ExigirRecursoAsync(db, empresaId, RecursosPlano.Relatorios, ct);
             var (inicioData, fimData) = Periodo(de, ate);
             var (inicio, fim) = IntervaloUtc(inicioData, fimData);
 

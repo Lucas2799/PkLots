@@ -27,6 +27,15 @@ final recebidas = <http.Request>[];
 /// Caixa simulado do usuário (fechado no início de cada teste)
 bool caixaAberto = false;
 
+/// Recursos liberados pelo plano simulado da empresa (todos no início de cada teste)
+List<String> recursosLiberados = [];
+const todosRecursos = ['lpr', 'mensalistas', 'app_mensalista', 'relatorios', 'impressora_rede'];
+
+Map<String, dynamic> planoJson(String id, String nome, double preco, {int? patios, List<String> recursos = todosRecursos}) => {
+      'id': id, 'nome': nome, 'descricao': null, 'precoPorPatio': preco, 'maximoPatios': patios, 'maximoVagasPorPatio': null,
+      'maximoUsuarios': 3, 'recursos': recursos, 'diasCarencia': 7, 'ativo': true, 'empresas': 1,
+    };
+
 Map<String, dynamic> caixaJson() => {
       'id': 'cx1', 'patioId': 'p1', 'nomePatio': 'Pátio Padrão', 'operadorId': 'u1', 'nomeOperador': 'Lucas Tavares',
       'abertoEm': '2026-09-30T11:00:00Z', 'trocoInicial': 50.0, 'recebimentos': [], 'saidas': 0, 'totalRecebido': 0.0,
@@ -103,6 +112,35 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         {'id': 'p1', 'nome': 'Pátio Padrão', 'ativo': true, 'totalVagas': 30, 'valorHora': 15.0, 'veiculosEstacionados': 1},
         {'id': 'p2', 'nome': 'Pátio Shopping', 'ativo': true, 'totalVagas': 10, 'valorHora': 12.0, 'veiculosEstacionados': 0},
       ]);
+    case '/api/assinatura/recursos':
+      return json(recursosLiberados);
+    case '/api/admin/assinatura':
+      return json({
+        'nomePlano': 'Básico', 'descricaoPlano': 'Pátio pequeno', 'precoPorPatio': 99.0, 'valorMensal': 99.0, 'diaVencimento': 10,
+        'testeAte': null,
+        'patios': {'usado': 1, 'maximo': 1}, 'usuarios': {'usado': 2, 'maximo': 3}, 'vagasNoMaiorPatio': {'usado': 30, 'maximo': null},
+        'recursos': [
+          {'codigo': 'lpr', 'nome': 'Leitura automática de placa', 'liberado': false},
+          {'codigo': 'relatorios', 'nome': 'Relatórios', 'liberado': true},
+        ],
+      });
+    case '/api/plataforma/recursos':
+      return json([
+        {'codigo': 'lpr', 'nome': 'Leitura automática de placa', 'descricao': 'Entrada e saída pela foto do veículo'},
+        {'codigo': 'relatorios', 'nome': 'Relatórios', 'descricao': 'Relatório gerencial por período'},
+      ]);
+    case '/api/plataforma/planos':
+      if (req.method == 'POST') {
+        final corpo = jsonDecode(req.body) as Map<String, dynamic>;
+        return json({...corpo, 'id': 'pl9', 'empresas': 0}, 201);
+      }
+      return json([planoJson('pl1', 'Cortesia', 0), planoJson('pl2', 'Básico', 99, patios: 1, recursos: ['relatorios'])]);
+    case '/api/plataforma/empresas/e1/assinatura':
+      if (req.method == 'PUT') enviadas.add(req);
+      return json({
+        'empresaId': 'e1', 'planoId': 'pl1', 'nomePlano': 'Cortesia', 'precoPorPatioPlano': 0.0, 'precoPorPatioNegociado': null,
+        'diaVencimento': 10, 'testeAte': null, 'observacoes': null, 'patiosAtivos': 2, 'valorMensal': 0.0,
+      });
     case '/api/relatorios/empresa':
       final umPatio = req.url.queryParameters['patioId'];
       return json({
@@ -343,6 +381,7 @@ void main() {
     enviadas.clear();
     recebidas.clear();
     caixaAberto = false;
+    recursosLiberados = [...todosRecursos];
   });
 
   testWidgets('sem sessão abre o login e valida campos vazios', (tester) async {
@@ -740,6 +779,13 @@ void main() {
     await tester.tap(find.text('Nova empresa'));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextFormField, 'Nome da empresa'), 'Estacionamentos Silva');
+    await tester.tap(find.text('Criar empresa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Escolha o plano'), findsOneWidget);
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<String>, 'Plano'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Básico · R\$\u00a099,00/pátio').last);
+    await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextFormField, 'Nome completo'), 'Maria Silva');
     await tester.enterText(find.widgetWithText(TextFormField, 'E-mail (login)'), 'maria@silva.com');
     expect(find.widgetWithText(TextFormField, 'Senha inicial'), findsNothing);
@@ -751,6 +797,7 @@ void main() {
     expect(corpo['nomePatio'], 'Pátio Principal');
     expect(corpo['totalVagas'], 30);
     expect(corpo['emailAdmin'], 'maria@silva.com');
+    expect(corpo['planoId'], 'pl2');
     expect(corpo.containsKey('senhaAdmin'), isFalse);
 
     await tester.tap(find.byTooltip('Sair'));
@@ -808,6 +855,76 @@ void main() {
     await tester.scrollUntilVisible(find.text('Estacionamentos Silva'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('Nunca'), findsOneWidget);
     expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget); // só a empresa sem movimento
+  });
+
+  testWidgets('superadmin cria plano com limites e recursos e troca o plano de uma empresa', (tester) async {
+    await abrirApp(tester, perfil: 'superadmin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Planos'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cortesia'), findsOneWidget);
+    expect(find.textContaining('até 1 pátio(s)'), findsOneWidget);
+
+    await tester.tap(find.text('Novo plano'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Nome do plano'), 'Profissional');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Preço por pátio/mês'), '199,90');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Usuários'), '10');
+    await tester.tap(find.text('Leitura automática de placa'));
+    await tester.pump();
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    final plano = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/plataforma/planos').body) as Map<String, dynamic>;
+    expect(plano['nome'], 'Profissional');
+    expect(plano['precoPorPatio'], 199.9);
+    expect(plano['maximoPatios'], isNull); // em branco: sem limite
+    expect(plano['maximoUsuarios'], 10);
+    expect(plano['recursos'], ['lpr']);
+    expect(plano['diasCarencia'], 7);
+
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Assinatura').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('2 pátio(s) ativo(s)'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextFormField, 'Preço negociado/pátio'), '50');
+    await tester.pump();
+    expect(find.textContaining('= R\$\u00a0100,00 por mês'), findsOneWidget);
+    await tester.tap(find.text('Salvar'));
+    await tester.pumpAndSettle();
+
+    final assinatura =
+        jsonDecode(enviadas.lastWhere((r) => r.url.path == '/api/plataforma/empresas/e1/assinatura').body) as Map<String, dynamic>;
+    expect(assinatura['planoId'], 'pl1');
+    expect(assinatura['precoPorPatioNegociado'], 50);
+    expect(assinatura['diaVencimento'], 10);
+  });
+
+  testWidgets('plano sem leitura de placa e sem relatórios esconde esses botões', (tester) async {
+    recursosLiberados = ['mensalistas'];
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+
+    expect(find.text('ou pela foto da placa'), findsNothing);
+    expect(find.byTooltip('Relatórios'), findsNothing);
+    expect(find.text('Entrada'), findsOneWidget); // entrada por placa digitada continua
+  });
+
+  testWidgets('admin vê o plano, o uso dos limites e os recursos', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Assinatura'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Plano Básico'), findsOneWidget);
+    expect(find.text('1 de 1'), findsOneWidget);
+    expect(find.text('30 · sem limite'), findsOneWidget);
+    expect(find.text('Não incluído'), findsOneWidget);
   });
 
   testWidgets('operador cadastra mensalista e registra o pagamento', (tester) async {

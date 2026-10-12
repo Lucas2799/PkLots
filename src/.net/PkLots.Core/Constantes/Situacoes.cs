@@ -113,6 +113,7 @@ namespace PkLots.Core.Constantes
         public const string ConfiguracaoPagamentoAlterada = "configuracao_pagamento_alterada";
         public const string EmpresaCriada = "empresa_criada";
         public const string EmpresaAlterada = "empresa_alterada";
+        public const string AssinaturaAlterada = "assinatura_alterada";
         public const string PatioCriado = "patio_criado";
         public const string PatioAlterado = "patio_alterado";
         public const string ConfiguracaoImpressaoAlterada = "configuracao_impressao_alterada";
@@ -142,5 +143,32 @@ namespace PkLots.Core.Constantes
         public const string Sucesso = "sucesso";
         public const string Erro = "erro";
         public const string Alerta = "alerta";
+    }
+
+    // Recursos que um plano pode liberar. Cada código tem um ponto de bloqueio no sistema;
+    // um recurso novo entra aqui e no lugar onde deve ser barrado, e aparece sozinho no cadastro de planos.
+    public static class RecursosPlano
+    {
+        public const string Lpr = "lpr";
+        public const string Mensalistas = "mensalistas";
+        public const string AppMensalista = "app_mensalista";
+        public const string Relatorios = "relatorios";
+        public const string ImpressoraRede = "impressora_rede";
+
+        public static readonly IReadOnlyList<(string Codigo, string Nome, string Descricao)> Catalogo =
+        [
+            (Lpr, "Leitura automática de placa", "Entrada e saída pela foto do veículo"),
+            (Mensalistas, "Mensalistas", "Cadastro de mensalistas e vagas reservadas"),
+            (AppMensalista, "App do mensalista", "Convite por e-mail para o mensalista acompanhar no app"),
+            (Relatorios, "Relatórios", "Relatório gerencial por período, com exportação em PDF"),
+            (ImpressoraRede, "Impressora térmica de rede", "Impressão automática do ticket na impressora do pátio"),
+        ];
+
+        public static readonly string[] Todos = Catalogo.Select(r => r.Codigo).ToArray();
+
+        public static string Nome(string codigo) => Catalogo.FirstOrDefault(r => r.Codigo == codigo).Nome ?? codigo;
+
+        // Plano dado às empresas que já existiam: tudo liberado, sem limites e sem cobrança
+        public static readonly Guid PlanoCortesiaId = new("0b7e9a51-4c1f-4f4e-9a3a-6c1d2b8e0001");
     }
 }

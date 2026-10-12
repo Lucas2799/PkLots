@@ -104,6 +104,9 @@ namespace PkLots.Application.Servicos
         {
             var patioId = await contextoPatio.ObterPatioIdAsync(ct);
             var (nome, placas) = Validar(requisicao);
+            await RegrasPlano.ExigirRecursoAsync(db, contextoPatio.EmpresaId, RecursosPlano.Mensalistas, ct);
+            if (!string.IsNullOrWhiteSpace(requisicao.Email))
+                await RegrasPlano.ExigirRecursoAsync(db, contextoPatio.EmpresaId, RecursosPlano.AppMensalista, ct);
             var agora = relogio.GetUtcNow().UtcDateTime;
 
             var mensalista = new Mensalista
@@ -133,6 +136,9 @@ namespace PkLots.Application.Servicos
             var patioId = await contextoPatio.ObterPatioIdAsync(ct);
             var mensalista = await ObterEntidadeAsync(id, patioId, ct);
             var (nome, placas) = Validar(requisicao);
+            // Trocar ou incluir e-mail envia convite: depende do app do mensalista no plano (remover é sempre permitido)
+            if (!string.IsNullOrWhiteSpace(requisicao.Email) && RegrasUsuario.NormalizarEmail(requisicao.Email) != mensalista.Email)
+                await RegrasPlano.ExigirRecursoAsync(db, contextoPatio.EmpresaId, RecursosPlano.AppMensalista, ct);
             var agora = relogio.GetUtcNow().UtcDateTime;
 
             Auditoria.Registrar(db, patioId, AcoesAuditoria.MensalistaAlterado, SituacaoAuditoria.Sucesso, placas[0], agora,
@@ -169,6 +175,7 @@ namespace PkLots.Application.Servicos
                 throw new ExcecaoNegocio("Informe o e-mail do mensalista no cadastro para enviar o convite.");
             if (mensalista.UsuarioId is not null)
                 throw new ExcecaoConflito("Este mensalista já ativou o acesso ao app.");
+            await RegrasPlano.ExigirRecursoAsync(db, contextoPatio.EmpresaId, RecursosPlano.AppMensalista, ct);
 
             var agora = relogio.GetUtcNow().UtcDateTime;
             ServicoAcessoMensalista.EnviarConvite(db, links, mensalista, await NomePatioAsync(patioId, ct), usuarioId, agora);
