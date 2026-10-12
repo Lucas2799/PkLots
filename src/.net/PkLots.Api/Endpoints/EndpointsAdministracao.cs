@@ -8,7 +8,8 @@ namespace PkLots.Api.Endpoints
     {
         public static void MapearAdministracao(this IEndpointRouteBuilder app)
         {
-            var grupo = app.MapGroup("/api/admin").WithTags("Administração").RequireAuthorization(Autorizacao.Admin);
+            var grupo = app.MapGroup("/api/admin").WithTags("Administração").RequireAuthorization(Autorizacao.Admin)
+                .AddEndpointFilter(FiltroBloqueioCobranca.SomenteConsultas);
 
             grupo.MapGet("/configuracao", async (ServicoAdministracao servico, CancellationToken ct) =>
                 Results.Ok(await servico.ObterConfiguracaoAsync(ct)))

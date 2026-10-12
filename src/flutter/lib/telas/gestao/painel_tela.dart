@@ -9,6 +9,7 @@ import '../../servicos/impressao_tickets.dart';
 import '../../servicos/excecao_api.dart';
 import '../../tema/cores.dart';
 import '../../util/formatadores.dart';
+import '../../widgets/aviso_cobranca.dart';
 import '../../widgets/cartao_vagas.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/grafico_ocupacao.dart';
@@ -206,6 +207,7 @@ class _PainelTelaState extends State<PainelTela> {
           ];
 
           final cabecalho = <Widget>[
+            AvisoCobranca(cobranca: estado.cobranca, ehAdmin: sessao.ehAdmin),
             if (estado.carregando && dashboard == null)
               const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator())),
             if (estado.erro != null) ...[

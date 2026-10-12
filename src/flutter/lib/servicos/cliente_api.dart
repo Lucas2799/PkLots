@@ -290,6 +290,8 @@ class ClienteApi {
   /// Códigos dos recursos liberados pelo plano da empresa do usuário
   Future<Set<String>> recursosLiberados() async => ((await _get('/api/assinatura/recursos')) as List).cast<String>().toSet();
 
+  Future<SituacaoCobranca> situacaoCobranca() async => SituacaoCobranca.deJson(await _get('/api/assinatura/situacao'));
+
   Future<MinhaAssinatura> minhaAssinatura() async => MinhaAssinatura.deJson(await _get('/api/admin/assinatura'));
 
   // ---------- Faturas do PkLots ----------

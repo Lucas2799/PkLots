@@ -74,6 +74,72 @@ namespace PkLots.Application.Servicos
             return new GeracaoFaturasDto(emitidas);
         }
 
+        // ---------- Avisos de cobrança ----------
+
+        // Lembrete antes do vencimento, aviso de vencida (com os dias até o bloqueio) e aviso de bloqueio.
+        // Cada aviso sai uma vez; se o processamento atrasou, envia só o da etapa atual.
+        public async Task<int> EnviarAvisosAsync(CancellationToken ct = default)
+        {
+            var agora = relogio.GetUtcNow().UtcDateTime;
+            var hoje = ServicoMensalistas.Hoje(agora);
+            var limiteLembrete = hoje.AddDays(SituacaoAssinatura.DiasLembrete);
+            var faturas = await db.Faturas.IgnoreQueryFilters()
+                .Include(f => f.Empresa)
+                .Where(f => f.Situacao == SituacaoFatura.Aberta && f.Vencimento <= limiteLembrete && f.Empresa.Ativa)
+                .ToListAsync(ct);
+            if (faturas.Count == 0)
+                return 0;
+
+            var situacoes = await Inadimplencia.ObterTodasAsync(db, hoje, ct);
+            var config = await ObterConfiguracaoEntidadeAsync(ct);
+            var enviados = 0;
+            foreach (var fatura in faturas)
+            {
+                var situacao = situacoes.GetValueOrDefault(fatura.EmpresaId);
+                var atraso = hoje.DayNumber - fatura.Vencimento.DayNumber;
+                var (etapa, assunto, texto) = true switch
+                {
+                    _ when situacao?.Situacao == SituacaoAssinatura.Bloqueada && atraso > 0 => (SituacaoAssinatura.AvisoBloqueio,
+                        "PkLots: acesso parcialmente bloqueado",
+                        $"A fatura está vencida há {atraso} dias e o acesso foi parcialmente bloqueado: novas entradas e mudanças na administração voltam após o pagamento. Saídas, caixa e mensalidades continuam funcionando."),
+                    _ when atraso >= 0 => (SituacaoAssinatura.AvisoVencimento,
+                        "PkLots: fatura vencida",
+                        situacao is { DiasParaBloqueio: > 0 } s
+                            ? $"A fatura venceu e ainda não identificamos o pagamento. Se não for paga em {s.DiasParaBloqueio} dia(s), novas entradas serão bloqueadas até a regularização."
+                            : "A fatura venceu e ainda não identificamos o pagamento."),
+                    _ => (SituacaoAssinatura.AvisoLembrete,
+                        "PkLots: fatura vence em breve",
+                        $"Lembrete: a fatura vence em {-atraso} dia(s)."),
+                };
+                if (fatura.AvisosEnviados.Contains(etapa))
+                    continue;
+
+                var admins = await db.Usuarios.IgnoreQueryFilters()
+                    .Where(u => u.EmpresaId == fatura.EmpresaId && u.Ativo && u.Perfil == Perfis.Admin)
+                    .Select(u => u.Email)
+                    .ToListAsync(ct);
+                var mensagem = ModelosEmail.AvisoFatura(assunto, fatura.Empresa.Nome, texto, fatura.Descricao,
+                    GeradorTicketEscPos.Moeda(fatura.Valor), fatura.Vencimento, Pix(fatura, config), links.UrlBase);
+                foreach (var email in admins)
+                    FilaEmails.Enfileirar(db, email, mensagem, agora);
+
+                // Marca a etapa e as anteriores (não manda lembrete depois do vencimento)
+                var etapas = new[] { SituacaoAssinatura.AvisoLembrete, SituacaoAssinatura.AvisoVencimento, SituacaoAssinatura.AvisoBloqueio };
+                fatura.AvisosEnviados = [.. fatura.AvisosEnviados.Union(etapas.Take(Array.IndexOf(etapas, etapa) + 1))];
+                enviados++;
+            }
+
+            await db.SaveChangesAsync(ct);
+            return enviados;
+        }
+
+        // Para o aviso no app (gestão) e o bloqueio parcial
+        public async Task<SituacaoCobrancaDto> SituacaoDaMinhaEmpresaAsync(CancellationToken ct = default)
+        {
+            var empresaId = contextoPatio.EmpresaId ?? throw new ExcecaoProibido("Disponível só para usuários de uma empresa.");
+            return await Inadimplencia.ObterAsync(db, empresaId, ServicoMensalistas.Hoje(relogio.GetUtcNow().UtcDateTime), ct);
+        }
+
         public async Task<FaturaDto> LancarAvulsaAsync(Guid empresaId, LancarFaturaRequisicao r, CancellationToken ct = default)
         {
             var empresa = await db.Empresas.FirstOrDefaultAsync(e => e.Id == empresaId, ct) ?? throw new ExcecaoNaoEncontrado("Empresa não encontrada.");

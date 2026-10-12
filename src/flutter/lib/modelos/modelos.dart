@@ -593,6 +593,7 @@ class EmpresaPlataforma {
   /// Usuários convidados que ainda não criaram a senha
   final int convitesPendentes;
   final String? nomePlano;
+  final String situacaoCobranca;
 
   EmpresaPlataforma({
     required this.id,
@@ -604,6 +605,7 @@ class EmpresaPlataforma {
     required this.criadoEm,
     this.convitesPendentes = 0,
     this.nomePlano,
+    this.situacaoCobranca = 'em_dia',
   });
 
   factory EmpresaPlataforma.deJson(Map<String, dynamic> json) => EmpresaPlataforma(
@@ -616,6 +618,7 @@ class EmpresaPlataforma {
         criadoEm: _data(json['criadoEm']),
         convitesPendentes: (json['convitesPendentes'] as int?) ?? 0,
         nomePlano: json['nomePlano'] as String?,
+        situacaoCobranca: (json['situacaoCobranca'] as String?) ?? 'em_dia',
       );
 }
 
@@ -1259,6 +1262,9 @@ class IndicadoresPlataforma {
   final int mensalistasAtivos;
   final int entradas;
   final double valorProcessado;
+  final double receitaRecorrente;
+  final double valorEmAberto;
+  final int empresasInadimplentes;
 
   IndicadoresPlataforma({
     required this.empresasAtivas,
@@ -1270,6 +1276,9 @@ class IndicadoresPlataforma {
     required this.mensalistasAtivos,
     required this.entradas,
     required this.valorProcessado,
+    this.receitaRecorrente = 0,
+    this.valorEmAberto = 0,
+    this.empresasInadimplentes = 0,
   });
 
   factory IndicadoresPlataforma.deJson(Map<String, dynamic> json) => IndicadoresPlataforma(
@@ -1282,6 +1291,9 @@ class IndicadoresPlataforma {
         mensalistasAtivos: json['mensalistasAtivos'] as int,
         entradas: json['entradas'] as int,
         valorProcessado: _numero(json['valorProcessado']),
+        receitaRecorrente: _numero(json['receitaRecorrente']),
+        valorEmAberto: _numero(json['valorEmAberto']),
+        empresasInadimplentes: (json['empresasInadimplentes'] as int?) ?? 0,
       );
 }
 
@@ -1297,6 +1309,9 @@ class UsoEmpresa {
   final int entradas;
   final double valorProcessado;
   final DateTime? ultimaEntrada;
+  final String? nomePlano;
+  final double mensalidadePkLots;
+  final String situacaoCobranca;
 
   UsoEmpresa({
     required this.id,
@@ -1310,6 +1325,9 @@ class UsoEmpresa {
     required this.entradas,
     required this.valorProcessado,
     this.ultimaEntrada,
+    this.nomePlano,
+    this.mensalidadePkLots = 0,
+    this.situacaoCobranca = 'em_dia',
   });
 
   factory UsoEmpresa.deJson(Map<String, dynamic> json) => UsoEmpresa(
@@ -1324,6 +1342,9 @@ class UsoEmpresa {
         entradas: json['entradas'] as int,
         valorProcessado: _numero(json['valorProcessado']),
         ultimaEntrada: _dataOpcional(json['ultimaEntrada']),
+        nomePlano: json['nomePlano'] as String?,
+        mensalidadePkLots: _numero(json['mensalidadePkLots']),
+        situacaoCobranca: (json['situacaoCobranca'] as String?) ?? 'em_dia',
       );
 }
 
@@ -1595,5 +1616,26 @@ class RecebimentoPlataforma {
         chavePix: json['chavePix'] as String?,
         nomeRecebedor: json['nomeRecebedor'] as String?,
         cidadeRecebedor: json['cidadeRecebedor'] as String?,
+      );
+}
+
+/// Situação da empresa perante as faturas do PkLots (aviso no painel)
+class SituacaoCobranca {
+  static const emDia = 'em_dia';
+  static const vencida = 'vencida';
+  static const bloqueada = 'bloqueada';
+
+  final String situacao;
+  final int diasEmAtraso;
+  final int diasParaBloqueio;
+  final double valorVencido;
+
+  SituacaoCobranca({required this.situacao, this.diasEmAtraso = 0, this.diasParaBloqueio = 0, this.valorVencido = 0});
+
+  factory SituacaoCobranca.deJson(Map<String, dynamic> json) => SituacaoCobranca(
+        situacao: json['situacao'] as String,
+        diasEmAtraso: json['diasEmAtraso'] as int,
+        diasParaBloqueio: json['diasParaBloqueio'] as int,
+        valorVencido: _numero(json['valorVencido']),
       );
 }

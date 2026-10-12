@@ -390,6 +390,10 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<List<string>>("AvisosEnviados")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.Property<Guid?>("BaixadaPorId")
                         .HasColumnType("uuid");
 

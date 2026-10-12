@@ -139,6 +139,17 @@ class _RelatorioPlataformaTelaState extends State<RelatorioPlataformaTela> {
             detalhe: '${t.mensalistasAtivos} mensalista(s)'),
         CartaoIndicador(rotulo: 'Entradas', valor: '${t.entradas}', icone: Icons.login),
         CartaoIndicador(
+            rotulo: 'Receita recorrente',
+            valor: Formatadores.moeda(t.receitaRecorrente),
+            icone: Icons.autorenew,
+            detalhe: 'mensalidades do PkLots hoje'),
+        CartaoIndicador(
+            rotulo: 'Faturas em aberto',
+            valor: Formatadores.moeda(t.valorEmAberto),
+            icone: Icons.request_quote_outlined,
+            detalhe: '${t.empresasInadimplentes} empresa(s) com fatura vencida',
+            alerta: t.empresasInadimplentes > 0),
+        CartaoIndicador(
             rotulo: 'Valor processado',
             valor: Formatadores.moeda(t.valorProcessado),
             icone: Icons.payments_outlined,
@@ -169,6 +180,8 @@ class _RelatorioPlataformaTelaState extends State<RelatorioPlataformaTela> {
                   columnSpacing: 20,
                   columns: const [
                     DataColumn(label: Text('Empresa')),
+                    DataColumn(label: Text('Plano')),
+                    DataColumn(label: Text('Mensalidade'), numeric: true),
                     DataColumn(label: Text('Pátios'), numeric: true),
                     DataColumn(label: Text('Vagas'), numeric: true),
                     DataColumn(label: Text('Usuários'), numeric: true),
@@ -187,6 +200,8 @@ class _RelatorioPlataformaTelaState extends State<RelatorioPlataformaTela> {
                           Text(e.ativa ? 'cliente desde ${Formatadores.data(e.criadoEm.toLocal())}' : 'Desativada',
                               style: const TextStyle(fontSize: 12, color: CoresPkLots.textoSuave)),
                         ])),
+                        DataCell(_Cobranca(empresa: e)),
+                        DataCell(Text(Formatadores.moeda(e.mensalidadePkLots))),
                         DataCell(Text('${e.patios}')),
                         DataCell(Text('${e.vagas}')),
                         DataCell(Text('${e.usuarios}')),
@@ -219,6 +234,26 @@ class _UltimoMovimento extends StatelessWidget {
       const Icon(Icons.warning_amber_rounded, size: 16, color: CoresPkLots.manutencao),
       const SizedBox(width: 4),
       Text(texto, style: const TextStyle(color: CoresPkLots.manutencao, fontWeight: FontWeight.w600)),
+    ]);
+  }
+}
+
+/// Plano e situação de cobrança da empresa
+class _Cobranca extends StatelessWidget {
+  const _Cobranca({required this.empresa});
+
+  final UsoEmpresa empresa;
+
+  @override
+  Widget build(BuildContext context) {
+    final (texto, cor) = switch (empresa.situacaoCobranca) {
+      SituacaoCobranca.bloqueada => ('Bloqueada', CoresPkLots.erro),
+      SituacaoCobranca.vencida => ('Fatura vencida', CoresPkLots.manutencao),
+      _ => (null, null),
+    };
+    return Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(empresa.nomePlano ?? '-'),
+      if (texto != null) Text(texto, style: TextStyle(fontSize: 12, color: cor, fontWeight: FontWeight.w600)),
     ]);
   }
 }

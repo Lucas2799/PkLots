@@ -29,6 +29,9 @@ bool caixaAberto = false;
 
 /// Recursos liberados pelo plano simulado da empresa (todos no início de cada teste)
 List<String> recursosLiberados = [];
+
+/// Situação de cobrança simulada da empresa (em dia no início de cada teste)
+Map<String, dynamic> situacaoCobranca = {};
 const todosRecursos = ['lpr', 'mensalistas', 'app_mensalista', 'relatorios', 'impressora_rede'];
 
 Map<String, dynamic> faturaJson(String id, String situacao, {String? pix, int atraso = 0}) => {
@@ -123,6 +126,8 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
       ]);
     case '/api/assinatura/recursos':
       return json(recursosLiberados);
+    case '/api/assinatura/situacao':
+      return json(situacaoCobranca);
     case '/api/admin/assinatura':
       return json({
         'nomePlano': 'Básico', 'descricaoPlano': 'Pátio pequeno', 'precoPorPatio': 99.0, 'valorMensal': 99.0, 'diaVencimento': 10,
@@ -397,6 +402,7 @@ void main() {
     recebidas.clear();
     caixaAberto = false;
     recursosLiberados = [...todosRecursos];
+    situacaoCobranca = {'situacao': 'em_dia', 'diasEmAtraso': 0, 'diasParaBloqueio': 0, 'valorVencido': 0.0};
   });
 
   testWidgets('sem sessão abre o login e valida campos vazios', (tester) async {
@@ -935,6 +941,27 @@ void main() {
     expect(corpo['formaPagamento'], 'pix');
     expect(corpo['valorPago'], 99.0);
     expect(corpo['pagaEm'], isNotNull);
+  });
+
+  testWidgets('fatura vencida avisa o admin; bloqueio aparece também para o operador', (tester) async {
+    situacaoCobranca = {'situacao': 'vencida', 'diasEmAtraso': 2, 'diasParaBloqueio': 6, 'valorVencido': 99.0};
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+    expect(find.textContaining('novas entradas serão bloqueadas em 6 dia(s)'), findsOneWidget);
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+    expect(find.textContaining('Fatura do PkLots vencida'), findsNothing); // operador só vê o bloqueio
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+
+    situacaoCobranca = {'situacao': 'bloqueada', 'diasEmAtraso': 9, 'diasParaBloqueio': 0, 'valorVencido': 99.0};
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+    expect(find.textContaining('Acesso parcialmente bloqueado'), findsOneWidget);
+    expect(find.text('Avise o administrador da empresa.'), findsOneWidget);
   });
 
   testWidgets('plano sem leitura de placa e sem relatórios esconde esses botões', (tester) async {

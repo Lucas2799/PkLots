@@ -25,6 +25,7 @@ namespace PkLots.Core.Entities
         public Guid? BaixadaPorId { get; set; }
         public DateTime? CanceladaEm { get; set; }
         public string? MotivoCancelamento { get; set; }
+        public List<string> AvisosEnviados { get; set; } = []; // lembrete, vencimento, bloqueio
         public DateTime CriadoEm { get; set; } = DateTime.UtcNow;
 
         public Empresa Empresa { get; set; } = null!;

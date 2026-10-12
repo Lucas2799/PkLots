@@ -178,6 +178,8 @@ class _PlataformaTelaState extends State<PlataformaTela> {
                         subtitle: Text([
                           ?empresa.documento,
                           if (empresa.nomePlano != null) 'Plano ${empresa.nomePlano}',
+                          if (empresa.situacaoCobranca == SituacaoCobranca.vencida) 'Fatura vencida',
+                          if (empresa.situacaoCobranca == SituacaoCobranca.bloqueada) 'Bloqueio parcial (fatura vencida)',
                           '${empresa.patios} pátio(s)',
                           '${empresa.usuarios} usuário(s)',
                           'desde ${Formatadores.dataCurta(empresa.criadoEm)}',

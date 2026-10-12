@@ -5,7 +5,7 @@ using PkLots.Application.Servicos;
 
 namespace PkLots.Infrastructure.Servicos
 {
-    // Emite as mensalidades do PkLots em segundo plano (a emissão é idempotente: rodar de novo não duplica)
+    // Emite as mensalidades do PkLots e envia os avisos de cobrança em segundo plano (rodar de novo não duplica)
     public class ProcessadorFaturas(
         IServiceScopeFactory escopos,
         TimeProvider relogio,
@@ -22,9 +22,13 @@ namespace PkLots.Infrastructure.Servicos
                 try
                 {
                     using var escopo = escopos.CreateScope();
-                    var resultado = await escopo.ServiceProvider.GetRequiredService<ServicoFaturas>().EmitirMensalidadesAsync(ct);
+                    var faturas = escopo.ServiceProvider.GetRequiredService<ServicoFaturas>();
+                    var resultado = await faturas.EmitirMensalidadesAsync(ct);
                     if (resultado.Emitidas > 0)
                         logger.LogInformation("{Quantidade} fatura(s) do PkLots emitida(s)", resultado.Emitidas);
+                    var avisos = await faturas.EnviarAvisosAsync(ct);
+                    if (avisos > 0)
+                        logger.LogInformation("{Quantidade} aviso(s) de cobrança enviado(s)", avisos);
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

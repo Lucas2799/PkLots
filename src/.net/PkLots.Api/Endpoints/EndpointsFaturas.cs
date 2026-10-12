@@ -44,6 +44,13 @@ namespace PkLots.Api.Endpoints
                 Results.Ok(await servico.SalvarConfiguracaoAsync(requisicao, ct)))
                 .WithSummary("Define a chave PIX do PkLots (vale para todas as faturas abertas)");
 
+            // Gestão: o app mostra o aviso de fatura vencida ou de bloqueio parcial
+            app.MapGet("/api/assinatura/situacao", async (ServicoFaturas servico, CancellationToken ct) =>
+                    Results.Ok(await servico.SituacaoDaMinhaEmpresaAsync(ct)))
+                .WithTags("Assinatura")
+                .RequireAuthorization(Autorizacao.Gestao)
+                .WithSummary("Situação de cobrança da empresa: em dia, vencida (carência) ou bloqueada");
+
             // Admin da empresa: as próprias faturas, com o PIX das abertas
             app.MapGet("/api/admin/faturas", async (ServicoFaturas servico, CancellationToken ct) =>
                     Results.Ok(await servico.ListarDaMinhaEmpresaAsync(ct)))

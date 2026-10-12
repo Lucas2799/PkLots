@@ -196,12 +196,22 @@ namespace PkLots.Application.Servicos
                 .Select(g => new { EmpresaId = g.Key, Ultima = g.Max(e => e.DataHoraEntrada) })
                 .ToDictionaryAsync(g => g.EmpresaId, g => g.Ultima, ct);
 
+            // Cobrança do PkLots: plano, mensalidade atual e situação
+            var assinaturas = await db.Assinaturas
+                .Select(a => new { a.EmpresaId, a.Plano.Nome, Preco = a.PrecoPorPatioNegociado ?? a.Plano.PrecoPorPatio })
+                .ToDictionaryAsync(a => a.EmpresaId, ct);
+            var emAberto = await db.Faturas.Where(f => f.Situacao == SituacaoFatura.Aberta).SumAsync(f => f.Valor, ct);
+            var cobranca = await Inadimplencia.ObterTodasAsync(db, ServicoMensalistas.Hoje(relogio.GetUtcNow().UtcDateTime), ct);
+
             var uso = empresas.Select(e => new UsoEmpresaDto(
                     e.Id, e.Nome, e.Ativa, e.CriadoEm, e.Patios, e.Vagas, e.Usuarios,
                     mensalistasAtivos.GetValueOrDefault(e.Id),
                     entradas.Count(x => x.EmpresaId == e.Id),
                     saidas.Where(x => x.EmpresaId == e.Id).Sum(x => x.ValorTotal) + mensalidades.Where(x => x.EmpresaId == e.Id).Sum(x => x.Valor),
-                    ultimasEntradas.TryGetValue(e.Id, out var ultima) ? ultima : null))
+                    ultimasEntradas.TryGetValue(e.Id, out var ultima) ? ultima : null,
+                    assinaturas.GetValueOrDefault(e.Id)?.Nome,
+                    (assinaturas.GetValueOrDefault(e.Id)?.Preco ?? 0) * e.Patios,
+                    cobranca.TryGetValue(e.Id, out var situacao) ? situacao.Situacao : SituacaoAssinatura.EmDia))
                 .ToList();
 
             var ativas = uso.Where(e => e.Ativa).ToList();
@@ -214,7 +224,10 @@ namespace PkLots.Application.Servicos
                 ativas.Sum(e => e.Usuarios),
                 ativas.Sum(e => e.MensalistasAtivos),
                 entradas.Count,
-                saidas.Sum(s => s.ValorTotal) + mensalidades.Sum(p => p.Valor));
+                saidas.Sum(s => s.ValorTotal) + mensalidades.Sum(p => p.Valor),
+                ativas.Sum(e => e.MensalidadePkLots),
+                emAberto,
+                uso.Count(e => e.SituacaoCobranca != SituacaoAssinatura.EmDia));
 
             var porDia = PorDia(inicioData, fimData,
                 entradas.Select(e => e.DataHoraEntrada),

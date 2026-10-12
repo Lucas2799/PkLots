@@ -10,13 +10,19 @@ namespace PkLots.Application.Servicos
     // Gestão da plataforma (superadmin): empresas clientes e o primeiro administrador de cada uma
     public class ServicoPlataforma(IPkLotsDbContext db, IHashSenha hashSenha, LinksPublicos links, TimeProvider relogio)
     {
-        public async Task<IReadOnlyList<EmpresaDto>> ListarEmpresasAsync(CancellationToken ct = default) =>
-            await db.Empresas
+        public async Task<IReadOnlyList<EmpresaDto>> ListarEmpresasAsync(CancellationToken ct = default)
+        {
+            var empresas = await db.Empresas
                 .OrderByDescending(e => e.Ativa).ThenBy(e => e.Nome)
                 .Select(e => new EmpresaDto(e.Id, e.Nome, e.Documento, e.Ativa, e.Patios.Count(p => p.Ativo), e.Usuarios.Count(u => u.Ativo), e.CriadoEm,
                     e.Usuarios.Count(u => u.Ativo && u.AguardandoAtivacao),
-                    db.Assinaturas.Where(a => a.EmpresaId == e.Id).Select(a => a.Plano.Nome).FirstOrDefault()))
+                    db.Assinaturas.Where(a => a.EmpresaId == e.Id).Select(a => a.Plano.Nome).FirstOrDefault(), SituacaoAssinatura.EmDia))
                 .ToListAsync(ct);
+            var cobranca = await Inadimplencia.ObterTodasAsync(db, ServicoMensalistas.Hoje(relogio.GetUtcNow().UtcDateTime), ct);
+            return empresas
+                .Select(e => cobranca.TryGetValue(e.Id, out var s) ? e with { SituacaoCobranca = s.Situacao } : e)
+                .ToList();
+        }
 
         // Cria a empresa com o primeiro pátio (vagas já criadas) e o administrador
         public async Task<EmpresaDto> CriarEmpresaAsync(Guid superAdminId, CriarEmpresaRequisicao requisicao, CancellationToken ct = default)

@@ -31,7 +31,7 @@ namespace PkLots.Application.DTOs
     // ---------- Plataforma (superadmin) ----------
 
     public record EmpresaDto(Guid Id, string Nome, string? Documento, bool Ativa, int Patios, int Usuarios, DateTime CriadoEm,
-        int ConvitesPendentes = 0, string? NomePlano = null);
+        int ConvitesPendentes = 0, string? NomePlano = null, string SituacaoCobranca = "em_dia");
 
     public record CriarEmpresaRequisicao(
         string Nome,

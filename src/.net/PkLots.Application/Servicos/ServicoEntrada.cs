@@ -16,6 +16,7 @@ namespace PkLots.Application.Servicos
     {
         public async Task<EntradaDto> RegistrarPorImagemAsync(Stream imagem, string nomeArquivo, CancellationToken ct = default)
         {
+            await Inadimplencia.ExigirSemBloqueioAsync(db, contextoPatio.EmpresaId, relogio, "Novas entradas", ct);
             var resultado = await reconhecedor.ReconhecerAsync(imagem, nomeArquivo, "entrada", ct);
             return await RegistrarAsync(
                 new RegistrarEntradaRequisicao(resultado.Placa!, resultado.Confianca, resultado.Metodo), ct);
@@ -26,6 +27,7 @@ namespace PkLots.Application.Servicos
             var placa = ValidadorPlaca.Normalizar(requisicao.Placa)
                 ?? throw new ExcecaoNegocio("Placa inválida. Formatos aceitos: ABC1234 ou ABC1D23.");
 
+            await Inadimplencia.ExigirSemBloqueioAsync(db, contextoPatio.EmpresaId, relogio, "Novas entradas", ct);
             var patioId = await contextoPatio.ObterPatioIdAsync(ct);
             var agora = relogio.GetUtcNow().UtcDateTime;
 

@@ -31,6 +31,9 @@ class GestaoProvider extends ChangeNotifier {
 
   bool temRecurso(String codigo) => recursos?.contains(codigo) ?? true;
 
+  /// Fatura do PkLots vencida ou bloqueio parcial (aviso no painel)
+  SituacaoCobranca? cobranca;
+
   void iniciar() {
     _iniciar();
     _atualizacao?.cancel();
@@ -57,12 +60,19 @@ class GestaoProvider extends ChangeNotifier {
     }
   }
 
+  // Recursos do plano e situação de cobrança: falha em um não impede o outro
   Future<void> _carregarRecursos() async {
     try {
       recursos = await _api.recursosLiberados();
       notifyListeners();
     } on ExcecaoApi {
       // Sem a lista o app mostra tudo; a API continua barrando o que o plano não inclui
+    }
+    try {
+      cobranca = await _api.situacaoCobranca();
+      notifyListeners();
+    } on ExcecaoApi {
+      // Sem o aviso; a API continua aplicando o bloqueio
     }
   }
 

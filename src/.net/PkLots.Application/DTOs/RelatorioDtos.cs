@@ -82,7 +82,10 @@ namespace PkLots.Application.DTOs
         int UsuariosAtivos,
         int MensalistasAtivos,
         int Entradas,
-        decimal ValorProcessado); // saídas + mensalidades registradas no sistema
+        decimal ValorProcessado,  // saídas + mensalidades registradas no sistema
+        decimal ReceitaRecorrente = 0, // mensalidade atual do PkLots somada das empresas ativas
+        decimal ValorEmAberto = 0,     // faturas do PkLots em aberto
+        int EmpresasInadimplentes = 0);
 
     public record UsoEmpresaDto(
         Guid Id,
@@ -95,5 +98,8 @@ namespace PkLots.Application.DTOs
         int MensalistasAtivos,
         int Entradas,
         decimal ValorProcessado,
-        DateTime? UltimaEntrada); // de todo o histórico: empresa parada há dias pede contato
+        DateTime? UltimaEntrada, // de todo o histórico: empresa parada há dias pede contato
+        string? NomePlano = null,
+        decimal MensalidadePkLots = 0,
+        string SituacaoCobranca = "em_dia");
 }

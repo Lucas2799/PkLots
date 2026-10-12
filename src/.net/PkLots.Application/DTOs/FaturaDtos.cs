@@ -34,4 +34,12 @@ namespace PkLots.Application.DTOs
     public record ConfiguracaoPlataformaDto(string? ChavePix, string? NomeRecebedor, string? CidadeRecebedor);
 
     public record GeracaoFaturasDto(int Emitidas);
+
+    // Situação de cobrança da empresa: o app mostra o aviso e a API aplica o bloqueio parcial
+    public record SituacaoCobrancaDto(
+        string Situacao,        // em_dia, vencida, bloqueada
+        int DiasEmAtraso,       // da fatura vencida mais antiga
+        int DiasParaBloqueio,   // 0 quando já bloqueada ou em dia
+        decimal ValorVencido,
+        DateOnly? VencimentoMaisAntigo);
 }

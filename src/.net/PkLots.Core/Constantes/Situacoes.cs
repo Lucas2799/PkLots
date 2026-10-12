@@ -155,6 +155,20 @@ namespace PkLots.Core.Constantes
         public const string Vencida = "vencida"; // calculada: aberta com vencimento passado (não é gravada)
     }
 
+    // Situação da empresa perante as faturas do PkLots
+    public static class SituacaoAssinatura
+    {
+        public const string EmDia = "em_dia";
+        public const string Vencida = "vencida";     // dentro da carência: só avisos
+        public const string Bloqueada = "bloqueada"; // carência esgotada: bloqueio parcial até pagar
+
+        // Avisos por e-mail de cada fatura (cada um sai uma vez)
+        public const string AvisoLembrete = "lembrete";     // alguns dias antes do vencimento
+        public const string AvisoVencimento = "vencimento"; // venceu
+        public const string AvisoBloqueio = "bloqueio";     // entrou em bloqueio parcial
+        public const int DiasLembrete = 5;
+    }
+
     public static class TipoFatura
     {
         public const string Mensalidade = "mensalidade";

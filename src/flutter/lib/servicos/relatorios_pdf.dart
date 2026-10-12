@@ -201,14 +201,22 @@ class RelatoriosPdf {
           ('Mensalistas ativos', '${t.mensalistasAtivos}'),
           ('Entradas', '${t.entradas}'),
           ('Valor processado', Formatadores.moeda(t.valorProcessado)),
+          ('Receita recorrente', Formatadores.moeda(t.receitaRecorrente)),
+          ('Faturas em aberto', Formatadores.moeda(t.valorEmAberto)),
+          ('Inadimplentes', '${t.empresasInadimplentes}'),
         ]),
         _titulo('Empresas'),
         _tabela(
-            ['Empresa', 'Cliente desde', 'Pátios', 'Vagas', 'Usuários', 'Mensalistas', 'Entradas', 'Valor processado', 'Último movimento'], [
+            ['Empresa', 'Plano', 'Mensalidade', 'Pátios', 'Vagas', 'Usuários', 'Mensalistas', 'Entradas', 'Valor processado', 'Último movimento'], [
           for (final e in r.empresas)
             [
-              e.ativa ? e.nome : '${e.nome} (desativada)',
-              Formatadores.data(e.criadoEm.toLocal()),
+              [
+                e.ativa ? e.nome : '${e.nome} (desativada)',
+                if (e.situacaoCobranca == SituacaoCobranca.bloqueada) 'bloqueada',
+                if (e.situacaoCobranca == SituacaoCobranca.vencida) 'fatura vencida',
+              ].join(' - '),
+              e.nomePlano ?? '-',
+              Formatadores.moeda(e.mensalidadePkLots),
               '${e.patios}',
               '${e.vagas}',
               '${e.usuarios}',
@@ -217,7 +225,7 @@ class RelatoriosPdf {
               Formatadores.moeda(e.valorProcessado),
               e.ultimaEntrada == null ? 'Nunca' : Formatadores.dataHoraCompleta(e.ultimaEntrada!),
             ],
-        ], numericas: {2, 3, 4, 5, 6, 7}),
+        ], numericas: {2, 3, 4, 5, 6, 7, 8}),
         _titulo('Movimento por dia'),
         _tabela(['Dia', 'Entradas', 'Saídas', 'Valor processado'], [
           for (final d in r.porDia) [_diaCurto.format(d.data), '${d.entradas}', '${d.saidas}', Formatadores.moeda(d.receita)],

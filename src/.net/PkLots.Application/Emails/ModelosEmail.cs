@@ -58,6 +58,21 @@ namespace PkLots.Application.Emails
                 "Depois do pagamento, a baixa é feita pela equipe do PkLots. Se já pagou, desconsidere este e-mail.");
         }
 
+        // Lembrete, vencimento e bloqueio parcial de uma fatura em aberto
+        public static MensagemEmail AvisoFatura(string assunto, string nomeEmpresa, string situacao, string descricao, string valor,
+            DateOnly vencimento, string? pixCopiaECola, string enderecoSistema)
+        {
+            var paragrafos = new List<string>
+            {
+                situacao,
+                $"{descricao} ({nomeEmpresa}): {valor}, com vencimento em {vencimento:dd/MM/yyyy}."
+            };
+            if (pixCopiaECola is not null)
+                paragrafos.Add($"Para pagar por PIX, use o código copia e cola abaixo (ou o QR Code em Administração > Assinatura): {pixCopiaECola}");
+            return Montar(assunto, "Olá!", [.. paragrafos], "Abrir o PkLots", enderecoSistema,
+                "Depois do pagamento, a baixa é feita pela equipe do PkLots. Se já pagou, desconsidere este e-mail.");
+        }
+
         private static string Horas(TimeSpan validade) =>
             validade.TotalHours == 1 ? "1 hora" : $"{validade.TotalHours:0} horas";
 
