@@ -260,9 +260,10 @@ namespace PkLots.Application.Servicos
             {
                 await db.SaveChangesAsync(ct);
             }
-            catch (DbUpdateConcurrencyException)
+            catch (Exception e) when (ErrosBanco.Concorrencia(e))
             {
-                throw new ExcecaoConflito("A saída deste veículo já está sendo processada. Tente novamente.");
+                // Mesma saída confirmada em outro balcão (ou clique duplo): só uma é gravada
+                throw new ExcecaoConflito("A saída deste veículo já foi confirmada em outro balcão. Atualize a tela.");
             }
 
             await cache.InvalidarAsync(entrada.PatioId);

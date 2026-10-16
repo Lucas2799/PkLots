@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using PkLots.Core.Entities;
 
 namespace PkLots.Application.Interfaces
@@ -27,6 +28,8 @@ namespace PkLots.Application.Interfaces
         DbSet<Assinatura> Assinaturas { get; }
         DbSet<Fatura> Faturas { get; }
         DbSet<ConfiguracaoPlataforma> ConfiguracoesPlataforma { get; }
+
+        ChangeTracker ChangeTracker { get; }
 
         Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     }

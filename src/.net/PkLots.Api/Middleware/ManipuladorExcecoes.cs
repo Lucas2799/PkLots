@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using PkLots.Application.Excecoes;
+using PkLots.Application.Servicos;
 
 namespace PkLots.Api.Middleware
 {
@@ -16,6 +18,7 @@ namespace PkLots.Api.Middleware
                 ExcecaoProibido => (StatusCodes.Status403Forbidden, "Acesso negado"),
                 ExcecaoNaoEncontrado => (StatusCodes.Status404NotFound, "Não encontrado"),
                 ExcecaoConflito => (StatusCodes.Status409Conflict, "Conflito"),
+                _ when ErrosBanco.Concorrencia(excecao) => (StatusCodes.Status409Conflict, "Conflito"),
                 ExcecaoReconhecimento => (StatusCodes.Status422UnprocessableEntity, "Placa não reconhecida"),
                 ExcecaoServicoExterno => (StatusCodes.Status503ServiceUnavailable, "Serviço indisponível"),
                 _ => (StatusCodes.Status500InternalServerError, "Erro interno")
@@ -28,7 +31,10 @@ namespace PkLots.Api.Middleware
 
             var detalhe = status == StatusCodes.Status500InternalServerError
                 ? "Ocorreu um erro inesperado. Tente novamente."
-                : excecao.Message;
+                : excecao is ExcecaoConflito or not DbUpdateException
+                    ? excecao.Message
+                    // Gravação simultânea sem tratamento próprio no serviço: nunca expõe o erro do banco
+                    : "Outra pessoa alterou este registro ao mesmo tempo. Atualize a tela e tente novamente.";
 
             contexto.Response.StatusCode = status;
             await contexto.Response.WriteAsJsonAsync(new ProblemDetails

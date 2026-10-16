@@ -22,7 +22,28 @@ namespace PkLots.Application.Servicos
                 new RegistrarEntradaRequisicao(resultado.Placa!, resultado.Confianca, resultado.Metodo), ct);
         }
 
+        // Dois balcões ao mesmo tempo podem escolher a mesma vaga (ou a mesma placa): quem perde a corrida
+        // tenta de novo com a situação atualizada, e cai na próxima vaga livre ou no "já está estacionado"
+        private const int TentativasEntrada = 3;
+
         public async Task<EntradaDto> RegistrarAsync(RegistrarEntradaRequisicao requisicao, CancellationToken ct = default)
+        {
+            for (var tentativa = 1; ; tentativa++)
+            {
+                try
+                {
+                    return await TentarRegistrarAsync(requisicao, ct);
+                }
+                catch (Exception e) when (ErrosBanco.Concorrencia(e))
+                {
+                    if (tentativa == TentativasEntrada)
+                        throw new ExcecaoConflito("Muitas entradas ao mesmo tempo neste pátio. Tente novamente.");
+                    db.ChangeTracker.Clear(); // descarta o que não foi gravado e relê vagas e entradas
+                }
+            }
+        }
+
+        private async Task<EntradaDto> TentarRegistrarAsync(RegistrarEntradaRequisicao requisicao, CancellationToken ct)
         {
             var placa = ValidadorPlaca.Normalizar(requisicao.Placa)
                 ?? throw new ExcecaoNegocio("Placa inválida. Formatos aceitos: ABC1234 ou ABC1D23.");
@@ -109,15 +130,7 @@ namespace PkLots.Application.Servicos
                     ["metodo"] = requisicao.MetodoReconhecimento ?? ""
                 });
 
-            try
-            {
-                await db.SaveChangesAsync(ct);
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                throw new ExcecaoConflito("A vaga foi ocupada por outro veículo ao mesmo tempo. Tente novamente.");
-            }
-
+            await db.SaveChangesAsync(ct);
             await cache.InvalidarAsync(patioId);
 
             return new EntradaDto(entrada.Id, placa, agora, entrada.UrlFotoEntrada, entrada.MetodoReconhecimento,
