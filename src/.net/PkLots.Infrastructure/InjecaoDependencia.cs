@@ -50,6 +50,9 @@ namespace PkLots.Infrastructure
             services.AddSingleton<IGeradorToken, GeradorTokenJwt>();
             services.AddSingleton<IHashSenha, HashSenhaBcrypt>();
             services.AddSingleton<IImpressoraTickets, ImpressoraTicketsTcp>();
+            services.AddSingleton<ILeitorLogsSistema>(sp => new LeitorLogsArquivo(
+                configuracao["Logs:PastaJson"] ?? Path.Combine(Directory.GetCurrentDirectory(), LeitorLogsArquivo.PastaPadrao),
+                sp.GetRequiredService<TimeProvider>()));
 
             // Endereço público do gateway: vai no QR do ticket e nos links dos e-mails
             services.AddSingleton(new LinksPublicos(configuracao["Plataforma:UrlPublica"] ?? "http://localhost:8000"));

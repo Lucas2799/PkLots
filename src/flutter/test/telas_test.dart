@@ -225,6 +225,48 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
       return json([
         {'id': 'e1', 'nome': 'Empresa Padrão', 'documento': null, 'ativa': true, 'patios': 2, 'usuarios': 3, 'criadoEm': '2026-09-30T12:00:00Z'},
       ]);
+    case '/api/auditoria/opcoes':
+      return json({
+        'categorias': [
+          {'id': 'movimento', 'nome': 'Entradas e saídas'},
+          {'id': 'configuracao', 'nome': 'Configurações'},
+        ],
+        'patios': [{'id': 'p1', 'nome': 'Pátio Padrão'}],
+        'usuarios': [{'id': 'u2', 'nome': 'Operador Um'}],
+        'empresas': [{'id': 'e1', 'nome': 'Empresa Padrão'}],
+      });
+    case '/api/auditoria':
+      return json({
+        'itens': [
+          {
+            'id': 'a1', 'criadoEm': '2026-10-15T13:05:00Z', 'acao': 'entrada_cancelada', 'descricao': 'Entrada cancelada',
+            'categoria': 'movimento', 'situacao': 'alerta', 'placa': 'ABC1234', 'patioId': 'p1', 'patio': 'Pátio Padrão',
+            'empresa': 'Empresa Padrão', 'usuarioId': 'u2', 'usuario': 'Operador Um',
+            'detalhes': [
+              {'rotulo': 'Motivo', 'valor': 'Placa digitada errada'},
+              {'rotulo': 'Valor não cobrado', 'valor': 'R\$ 7,50'},
+            ],
+          },
+          {
+            'id': 'a2', 'criadoEm': '2026-10-15T12:00:00Z', 'acao': 'configuracao_alterada', 'descricao': 'Configuração do pátio alterada',
+            'categoria': 'configuracao', 'situacao': 'sucesso', 'placa': null, 'patioId': 'p1', 'patio': 'Pátio Padrão',
+            'empresa': 'Empresa Padrão', 'usuarioId': 'u1', 'usuario': 'Lucas Tavares',
+            'detalhes': [{'rotulo': 'Tolerância (min)', 'valor': '0 → 15'}],
+          },
+        ],
+        'total': 2, 'pagina': 1, 'tamanhoPagina': 50, 'de': '2026-10-09', 'ate': '2026-10-15',
+      });
+    case '/api/plataforma/logs':
+      return json({
+        'itens': [
+          {
+            'quando': '2026-10-15T13:20:00Z', 'nivel': 'Error', 'mensagem': 'Erro ao processar POST /api/saidas',
+            'excecao': 'System.InvalidOperationException: falhou', 'origem': 'PkLots.Api.Middleware.ManipuladorExcecoes',
+            'caminho': '/api/saidas', 'status': null,
+          },
+        ],
+        'total': 1, 'pagina': 1, 'tamanhoPagina': 100, 'de': '2026-10-15', 'ate': '2026-10-15', 'disponivel': true,
+      });
     case '/api/admin/tabela-preco':
       final semana = req.method == 'PUT'
           ? (jsonDecode(req.body) as Map<String, dynamic>)['semana']
@@ -663,6 +705,65 @@ void main() {
     expect(tabela['fimDeSemana'], isNull);
     expect(tabela['minutosTolerancia'], 15);
     expect(find.textContaining('Tabela de preço salva'), findsOneWidget);
+  });
+
+  testWidgets('admin abre a auditoria, vê quem fez, os detalhes e filtra por tipo', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Auditoria'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 registro(s), mais recentes primeiro'), findsOneWidget);
+    expect(find.text('Entrada cancelada · ABC-1234'), findsOneWidget);
+    expect(find.textContaining('Operador Um'), findsOneWidget);
+    expect(find.text('Empresa'), findsNothing); // filtro de empresa é só do superadmin
+    expect(find.text('Logs do sistema'), findsNothing);
+
+    await tester.tap(find.text('Entrada cancelada · ABC-1234'));
+    await tester.pumpAndSettle();
+    expect(find.text('Placa digitada errada'), findsOneWidget);
+    expect(find.text('R\$ 7,50'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<String?>, 'Tipo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Configurações').last);
+    await tester.pumpAndSettle();
+    final consulta = recebidas.lastWhere((r) => r.url.path == '/api/auditoria').url.queryParameters;
+    expect(consulta['categoria'], 'configuracao');
+    expect(consulta.containsKey('empresaId'), isFalse);
+  });
+
+  testWidgets('operador não vê a auditoria', (tester) async {
+    await abrirApp(tester, perfil: 'operador');
+    await entrar(tester, 'Senha@123');
+    expect(find.byTooltip('Auditoria'), findsNothing);
+    await tester.tap(find.byTooltip('Sair'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('superadmin vê a auditoria de todas as empresas e os logs do sistema', (tester) async {
+    await abrirApp(tester, perfil: 'superadmin');
+    await entrar(tester, 'Senha@123');
+
+    await tester.tap(find.byTooltip('Auditoria e logs'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ações dos usuários'), findsOneWidget);
+    expect(find.textContaining('Empresa Padrão · Pátio Padrão'), findsWidgets); // com todas as empresas, mostra de qual é
+
+    await tester.tap(find.text('Logs do sistema'));
+    await tester.pumpAndSettle();
+    expect(find.text('ERRO'), findsOneWidget);
+    expect(find.text('Erro ao processar POST /api/saidas'), findsOneWidget);
+    expect(recebidas.lastWhere((r) => r.url.path == '/api/plataforma/logs').url.queryParameters['nivel'], 'Warning');
+
+    await tester.tap(find.text('Erro ao processar POST /api/saidas'));
+    await tester.pumpAndSettle();
+    expect(find.text('System.InvalidOperationException: falhou'), findsOneWidget);
+
+    await tester.tap(find.text('Só erros'));
+    await tester.pumpAndSettle();
+    expect(recebidas.lastWhere((r) => r.url.path == '/api/plataforma/logs').url.queryParameters['nivel'], 'Error');
   });
 
   testWidgets('admin vê usuários e o próprio usuário marcado', (tester) async {

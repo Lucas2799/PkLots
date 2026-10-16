@@ -11,6 +11,7 @@ namespace PkLots.Application
             services.AddScoped<ServicoAutenticacao>();
             services.AddScoped<ReconhecedorPlaca>();
             services.AddScoped<ServicoEntrada>();
+            services.AddScoped<ServicoAuditoria>();
             services.AddScoped<ServicoSaida>();
             services.AddScoped<ServicoVagas>();
             services.AddScoped<ServicoDashboard>();

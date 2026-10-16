@@ -285,6 +285,22 @@ class ClienteApi {
   Future<RelatorioPlataforma> relatorioPlataforma(PeriodoRelatorio periodo) async => RelatorioPlataforma.deJson(
       await _get('/api/plataforma/relatorio?${Uri(queryParameters: periodo.paraConsulta()).query}'));
 
+  // ---------- Auditoria e logs do sistema ----------
+
+  Future<OpcoesAuditoria> opcoesAuditoria({String? empresaId}) async => OpcoesAuditoria.deJson(
+      await _get('/api/auditoria/opcoes${empresaId == null ? '' : '?${Uri(queryParameters: {'empresaId': empresaId}).query}'}'));
+
+  Future<PaginaAuditoria> auditoria(FiltroAuditoria filtro, {int pagina = 1}) async => PaginaAuditoria.deJson(await _get(
+      '/api/auditoria?${Uri(queryParameters: {...filtro.paraConsulta(), 'pagina': '$pagina'}).query}'));
+
+  Future<PaginaLogsSistema> logsSistema(PeriodoRelatorio periodo, {String nivel = 'Information', String? texto, int pagina = 1}) async =>
+      PaginaLogsSistema.deJson(await _get('/api/plataforma/logs?${Uri(queryParameters: {
+            ...periodo.paraConsulta(),
+            'nivel': nivel,
+            if (texto != null && texto.trim().isNotEmpty) 'texto': texto.trim(),
+            'pagina': '$pagina',
+          }).query}'));
+
   // ---------- Planos e assinatura ----------
 
   Future<List<RecursoPlano>> recursosDePlano() async => _lista(await _get('/api/plataforma/recursos'), RecursoPlano.deJson);

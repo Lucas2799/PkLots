@@ -76,9 +76,12 @@ namespace PkLots.Application.Tests
             new ContextoPatioTeste(Db, PerfilAtual is Perfis.Admin or Perfis.Operador ? Empresa.Id : null, UsuarioAtualId, PerfilAtual, PatioEscolhidoId);
 
         // DbContext como numa requisição de um usuário da empresa informada (filtros multi-tenant ativos)
-        public PkLotsDbContext DbDaEmpresa(Guid empresaId)
+        public PkLotsDbContext DbDaEmpresa(Guid empresaId, Guid? usuarioId = null)
         {
-            var usuario = new ClaimsPrincipal(new ClaimsIdentity([new Claim(PkLotsDbContext.ClaimEmpresa, empresaId.ToString())], "teste"));
+            List<Claim> claims = [new Claim(PkLotsDbContext.ClaimEmpresa, empresaId.ToString())];
+            if (usuarioId is not null)
+                claims.Add(new Claim("sub", usuarioId.Value.ToString()));
+            var usuario = new ClaimsPrincipal(new ClaimsIdentity(claims, "teste"));
             var acessor = new HttpContextAccessor { HttpContext = new DefaultHttpContext { User = usuario } };
             return new PkLotsDbContext(_opcoes, acessor);
         }

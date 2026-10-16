@@ -15,6 +15,7 @@ import '../../widgets/estados_tela.dart';
 import '../../widgets/grafico_ocupacao.dart';
 import '../../widgets/logo_pklots.dart';
 import '../admin/administracao_tela.dart';
+import '../auditoria/auditoria_tela.dart';
 import '../relatorios/relatorio_empresa_tela.dart';
 import '../troca_senha_tela.dart';
 import 'caixa_tela.dart';
@@ -63,6 +64,9 @@ class _PainelTelaState extends State<PainelTela> {
   void _abrirRelatorios() =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RelatorioEmpresaTela()));
 
+  void _abrirAuditoria() =>
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuditoriaTela(superAdmin: false)));
+
   Future<void> _abrirCaixa() async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CaixaTela()));
     await _estado.carregar(silencioso: true);
@@ -87,6 +91,7 @@ class _PainelTelaState extends State<PainelTela> {
             if (sessao.ehAdmin) opcao(Icons.settings_outlined, 'Administração', _abrirAdministracao),
             if (sessao.ehAdmin && _estado.temRecurso(Recursos.relatorios))
               opcao(Icons.insights_outlined, 'Relatórios', _abrirRelatorios),
+            if (sessao.ehAdmin) opcao(Icons.fact_check_outlined, 'Auditoria', _abrirAuditoria),
             opcao(Icons.manage_search, 'Histórico por placa', () => mostrarBuscaPlaca(context)),
             opcao(Icons.key_outlined, 'Alterar senha', _abrirTrocaSenha),
             const Divider(height: 1),
@@ -126,6 +131,8 @@ class _PainelTelaState extends State<PainelTela> {
                   ),
                 if (sessao.ehAdmin && estado.temRecurso(Recursos.relatorios))
                   IconButton(tooltip: 'Relatórios', icon: const Icon(Icons.insights_outlined), onPressed: _abrirRelatorios),
+                if (sessao.ehAdmin)
+                  IconButton(tooltip: 'Auditoria', icon: const Icon(Icons.fact_check_outlined), onPressed: _abrirAuditoria),
                 IconButton(
                   tooltip: estado.caixa == null ? 'Caixa (fechado)' : 'Caixa (aberto)',
                   icon: _IconeCaixa(aberto: estado.caixa != null),

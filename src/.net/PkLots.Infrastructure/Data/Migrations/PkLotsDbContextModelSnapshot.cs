@@ -498,7 +498,12 @@ namespace PkLots.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("UsuarioId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CriadoEm");
 
                     b.HasIndex("PatioId", "CriadoEm");
 

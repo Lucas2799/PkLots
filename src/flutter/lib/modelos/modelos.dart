@@ -1742,3 +1742,174 @@ class SimulacaoTarifa {
         detalhamento: json['detalhamento'] as String?,
       );
 }
+
+// ---------- Auditoria e logs do sistema ----------
+
+class OpcaoFiltro {
+  final String id;
+  final String nome;
+
+  OpcaoFiltro({required this.id, required this.nome});
+
+  factory OpcaoFiltro.deJson(Map<String, dynamic> json) => OpcaoFiltro(id: json['id'] as String, nome: json['nome'] as String);
+}
+
+class OpcoesAuditoria {
+  final List<OpcaoFiltro> categorias;
+  final List<OpcaoFiltro> patios;
+  final List<OpcaoFiltro> usuarios;
+  final List<OpcaoFiltro> empresas;
+
+  OpcoesAuditoria({required this.categorias, required this.patios, required this.usuarios, required this.empresas});
+
+  static List<OpcaoFiltro> _opcoes(dynamic lista) =>
+      [for (final o in (lista as List? ?? const [])) OpcaoFiltro.deJson(o as Map<String, dynamic>)];
+
+  factory OpcoesAuditoria.deJson(Map<String, dynamic> json) => OpcoesAuditoria(
+        categorias: _opcoes(json['categorias']),
+        patios: _opcoes(json['patios']),
+        usuarios: _opcoes(json['usuarios']),
+        empresas: _opcoes(json['empresas']),
+      );
+}
+
+class FiltroAuditoria {
+  final PeriodoRelatorio periodo;
+  final String? empresaId;
+  final String? patioId;
+  final String? categoria;
+  final String? situacao;
+  final String? placa;
+  final String? usuarioId;
+
+  const FiltroAuditoria(
+      {required this.periodo, this.empresaId, this.patioId, this.categoria, this.situacao, this.placa, this.usuarioId});
+
+  Map<String, String> paraConsulta() => {
+        ...periodo.paraConsulta(),
+        'empresaId': ?empresaId,
+        'patioId': ?patioId,
+        'categoria': ?categoria,
+        'situacao': ?situacao,
+        if (placa != null && placa!.trim().isNotEmpty) 'placa': placa!.trim(),
+        'usuarioId': ?usuarioId,
+      };
+}
+
+class DetalheAuditoria {
+  final String rotulo;
+  final String valor;
+
+  DetalheAuditoria({required this.rotulo, required this.valor});
+
+  factory DetalheAuditoria.deJson(Map<String, dynamic> json) =>
+      DetalheAuditoria(rotulo: json['rotulo'] as String, valor: json['valor'] as String);
+}
+
+class RegistroAuditoria {
+  static const sucesso = 'sucesso';
+  static const alerta = 'alerta';
+  static const erro = 'erro';
+
+  final String id;
+  final DateTime criadoEm;
+  final String acao;
+  final String descricao;
+  final String categoria;
+  final String situacao;
+  final String? placa;
+  final String patio;
+  final String? empresa;
+  final String usuario;
+  final List<DetalheAuditoria> detalhes;
+
+  RegistroAuditoria({
+    required this.id,
+    required this.criadoEm,
+    required this.acao,
+    required this.descricao,
+    required this.categoria,
+    required this.situacao,
+    this.placa,
+    required this.patio,
+    this.empresa,
+    required this.usuario,
+    required this.detalhes,
+  });
+
+  factory RegistroAuditoria.deJson(Map<String, dynamic> json) => RegistroAuditoria(
+        id: json['id'] as String,
+        criadoEm: _data(json['criadoEm']),
+        acao: json['acao'] as String,
+        descricao: json['descricao'] as String,
+        categoria: json['categoria'] as String,
+        situacao: json['situacao'] as String,
+        placa: json['placa'] as String?,
+        patio: json['patio'] as String,
+        empresa: json['empresa'] as String?,
+        usuario: json['usuario'] as String,
+        detalhes: [for (final d in (json['detalhes'] as List? ?? const [])) DetalheAuditoria.deJson(d as Map<String, dynamic>)],
+      );
+}
+
+class PaginaAuditoria {
+  final List<RegistroAuditoria> itens;
+  final int total;
+  final int pagina;
+  final int tamanhoPagina;
+
+  PaginaAuditoria({required this.itens, required this.total, required this.pagina, required this.tamanhoPagina});
+
+  bool get temMais => pagina * tamanhoPagina < total;
+
+  factory PaginaAuditoria.deJson(Map<String, dynamic> json) => PaginaAuditoria(
+        itens: [for (final i in json['itens'] as List) RegistroAuditoria.deJson(i as Map<String, dynamic>)],
+        total: json['total'] as int,
+        pagina: json['pagina'] as int,
+        tamanhoPagina: json['tamanhoPagina'] as int,
+      );
+}
+
+class RegistroLogSistema {
+  final DateTime quando;
+  final String nivel; // Information, Warning, Error, Fatal
+  final String mensagem;
+  final String? excecao;
+  final String? origem;
+  final String? caminho;
+  final int? status;
+
+  RegistroLogSistema(
+      {required this.quando, required this.nivel, required this.mensagem, this.excecao, this.origem, this.caminho, this.status});
+
+  factory RegistroLogSistema.deJson(Map<String, dynamic> json) => RegistroLogSistema(
+        quando: _data(json['quando']),
+        nivel: json['nivel'] as String,
+        mensagem: json['mensagem'] as String,
+        excecao: json['excecao'] as String?,
+        origem: json['origem'] as String?,
+        caminho: json['caminho'] as String?,
+        status: json['status'] as int?,
+      );
+}
+
+class PaginaLogsSistema {
+  final List<RegistroLogSistema> itens;
+  final int total;
+  final int pagina;
+  final int tamanhoPagina;
+  final bool disponivel;
+
+  PaginaLogsSistema(
+      {required this.itens, required this.total, required this.pagina, required this.tamanhoPagina, required this.disponivel});
+
+  bool get temMais => pagina * tamanhoPagina < total;
+
+  factory PaginaLogsSistema.deJson(Map<String, dynamic> json) => PaginaLogsSistema(
+        itens: [for (final i in json['itens'] as List) RegistroLogSistema.deJson(i as Map<String, dynamic>)],
+        total: json['total'] as int,
+        pagina: json['pagina'] as int,
+        tamanhoPagina: json['tamanhoPagina'] as int,
+        disponivel: json['disponivel'] as bool,
+      );
+}

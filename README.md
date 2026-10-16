@@ -43,6 +43,7 @@ O fornecedor do sistema (você) opera a plataforma e **aluga** o PkLots: cada **
 | **Painel** | Resumo do dia, gráfico de ocupação 24h, mapa de vagas (com manutenção), veículos estacionados e histórico por placa. |
 | **Impressão** | Ticket de entrada e recibo de saída em impressora térmica de rede (ESC/POS) ou em PDF pelo navegador. |
 | **Relatórios** | Para o dono: receita (avulsos + mensalidades), formas de pagamento, movimento por dia e por hora, comparativo de pátios, desempenho e diferença de caixa por operador, cancelamentos e mensalistas, com exportação em PDF. |
+| **Auditoria** | Quem fez o quê, quando e em qual pátio, com filtros e o valor antes → depois nas configurações. O admin vê a própria empresa; o superadmin vê todas e também os logs técnicos da API. |
 | **Administração** | Pátios, preço e tolerância, quantidade de vagas, usuários (convidados por e-mail), pagamentos (chave PIX, formas aceitas), impressora e a **assinatura** do PkLots (plano, uso, faturas). |
 | **App do mensalista** | O mensalista recebe um convite por e-mail do pátio e acompanha os contratos dele: validade, veículos estacionados e histórico (só das placas do contrato, naquele pátio). Não há cadastro público. |
 | **Plataforma** | O superadmin cria e ativa/desativa as empresas clientes, define planos, assinaturas e faturas, e vê o relatório de uso de cada empresa. |
@@ -51,8 +52,8 @@ O fornecedor do sistema (você) opera a plataforma e **aluga** o PkLots: cada **
 
 | Perfil | Quem é | O que acessa |
 |---|---|---|
-| `superadmin` | Fornecedor do sistema | Tela da plataforma: empresas, planos, faturas e relatório |
-| `admin` | Dono/gerente de uma empresa | Todos os pátios da empresa, painel, caixa, mensalistas e **Administração** |
+| `superadmin` | Fornecedor do sistema | Tela da plataforma: empresas, planos, faturas, relatório, **auditoria de todas as empresas e logs do sistema** |
+| `admin` | Dono/gerente de uma empresa | Todos os pátios da empresa, painel, caixa, mensalistas, **Administração** e **Auditoria** da empresa |
 | `operador` | Funcionário do pátio | Apenas os pátios a que foi vinculado: painel, entrada/saída, caixa e mensalistas |
 | `motorista` | Mensalista com convite aceito | App do mensalista (só os próprios contratos) |
 
@@ -116,6 +117,18 @@ Microsserviço Python com [fast-alpr](https://github.com/ankandrew/fast-alpr): d
 ### E-mails
 
 Convites, redefinição de senha e faturas vão para uma fila no banco (`EmailsPendentes`), gravada na mesma transação da regra de negócio, e são enviados em segundo plano por SMTP com novas tentativas. Falha no SMTP nunca desfaz um cadastro. Os links dos e-mails e do QR usam o endereço público `URL_PUBLICA`.
+
+### Auditoria e logs
+
+- **Auditoria** (admin e superadmin; ícone de checklist no painel ou na plataforma): tudo o que acontece fica registrado com
+  data, pátio e **quem fez** (o usuário logado, gravado automaticamente). Entradas, recusas e cancelamentos, saídas e pagamentos,
+  caixa, mensalistas, configurações (com o valor antes → depois), usuários e convites, assinatura e faturas. Filtros por período,
+  pátio, tipo, situação, usuário e placa. O admin vê só a própria empresa; o superadmin vê todas ou uma escolhida.
+- **Logs do sistema** (só superadmin, aba da mesma tela): o log técnico da API, com requisições, avisos e erros (com o detalhe
+  da falha), para investigar um problema relatado por um cliente. Até 7 dias por consulta, guardado por 31 dias.
+- O log técnico fica fora do alcance do admin de propósito: ele mistura dados de todas as empresas e detalhes internos.
+- Gateway, LPR e PostgreSQL não entram na tela (o container da API não tem acesso a eles). Falhas de leitura de placa e de
+  impressão já aparecem na auditoria; o resto, pelo `podman logs` (veja *Operação do dia a dia*).
 
 ### Segurança
 
@@ -323,7 +336,7 @@ Os dados ficam nos volumes `postgres_data`, `redis_data` (cache) e `api_logs`.
 | Tarefa | Comando |
 |---|---|
 | Ver situação dos serviços | `podman ps` |
-| Logs da API | `podman logs -f pklots-dotnet-api` (também em arquivo no volume `api_logs`) |
+| Logs da API | Tela **Auditoria → Logs do sistema** (superadmin), `podman logs -f pklots-dotnet-api` ou os arquivos do volume `api_logs` (texto e `json/`) |
 | Logs do gateway / LPR | `podman logs -f pklots-nginx` · `podman logs -f pklots-python-lpr` |
 | Reiniciar tudo | `podman compose -f docker/podman-compose.yml restart` |
 | Recuperar acesso do superadmin | `podman exec -it pklots-dotnet-api ./PkLots.Api criar-superadmin --email ...` |

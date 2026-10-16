@@ -11,6 +11,7 @@ import '../../util/formatadores.dart';
 import '../../util/validadores.dart';
 import '../../widgets/estados_tela.dart';
 import '../../widgets/logo_pklots.dart';
+import '../auditoria/auditoria_tela.dart';
 import '../relatorios/relatorio_plataforma_tela.dart';
 import 'assinatura_dialogo.dart';
 import 'faturas_tela.dart';
@@ -125,6 +126,11 @@ class _PlataformaTelaState extends State<PlataformaTela> {
             tooltip: 'Relatórios',
             icon: const Icon(Icons.insights_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RelatorioPlataformaTela())),
+          ),
+          IconButton(
+            tooltip: 'Auditoria e logs',
+            icon: const Icon(Icons.fact_check_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AuditoriaTela(superAdmin: true))),
           ),
           IconButton(tooltip: 'Atualizar', icon: const Icon(Icons.refresh), onPressed: _carregar),
           IconButton(

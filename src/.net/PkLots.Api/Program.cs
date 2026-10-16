@@ -26,8 +26,12 @@ Log.Logger = new LoggerConfiguration()
     // Exceções já tratadas pelo ManipuladorExcecoes, que registra ele mesmo as falhas reais
     .MinimumLevel.Override("Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware", Serilog.Events.LogEventLevel.Fatal)
     .Enrich.FromLogContext()
+    // O healthcheck roda a cada 20 s: só polui o log
+    .Filter.ByExcluding(e => e.Properties.TryGetValue("RequestPath", out var caminho) && caminho.ToString() == "\"/health\"")
     .WriteTo.Console()
     .WriteTo.File("logs/pklots-.txt", rollingInterval: RollingInterval.Day)
+    // Mesmo conteúdo em JSON, lido pela tela "Logs do sistema" do superadmin (31 dias, como o texto)
+    .WriteTo.File(new Serilog.Formatting.Compact.RenderedCompactJsonFormatter(), "logs/json/pklots-.json", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
@@ -212,6 +216,7 @@ app.MapearMensalistas();
 app.MapearCaixa();
 app.MapearPublicos();
 app.MapearRelatorios();
+app.MapearAuditoria();
 app.MapearPlanos();
 app.MapearFaturas();
 

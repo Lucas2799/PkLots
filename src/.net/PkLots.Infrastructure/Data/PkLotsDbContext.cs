@@ -21,6 +21,39 @@ namespace PkLots.Infrastructure.Data
 
         public const string ClaimEmpresa = "empresa_id";
 
+        // Usuário autenticado da requisição (claim sub do JWT)
+        private Guid? UsuarioLogadoId
+        {
+            get
+            {
+                var usuario = _httpContext?.HttpContext?.User;
+                var valor = usuario?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? usuario?.FindFirst("sub")?.Value;
+                return Guid.TryParse(valor, out var id) ? id : null;
+            }
+        }
+
+        // Toda auditoria registra quem fez, sem cada serviço precisar informar
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            CarimbarAuditoria();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            CarimbarAuditoria();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void CarimbarAuditoria()
+        {
+            if (UsuarioLogadoId is not { } usuarioId)
+                return;
+            foreach (var registro in ChangeTracker.Entries<LogAuditoria>())
+                if (registro.State == EntityState.Added && registro.Entity.UsuarioId is null)
+                    registro.Entity.UsuarioId = usuarioId;
+        }
+
         public DbSet<Empresa> Empresas { get; set; }
         public DbSet<Patio> Patios { get; set; }
         public DbSet<Usuario> Usuarios { get; set; }
@@ -269,6 +302,8 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<LogAuditoria>()
                 .HasIndex(l => new { l.PatioId, l.CriadoEm });
+            modelBuilder.Entity<LogAuditoria>()
+                .HasIndex(l => l.CriadoEm); // tela de auditoria da plataforma (todas as empresas)
 
             // Concorrência otimista na alocação de vagas (coluna de sistema xmin)
             modelBuilder.Entity<Vaga>()

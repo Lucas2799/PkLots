@@ -4,6 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Como a API publicada (docker/Dockerfile.api): sem dados de cultura -->
+    <InvariantGlobalization>true</InvariantGlobalization>
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>

@@ -10,6 +10,7 @@ namespace PkLots.Api.Endpoints
         public const string Admin = "admin";
         public const string Gestao = "gestao"; // admin e operador
         public const string Motorista = "motorista";
+        public const string Auditoria = "auditoria"; // admin (a própria empresa) e superadmin (todas)
 
         public static void AdicionarPoliticas(Microsoft.AspNetCore.Authorization.AuthorizationOptions opcoes)
         {
@@ -17,6 +18,7 @@ namespace PkLots.Api.Endpoints
             opcoes.AddPolicy(Admin, p => p.RequireRole(Perfis.Admin));
             opcoes.AddPolicy(Gestao, p => p.RequireRole(Perfis.Admin, Perfis.Operador));
             opcoes.AddPolicy(Motorista, p => p.RequireRole(Perfis.Motorista));
+            opcoes.AddPolicy(Auditoria, p => p.RequireRole(Perfis.Admin, Perfis.SuperAdmin));
         }
 
         public static Guid ObterUsuarioId(this ClaimsPrincipal usuario)
