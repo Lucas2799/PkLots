@@ -32,6 +32,23 @@ void main() {
     });
   }
 
+  test('ticket com tabela de preço por faixas', () async {
+    final base = ticket(58);
+    final comTabela = TicketEntrada(
+      entradaId: base.entradaId,
+      codigo: base.codigo,
+      nomePatio: base.nomePatio,
+      placa: base.placa,
+      dataHoraEntrada: base.dataHoraEntrada,
+      valorHora: base.valorHora,
+      minutosTolerancia: base.minutosTolerancia,
+      larguraPapelMm: 58,
+      conteudoQrCode: base.conteudoQrCode,
+      descricaoPreco: '1ª hora R\$ 10,00 · cada 30 min adicionais ou fração R\$ 3,00 · diária máx. R\$ 50,00',
+    );
+    expect(ehPdf(await DocumentosPdf.ticketEntrada(comTabela)), isTrue);
+  });
+
   test('gera o recibo de saída em PDF (inclusive isento)', () async {
     final saida = Saida(
       id: '0f1e2d3c-0000',

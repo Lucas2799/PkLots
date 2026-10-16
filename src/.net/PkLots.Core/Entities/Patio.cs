@@ -11,6 +11,10 @@ namespace PkLots.Core.Entities
         public decimal ValorHora { get; set; } = 15.00m;
         public int MinutosTolerancia { get; set; } = 0; // saída dentro da tolerância não paga
 
+        // Tabela de preço (JSON): primeiro período + frações, diária máxima, pernoite, fim de semana.
+        // Nula: cobrança por hora com o ValorHora acima (o valor/hora da semana fica sempre em ValorHora)
+        public string? TabelaPrecoJson { get; set; }
+
         // Mensalistas
         public decimal ValorMensalidade { get; set; } = 0m;
         public int VagasReservadasMensalistas { get; set; } = 0; // não ficam disponíveis para avulsos

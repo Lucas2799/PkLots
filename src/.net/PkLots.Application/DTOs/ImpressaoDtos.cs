@@ -18,5 +18,6 @@ namespace PkLots.Application.DTOs
         decimal ValorHora,
         int MinutosTolerancia,
         int LarguraPapelMm,
-        string ConteudoQrCode);
+        string ConteudoQrCode,
+        string? DescricaoPreco = null); // tabela de preço do pátio, em texto
 }

@@ -37,7 +37,9 @@ namespace PkLots.Application.Impressao
              .Linha(new string('-', colunas))
              .Bytes(AlinharEsquerda)
              .Linha(Coluna("Entrada", entradaLocal.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture), colunas))
-             .Linha(Coluna("Valor por hora", Moeda(ticket.ValorHora), colunas));
+             .Linha("Preco:");
+            foreach (var linha in Quebrar(ticket.DescricaoPreco ?? $"{Moeda(ticket.ValorHora)} por hora", colunas))
+                b.Linha(linha);
             if (ticket.MinutosTolerancia > 0)
                 b.Linha(Coluna("Tolerancia gratuita", $"{ticket.MinutosTolerancia} min", colunas));
             b.Linha(new string('-', colunas))
@@ -67,6 +69,21 @@ namespace PkLots.Application.Impressao
                 .Gerar();
         }
 
+        // Quebra o texto em linhas do papel, sem cortar palavras (separa primeiro pelos " · ")
+        public static IEnumerable<string> Quebrar(string texto, int colunas)
+        {
+            var atual = "";
+            foreach (var palavra in texto.Replace(" · ", " | ").Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var p = palavra == "|" ? "·" : palavra;
+                if (p == "·" && atual.Length > 0) { yield return atual; atual = ""; continue; }
+                if (atual.Length > 0 && atual.Length + 1 + p.Length > colunas) { yield return atual; atual = ""; }
+                atual = atual.Length == 0 ? p : $"{atual} {p}";
+            }
+            if (atual.Length > 0)
+                yield return atual;
+        }
+
         // "ABC1234" → "ABC-1234"; Mercosul fica como está
         public static string FormatarPlaca(string placa) =>
             placa.Length == 7 && char.IsDigit(placa[4]) ? $"{placa[..3]}-{placa[3..]}" : placa;
@@ -83,8 +100,8 @@ namespace PkLots.Application.Impressao
 
         public static string RemoverAcentos(string texto)
         {
-            const string com = "áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇÑ";
-            const string sem = "aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCN";
+            const string com = "áàâãäéèêëíìîïóòôõöúùûüçñÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇѪº×·";
+            const string sem = "aaaaaeeeeiiiiooooouuuucnAAAAAEEEEIIIIOOOOOUUUUCNaox-";
             var resultado = new StringBuilder(texto.Length);
             foreach (var c in texto)
             {

@@ -176,7 +176,7 @@ namespace PkLots.Application.Servicos
                 vaga.AtualizadoEm = agora;
             }
 
-            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, entrada.Patio.ValorHora, entrada.Patio.MinutosTolerancia);
+            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, TabelaPreco.Do(entrada.Patio), entrada.Patio.MinutosTolerancia);
             Auditoria.Registrar(db, patioId, AcoesAuditoria.EntradaCancelada, SituacaoAuditoria.Alerta, entrada.Placa, agora,
                 new()
                 {

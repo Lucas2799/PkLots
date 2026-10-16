@@ -11,6 +11,18 @@ namespace PkLots.Api.Endpoints
             var grupo = app.MapGroup("/api/admin").WithTags("Administração").RequireAuthorization(Autorizacao.Admin)
                 .AddEndpointFilter(FiltroBloqueioCobranca.SomenteConsultas);
 
+            grupo.MapGet("/tabela-preco", async (ServicoTabelaPreco servico, CancellationToken ct) =>
+                Results.Ok(await servico.ObterAsync(ct)))
+                .WithSummary("Tabela de preço do pátio: por hora ou primeiro período + frações, diária máxima, pernoite e fim de semana");
+
+            grupo.MapPut("/tabela-preco", async (SalvarTabelaPrecoRequisicao requisicao, ClaimsPrincipal usuario, ServicoTabelaPreco servico, CancellationToken ct) =>
+                Results.Ok(await servico.SalvarAsync(usuario.ObterUsuarioId(), requisicao, ct)))
+                .WithSummary("Salva a tabela de preço (vale para as próximas cobranças)");
+
+            grupo.MapPost("/tabela-preco/simular", async (SimularTarifaRequisicao requisicao, ServicoTabelaPreco servico, CancellationToken ct) =>
+                Results.Ok(await servico.SimularAsync(requisicao, ct)))
+                .WithSummary("Calcula uma estadia com a tabela informada, sem salvar");
+
             grupo.MapGet("/configuracao", async (ServicoAdministracao servico, CancellationToken ct) =>
                 Results.Ok(await servico.ObterConfiguracaoAsync(ct)))
                 .WithSummary("Nome, valor/hora, tolerância e quantidade de vagas do pátio");

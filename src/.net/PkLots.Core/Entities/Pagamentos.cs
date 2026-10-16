@@ -67,6 +67,7 @@ namespace PkLots.Core.Entities
         public string? Origem { get; set; } // placa, ticket, imagem
         public string? Mensalista { get; set; } // nome, quando a placa é de mensalista
         public string? Aviso { get; set; }      // ex.: mensalidade vencida, cobrado como avulso
+        public string? Detalhamento { get; set; } // como o valor foi calculado (ex.: 1ª hora R$ 10,00 + 2 × 30 min de R$ 3,00)
 
         public Patio Patio { get; set; } = null!;
         public EntradaVeiculo Entrada { get; set; } = null!;

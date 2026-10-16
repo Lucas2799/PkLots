@@ -36,7 +36,7 @@ O fornecedor do sistema (você) opera a plataforma e **aluga** o PkLots: cada **
 |---|---|
 | **Entrada** | Pela placa digitada ou pela foto da placa (leitura automática, LPR). Aloca a vaga livre e gera o ticket com código e QR code. Entrada registrada por engano pode ser cancelada com motivo (operador até 10 min, admin a qualquer momento). |
 | **Saída** | Pela placa, pela foto ou lendo o ticket (leitor USB ou câmera do celular). Calcula o valor e só libera o veículo após o pagamento. |
-| **Cobrança** | Valor por hora proporcional ao minuto e tolerância inicial gratuita. Dinheiro (com troco), PIX (QR "copia e cola" gerado pelo próprio sistema) ou cartão (maquininha do pátio). |
+| **Cobrança** | Tabela de preço por pátio (por hora, 1º período + frações, diária máxima, pernoite, fim de semana) e tolerância inicial gratuita. Dinheiro (com troco), PIX (QR "copia e cola" gerado pelo próprio sistema) ou cartão (maquininha do pátio). |
 | **Caixa** | Caixa por operador: abertura com troco inicial, sangria, suprimento e fechamento com conferência (esperado × contado). |
 | **Link do ticket** | O QR do ticket abre uma página pública leve (`/t/...`) com tempo e valor parcial da estadia. O cliente avulso não precisa de app nem de cadastro; o link expira 24h após a saída. |
 | **Mensalistas** | Mensalidade por pátio, várias placas por mensalista, registro de pagamentos (estende a validade) e vagas reservadas. Mensalista em dia entra e sai sem cobrança; vencido é cobrado como avulso. |
@@ -84,10 +84,20 @@ Operador digita a placa / tira foto / ─▶ API valida a placa (Mercosul ou ant
 
 Saídas com valor zero (dentro da tolerância ou mensalista em dia) são liberadas sem pagamento. **Não existe saída de veículo pagante sem pagamento registrado.**
 
-### Cálculo do valor
+### Cálculo do valor (tabela de preço)
 
-- A duração é arredondada para cima ao minuto e cobrada proporcionalmente ao valor/hora do pátio. Exemplo: 4h 15m × R$ 15/h = R$ 63,75.
-- **Tolerância**: quem fica até N minutos não paga. Passou disso, paga o tempo todo.
+Cada pátio tem a sua tabela, editada pelo dono em *Administração → Preço → Editar tabela de preço*, com simulação antes de salvar:
+
+| Regra | Como funciona |
+|---|---|
+| **Por hora** | Proporcional ao minuto (arredondado para cima). Ex.: 4h 15m × R$ 15/h = R$ 63,75 |
+| **1º período + frações** | Ex.: 1ª hora R$ 10,00 e cada 30 min ou fração R$ 3,00 (fração iniciada é cobrada inteira) |
+| **Diária máxima** | Teto a cada 24h iniciadas. Ex.: diária R$ 50 → 25h custam no máximo R$ 100 |
+| **Pernoite** | Janela noturna (ex.: 20h às 8h): cada noite custa no máximo o valor do pernoite; o restante segue a tabela |
+| **Fim de semana** | Regras próprias para quem entra no sábado ou domingo (feriados ainda não são tratados) |
+| **Tolerância** | Quem fica até N minutos não paga. Passou disso, paga o tempo todo |
+
+A cobrança da saída mostra como o valor foi calculado (ex.: "1ª hora R$ 10,00 + 2 × 30 min de R$ 3,00"), e o ticket e a página do QR mostram a tabela do pátio. Mudanças valem para as próximas saídas.
 
 ### Pagamentos
 
@@ -263,7 +273,7 @@ O comando mostra uma **senha temporária**. No primeiro login o sistema exige a 
 3. Crie a **empresa**, escolhendo o plano, o primeiro pátio e o **admin** dela. Ajuste vencimento, preço negociado ou período de teste no ícone de assinatura da empresa.
 4. O admin recebe um **convite por e-mail**, cria a senha e configura em **Administração** (ícone de engrenagem):
    - **Pátios**: nome, endereço, vagas e mensalidade.
-   - **Preço**: valor/hora e tolerância.
+   - **Preço**: tabela de preço (com a tolerância, editadas e simuladas juntas) e mensalistas.
    - **Usuários**: operadores, vinculados aos pátios (cada um recebe o convite por e-mail).
    - **Pagamentos**: chave PIX e formas aceitas.
    - **Impressão**: impressora de rede (IP/porta, largura do papel) ou PDF pelo navegador.

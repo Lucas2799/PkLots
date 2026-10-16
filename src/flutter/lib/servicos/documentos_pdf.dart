@@ -63,7 +63,13 @@ class DocumentosPdf {
           ),
         pw.Divider(thickness: 0.5),
         _linha('Entrada', Formatadores.dataHoraCompleta(ticket.dataHoraEntrada), escala),
-        _linha('Valor por hora', Formatadores.moeda(ticket.valorHora), escala),
+        if (ticket.descricaoPreco == null)
+          _linha('Valor por hora', Formatadores.moeda(ticket.valorHora), escala)
+        else ...[
+          pw.Text('Preço', style: pw.TextStyle(fontSize: 8 * escala, color: _cinza)),
+          for (final parte in ticket.descricaoPreco!.split(' · '))
+            pw.Text(parte, style: pw.TextStyle(fontSize: 8 * escala)),
+        ],
         if (ticket.minutosTolerancia > 0) _linha('Tolerância gratuita', '${ticket.minutosTolerancia} min', escala),
         pw.Divider(thickness: 0.5),
         pw.Center(

@@ -28,6 +28,7 @@ namespace PkLots.Application.Servicos
                     NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null,
                     e.Patio.Nome,
                     e.Patio.ValorHora,
+                    e.Patio.TabelaPrecoJson,
                     e.Patio.MinutosTolerancia,
                     Saida = db.SaidasVeiculos
                         .Where(s => s.EntradaVeiculoId == e.Id)
@@ -43,31 +44,32 @@ namespace PkLots.Application.Servicos
             if (encerradaEm is { } fim && agora - fim > ValidadeAposSaida)
                 throw new ExcecaoNaoEncontrado(NaoEncontrado);
 
+            var tabela = TabelaPreco.De(dados.TabelaPrecoJson, dados.ValorHora);
             var codigo = CodigoTicket.Formatar(entrada.CodigoTicket ?? ServicoImpressao.Codigo(entrada.Id));
 
             if (entrada.Situacao == SituacaoEntrada.Ativa)
             {
                 // Mesma regra da cobrança na saída: mensalista que entrou em dia (ou está em dia agora) não paga
-                var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, dados.ValorHora, dados.MinutosTolerancia);
+                var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, tabela, dados.MinutosTolerancia);
                 var mensalista = await ServicoMensalistas.BuscarPorPlacaAsync(db, entrada.PatioId, entrada.Placa, ct);
                 var coberto = entrada.MensalistaId is not null
                     || (mensalista is not null && ServicoMensalistas.EmDia(mensalista, ServicoMensalistas.Hoje(agora)));
 
                 return new EstadiaPublicaDto(dados.Nome, entrada.Placa, dados.NumeroVaga, codigo, entrada.DataHoraEntrada,
                     SituacaoEntrada.Ativa, tarifa.DuracaoFormatada, coberto ? 0m : tarifa.ValorTotal, dados.ValorHora,
-                    dados.MinutosTolerancia, coberto, null, null, agora);
+                    dados.MinutosTolerancia, coberto, null, null, agora, tabela.Descricao());
             }
 
             if (dados.Saida is { } saida)
                 return new EstadiaPublicaDto(dados.Nome, entrada.Placa, dados.NumeroVaga, codigo, entrada.DataHoraEntrada,
                     SituacaoEntrada.Concluida, saida.DuracaoFormatada, saida.ValorTotal, dados.ValorHora, dados.MinutosTolerancia,
-                    saida.SituacaoPagamento == SituacaoPagamento.Mensalista, saida.DataHoraSaida, saida.FormaPagamento, agora);
+                    saida.SituacaoPagamento == SituacaoPagamento.Mensalista, saida.DataHoraSaida, saida.FormaPagamento, agora, tabela.Descricao());
 
             // Cancelada: não mostra o motivo (é anotação interna do pátio)
             var duracao = CalculadoraTarifa.FormatarDuracao((entrada.CanceladaEm ?? agora) - entrada.DataHoraEntrada);
             return new EstadiaPublicaDto(dados.Nome, entrada.Placa, dados.NumeroVaga, codigo, entrada.DataHoraEntrada,
                 SituacaoEntrada.Cancelada, duracao, 0m, dados.ValorHora, dados.MinutosTolerancia, false,
-                entrada.CanceladaEm, null, agora);
+                entrada.CanceladaEm, null, agora, tabela.Descricao());
         }
     }
 }

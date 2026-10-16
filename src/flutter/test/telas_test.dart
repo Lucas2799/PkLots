@@ -75,7 +75,7 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
         'id': 'c1', 'entradaId': 'e1', 'placa': 'ABC1234', 'numeroVaga': 'A1', 'nomePatio': 'Pátio Padrão',
         'dataHoraEntrada': '2026-09-30T13:30:45Z', 'calculadoEm': '2026-09-30T17:45:30Z', 'expiraEm': '2026-09-30T18:00:30Z',
         'duracaoFormatada': '4h 15m', 'valorHora': 15.0, 'valor': 63.75, 'situacaoPagamento': 'calculado',
-        'requerPagamento': true, 'formasAceitas': ['dinheiro', 'pix', 'cartao'],
+        'requerPagamento': true, 'formasAceitas': ['dinheiro', 'pix', 'cartao'], 'detalhamento': '4h 15m × R\$ 15,00/h',
         'pixCopiaECola': '00020126360014br.gov.bcb.pix0114+55119999988885204000053039865405' '63.755802BR5909PATIO SA6009SAO PAULO62070503***6304ABCD',
       });
     case '/api/saidas/cobranca/c1/confirmar':
@@ -225,6 +225,16 @@ Future<http.Response> servidor(http.Request req, {required String perfil}) async
       return json([
         {'id': 'e1', 'nome': 'Empresa Padrão', 'documento': null, 'ativa': true, 'patios': 2, 'usuarios': 3, 'criadoEm': '2026-09-30T12:00:00Z'},
       ]);
+    case '/api/admin/tabela-preco':
+      final semana = req.method == 'PUT'
+          ? (jsonDecode(req.body) as Map<String, dynamic>)['semana']
+          : {'modo': 'hora', 'valorHora': 15.0, 'primeiroPeriodoMinutos': 60, 'valorPrimeiroPeriodo': 0.0, 'fracaoMinutos': 60,
+              'valorFracao': 0.0, 'diariaMaxima': null, 'valorPernoite': null, 'inicioPernoite': 20, 'fimPernoite': 8};
+      final tolerancia = req.method == 'PUT' ? (jsonDecode(req.body) as Map<String, dynamic>)['minutosTolerancia'] : 0;
+      return json({'semana': semana, 'fimDeSemana': null, 'minutosTolerancia': tolerancia, 'descricao': 'R\$ 15,00 por hora'});
+    case '/api/admin/tabela-preco/simular':
+      return json({'valor': 13.0, 'duracao': '1h 30m', 'isento': false, 'fimDeSemana': false,
+        'detalhamento': '1ª hora R\$ 10,00 + 1 × 30 min de R\$ 3,00'});
     case '/api/admin/configuracao':
       return json({
         'nome': 'Pátio Padrão',
@@ -582,7 +592,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets('admin abre a administração, simula e salva a tolerância', (tester) async {
+  testWidgets('admin vê o resumo da tabela de preço e salva o pátio', (tester) async {
     await abrirApp(tester, perfil: 'admin');
     await entrar(tester, 'Senha@123');
 
@@ -593,13 +603,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Pátio e preço'), findsOneWidget);
-    expect(find.widgetWithText(TextFormField, '15,00'), findsOneWidget);
-
-    // Sem tolerância, 10 minutos custam R$ 2,50; com 15 min de tolerância, ficam grátis
-    expect(find.text('R\$\u00a02,50'), findsOneWidget);
-    await tester.tap(find.text('15 min'));
-    await tester.pumpAndSettle();
-    expect(find.text('Grátis'), findsNWidgets(1)); // só "Ficou 10 min"; 16 min já é cobrado
+    expect(find.text('R\$ 15,00 por hora'), findsOneWidget);
+    expect(find.text('Tolerância gratuita: nenhuma'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Tolerância'), findsNothing); // editada na tabela de preço
 
     await tester.ensureVisible(find.text('Salvar'));
     await tester.tap(find.text('Salvar'));
@@ -607,9 +613,56 @@ void main() {
 
     final put = enviadas.singleWhere((r) => r.url.path == '/api/admin/configuracao');
     expect(put.method, 'PUT');
-    expect(put.body, contains('"minutosTolerancia":15'));
+    expect(put.body, contains('"minutosTolerancia":0')); // tolerância e valor/hora seguem os do pátio
     expect(put.body, contains('"valorHora":15.0'));
     expect(find.textContaining('Configuração salva'), findsOneWidget);
+  });
+
+  testWidgets('admin monta a tabela com 1ª hora + frações e diária, simula e salva', (tester) async {
+    await abrirApp(tester, perfil: 'admin');
+    await entrar(tester, 'Senha@123');
+    await tester.tap(find.byTooltip('Administração'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Preço'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Editar tabela de preço'));
+    await tester.pumpAndSettle();
+    expect(find.text('Tabela de preço'), findsOneWidget);
+    expect(find.text('Ficou 1h 30min'), findsOneWidget); // simulação inicial
+
+    await tester.tap(find.text('15 min').first);
+    await tester.pumpAndSettle();
+    expect(jsonDecode(enviadas.lastWhere((r) => r.url.path == '/api/admin/tabela-preco/simular').body)['minutosTolerancia'], 15);
+
+    await tester.tap(find.text('1º período + frações'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Primeiro período'), '60');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Valor'), '10,00');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Cada fração adicional'), '30');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Valor da fração'), '3,00');
+    await tester.tap(find.text('Diária máxima'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextFormField, 'Diária máxima'), '50,00');
+    await tester.tap(find.text('Simular'));
+    await tester.pumpAndSettle();
+
+    final simulacao = jsonDecode(enviadas.lastWhere((r) => r.url.path == '/api/admin/tabela-preco/simular').body) as Map<String, dynamic>;
+    expect((simulacao['semana'] as Map)['modo'], 'fracao');
+    expect((simulacao['semana'] as Map)['diariaMaxima'], 50.0);
+    expect(find.text('1ª hora R\$ 10,00 + 1 × 30 min de R\$ 3,00'), findsWidgets);
+
+    await tester.ensureVisible(find.text('Salvar tabela'));
+    await tester.tap(find.text('Salvar tabela'));
+    await tester.pumpAndSettle();
+
+    final tabela = jsonDecode(enviadas.singleWhere((r) => r.url.path == '/api/admin/tabela-preco').body) as Map<String, dynamic>;
+    final semana = tabela['semana'] as Map<String, dynamic>;
+    expect([semana['modo'], semana['primeiroPeriodoMinutos'], semana['valorPrimeiroPeriodo'], semana['fracaoMinutos'], semana['valorFracao']],
+        ['fracao', 60, 10.0, 30, 3.0]);
+    expect(tabela['fimDeSemana'], isNull);
+    expect(tabela['minutosTolerancia'], 15);
+    expect(find.textContaining('Tabela de preço salva'), findsOneWidget);
   });
 
   testWidgets('admin vê usuários e o próprio usuário marcado', (tester) async {
@@ -660,6 +713,7 @@ void main() {
     expect(jsonDecode(cobranca.body), {'codigoTicket': 'PKLOTS:K7M2Q9XD'});
     expect(find.text('Saída · ABC-1234'), findsOneWidget);
     expect(find.text('R\$\u00a063,75'), findsOneWidget);
+    expect(find.text('4h 15m × R\$ 15,00/h'), findsOneWidget); // como o valor foi calculado
 
     // Caixa fechado bloqueia o recebimento
     expect(find.text('Seu caixa está fechado. Abra o caixa para receber.'), findsOneWidget);

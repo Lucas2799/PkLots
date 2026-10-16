@@ -90,6 +90,7 @@ namespace PkLots.Application.Servicos
                     NumeroVaga = e.Vaga != null ? e.Vaga.Numero : null,
                     e.Patio.Nome,
                     e.Patio.ValorHora,
+                    e.Patio.TabelaPrecoJson,
                     e.Patio.MinutosTolerancia,
                     e.Patio.LarguraPapelMm
                 })
@@ -115,7 +116,8 @@ namespace PkLots.Application.Servicos
                 dados.ValorHora,
                 dados.MinutosTolerancia,
                 dados.LarguraPapelMm,
-                links.Ticket(token));
+                links.Ticket(token),
+                TabelaPreco.De(dados.TabelaPrecoJson, dados.ValorHora).Descricao());
         }
 
         // Chamado após registrar a entrada. Falha na impressora nunca desfaz a entrada.

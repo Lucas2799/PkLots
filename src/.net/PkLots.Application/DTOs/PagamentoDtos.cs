@@ -43,7 +43,8 @@ namespace PkLots.Application.DTOs
         IReadOnlyList<string> FormasAceitas,
         string? PixCopiaECola,
         string? Mensalista,
-        string? Aviso);
+        string? Aviso,
+        string? Detalhamento = null); // como o valor foi calculado
 
     public record ConfirmarSaidaRequisicao(string? FormaPagamento, decimal? ValorRecebido);
 

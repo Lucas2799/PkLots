@@ -100,6 +100,11 @@ class _CobrancaDialogoState extends State<_CobrancaDialogo> {
               child: Text(Formatadores.moeda(_c.valor),
                   style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: CoresPkLots.azulMarinho)),
             ),
+            if (_c.requerPagamento && _c.detalhamento != null)
+              Center(
+                child: Text(_c.detalhamento!,
+                    textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: CoresPkLots.textoSecundario)),
+              ),
             if (_c.requerPagamento)
               Center(
                 child: Text('Valor válido até ${Formatadores.hora(_c.expiraEm)}',

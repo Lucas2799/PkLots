@@ -114,6 +114,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CalculadoEm")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Detalhamento")
+                        .HasColumnType("text");
+
                     b.Property<string>("DuracaoFormatada")
                         .IsRequired()
                         .HasColumnType("text");
@@ -709,6 +712,9 @@ namespace PkLots.Infrastructure.Data.Migrations
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("TabelaPrecoJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<int>("VagasReservadasMensalistas")
                         .HasColumnType("integer");

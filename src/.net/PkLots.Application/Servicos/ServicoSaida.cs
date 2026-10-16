@@ -54,7 +54,7 @@ namespace PkLots.Application.Servicos
             foreach (var expirada in pendentes)
                 expirada.Situacao = SituacaoCobranca.Cancelada;
 
-            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, patio.ValorHora, patio.MinutosTolerancia);
+            var tarifa = CalculadoraTarifa.Calcular(entrada.DataHoraEntrada, agora, TabelaPreco.Do(patio), patio.MinutosTolerancia);
 
             // Mensalista: sem cobrança se entrou em dia ou está em dia agora; vencido paga como avulso
             var mensalista = await ServicoMensalistas.BuscarPorPlacaAsync(db, entrada.PatioId, entrada.Placa, ct);
@@ -81,7 +81,8 @@ namespace PkLots.Application.Servicos
                 ExpiraEm = agora + ValidadeCobranca,
                 Origem = origem,
                 Mensalista = mensalista?.Nome,
-                Aviso = aviso
+                Aviso = aviso,
+                Detalhamento = coberto ? null : tarifa.Detalhamento
             };
             cobranca.TxId = "PKL" + cobranca.Id.ToString("N")[..22].ToUpperInvariant();
             if (valor > 0 && config.AceitaPix && config.ChavePix is not null)
@@ -276,6 +277,6 @@ namespace PkLots.Application.Servicos
             new(c.Id, entrada.Id, entrada.Placa, entrada.Vaga?.Numero, patio.Nome, entrada.DataHoraEntrada, c.CalculadoEm, c.ExpiraEm,
                 c.DuracaoFormatada, patio.ValorHora, c.Valor, c.SituacaoPagamento, c.Valor > 0,
                 c.Valor > 0 ? ServicoConfiguracaoPagamento.FormasAceitas(config) : [],
-                c.PixCopiaECola, c.Mensalista, c.Aviso);
+                c.PixCopiaECola, c.Mensalista, c.Aviso, c.Detalhamento);
     }
 }

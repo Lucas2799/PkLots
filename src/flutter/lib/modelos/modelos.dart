@@ -479,6 +479,9 @@ class TicketEntrada {
   final int larguraPapelMm;
   final String conteudoQrCode;
 
+  /// Tabela de preço do pátio em texto (partes separadas por " · ")
+  final String? descricaoPreco;
+
   TicketEntrada({
     required this.entradaId,
     required this.codigo,
@@ -490,6 +493,7 @@ class TicketEntrada {
     required this.minutosTolerancia,
     required this.larguraPapelMm,
     required this.conteudoQrCode,
+    this.descricaoPreco,
   });
 
   factory TicketEntrada.deJson(Map<String, dynamic> json) => TicketEntrada(
@@ -503,6 +507,7 @@ class TicketEntrada {
         minutosTolerancia: json['minutosTolerancia'] as int,
         larguraPapelMm: json['larguraPapelMm'] as int,
         conteudoQrCode: json['conteudoQrCode'] as String,
+        descricaoPreco: json['descricaoPreco'] as String?,
       );
 }
 
@@ -797,6 +802,9 @@ class CobrancaSaida {
   final String? mensalista;
   final String? aviso;
 
+  /// Como o valor foi calculado (ex.: "1ª hora R$ 10,00 + 2 × 30 min de R$ 3,00")
+  final String? detalhamento;
+
   CobrancaSaida({
     required this.id,
     required this.entradaId,
@@ -815,6 +823,7 @@ class CobrancaSaida {
     this.pixCopiaECola,
     this.mensalista,
     this.aviso,
+    this.detalhamento,
   });
 
   factory CobrancaSaida.deJson(Map<String, dynamic> json) => CobrancaSaida(
@@ -835,6 +844,7 @@ class CobrancaSaida {
         pixCopiaECola: json['pixCopiaECola'] as String?,
         mensalista: json['mensalista'] as String?,
         aviso: json['aviso'] as String?,
+        detalhamento: json['detalhamento'] as String?,
       );
 }
 
@@ -1637,5 +1647,98 @@ class SituacaoCobranca {
         diasEmAtraso: json['diasEmAtraso'] as int,
         diasParaBloqueio: json['diasParaBloqueio'] as int,
         valorVencido: _numero(json['valorVencido']),
+      );
+}
+
+// ---------- Tabela de preço ----------
+
+/// Regras de cobrança de um conjunto de dias (semana ou fim de semana)
+class RegrasPreco {
+  static const hora = 'hora';
+  static const fracao = 'fracao';
+
+  final String modo; // hora: proporcional ao minuto; fracao: primeiro período + frações
+  final double valorHora;
+  final int primeiroPeriodoMinutos;
+  final double valorPrimeiroPeriodo;
+  final int fracaoMinutos;
+  final double valorFracao;
+  final double? diariaMaxima;
+  final double? valorPernoite;
+  final int inicioPernoite;
+  final int fimPernoite;
+
+  const RegrasPreco({
+    this.modo = hora,
+    this.valorHora = 15,
+    this.primeiroPeriodoMinutos = 60,
+    this.valorPrimeiroPeriodo = 0,
+    this.fracaoMinutos = 60,
+    this.valorFracao = 0,
+    this.diariaMaxima,
+    this.valorPernoite,
+    this.inicioPernoite = 20,
+    this.fimPernoite = 8,
+  });
+
+  factory RegrasPreco.deJson(Map<String, dynamic> json) => RegrasPreco(
+        modo: json['modo'] as String,
+        valorHora: _numero(json['valorHora']),
+        primeiroPeriodoMinutos: json['primeiroPeriodoMinutos'] as int,
+        valorPrimeiroPeriodo: _numero(json['valorPrimeiroPeriodo']),
+        fracaoMinutos: json['fracaoMinutos'] as int,
+        valorFracao: _numero(json['valorFracao']),
+        diariaMaxima: (json['diariaMaxima'] as num?)?.toDouble(),
+        valorPernoite: (json['valorPernoite'] as num?)?.toDouble(),
+        inicioPernoite: json['inicioPernoite'] as int,
+        fimPernoite: json['fimPernoite'] as int,
+      );
+
+  Map<String, dynamic> paraJson() => {
+        'modo': modo,
+        'valorHora': valorHora,
+        'primeiroPeriodoMinutos': primeiroPeriodoMinutos,
+        'valorPrimeiroPeriodo': valorPrimeiroPeriodo,
+        'fracaoMinutos': fracaoMinutos,
+        'valorFracao': valorFracao,
+        'diariaMaxima': diariaMaxima,
+        'valorPernoite': valorPernoite,
+        'inicioPernoite': inicioPernoite,
+        'fimPernoite': fimPernoite,
+      };
+}
+
+/// Tabela de preço do pátio (fimDeSemana nulo: sábado e domingo seguem a semana)
+class TabelaPreco {
+  final RegrasPreco semana;
+  final RegrasPreco? fimDeSemana;
+  final int minutosTolerancia;
+  final String descricao;
+
+  TabelaPreco({required this.semana, this.fimDeSemana, required this.minutosTolerancia, required this.descricao});
+
+  factory TabelaPreco.deJson(Map<String, dynamic> json) => TabelaPreco(
+        semana: RegrasPreco.deJson(json['semana'] as Map<String, dynamic>),
+        fimDeSemana: json['fimDeSemana'] == null ? null : RegrasPreco.deJson(json['fimDeSemana'] as Map<String, dynamic>),
+        minutosTolerancia: json['minutosTolerancia'] as int,
+        descricao: json['descricao'] as String,
+      );
+}
+
+class SimulacaoTarifa {
+  final double valor;
+  final String duracao;
+  final bool isento;
+  final bool fimDeSemana;
+  final String? detalhamento;
+
+  SimulacaoTarifa({required this.valor, required this.duracao, required this.isento, required this.fimDeSemana, this.detalhamento});
+
+  factory SimulacaoTarifa.deJson(Map<String, dynamic> json) => SimulacaoTarifa(
+        valor: _numero(json['valor']),
+        duracao: json['duracao'] as String,
+        isento: json['isento'] as bool,
+        fimDeSemana: json['fimDeSemana'] as bool,
+        detalhamento: json['detalhamento'] as String?,
       );
 }

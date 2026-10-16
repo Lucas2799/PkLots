@@ -167,6 +167,27 @@ class ClienteApi {
   Future<String> pixDeTeste() async =>
       ((await _post('/api/admin/pagamentos/pix-teste', null)) as Map<String, dynamic>)['pixCopiaECola'] as String;
 
+  // ---------- Tabela de preço (pátio escolhido no painel) ----------
+
+  Future<TabelaPreco> tabelaPreco() async => TabelaPreco.deJson(await _get('/api/admin/tabela-preco'));
+
+  Future<TabelaPreco> salvarTabelaPreco(RegrasPreco semana, RegrasPreco? fimDeSemana, {int? minutosTolerancia}) async =>
+      TabelaPreco.deJson(await _enviar('PUT', '/api/admin/tabela-preco', {
+        'semana': semana.paraJson(),
+        'fimDeSemana': fimDeSemana?.paraJson(),
+        'minutosTolerancia': minutosTolerancia,
+      }));
+
+  Future<SimulacaoTarifa> simularTarifa(RegrasPreco semana, RegrasPreco? fimDeSemana, DateTime entrada, DateTime saida,
+          {int? minutosTolerancia}) async =>
+      SimulacaoTarifa.deJson(await _post('/api/admin/tabela-preco/simular', {
+        'semana': semana.paraJson(),
+        'fimDeSemana': fimDeSemana?.paraJson(),
+        'entrada': entrada.toUtc().toIso8601String(),
+        'saida': saida.toUtc().toIso8601String(),
+        'minutosTolerancia': minutosTolerancia,
+      }));
+
   Future<ConfiguracaoPatio> configuracao() async => ConfiguracaoPatio.deJson(await _get('/api/admin/configuracao'));
 
   Future<ConfiguracaoPatio> salvarConfiguracao(String nome, double valorHora, int minutosTolerancia,

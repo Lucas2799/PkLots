@@ -43,7 +43,7 @@ namespace PkLots.Application.Servicos
                     m.ValidoAte is { } ate ? ate.DayNumber - hoje.DayNumber : null,
                     estacionados.Select(e =>
                     {
-                        var tarifa = CalculadoraTarifa.Calcular(e.DataHoraEntrada, agora, m.Patio.ValorHora, m.Patio.MinutosTolerancia);
+                        var tarifa = CalculadoraTarifa.Calcular(e.DataHoraEntrada, agora, TabelaPreco.Do(m.Patio), m.Patio.MinutosTolerancia);
                         // Mesma regra da saída: entrou em dia ou está em dia agora → sem cobrança
                         var coberto = e.MensalistaId is not null || emDia;
                         return new EstadiaAtualDto(e.Placa, e.DataHoraEntrada, tarifa.DuracaoFormatada, e.NumeroVaga,

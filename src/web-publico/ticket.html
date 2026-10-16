@@ -211,7 +211,9 @@
             : 'Saída registrada. Obrigado pela preferência!';
 
         info('ticket', 'Código', e.codigo, true);
-        info('ticket', 'Valor por hora', moeda.format(e.valorHora));
+        // Tabela de preço do pátio, uma regra por linha ("1ª hora R$ 10,00 · diária máx. R$ 50,00")
+        (e.descricaoPreco || moeda.format(e.valorHora) + ' por hora').split(' · ')
+          .forEach(function (parte, i) { info('ticket', i === 0 ? 'Preço' : '', parte); });
         if (e.minutosTolerancia > 0) info('ticket', 'Tolerância gratuita', e.minutosTolerancia + ' min');
 
         el('nota').textContent = ativa

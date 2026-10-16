@@ -28,6 +28,7 @@ namespace PkLots.Application
             services.AddScoped<ServicoRelatorios>();
             services.AddScoped<ServicoPlanos>();
             services.AddScoped<ServicoFaturas>();
+            services.AddScoped<ServicoTabelaPreco>();
             return services;
         }
     }

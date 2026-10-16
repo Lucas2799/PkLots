@@ -4,12 +4,13 @@ import 'package:provider/provider.dart';
 
 import '../../estado/administracao_provider.dart';
 import '../../modelos/modelos.dart';
+import '../../servicos/cliente_api.dart';
 import '../../servicos/excecao_api.dart';
 import '../../tema/cores.dart';
-import '../../util/formatadores.dart';
 import '../../widgets/estados_tela.dart';
+import 'tabela_preco_tela.dart';
 
-/// Nome do pátio, valor por hora e tolerância gratuita
+/// Nome do pátio, tabela de preço (resumo, com a tolerância) e mensalistas
 class AbaPreco extends StatefulWidget {
   const AbaPreco({super.key, required this.configuracao});
 
@@ -32,13 +33,10 @@ class _AbaPrecoState extends State<AbaPreco> {
 
   final _formulario = GlobalKey<FormState>();
   late final _nome = TextEditingController(text: widget.configuracao.nome);
-  late final _valorHora = TextEditingController(text: _formatarValor(widget.configuracao.valorHora));
-  late final _tolerancia = TextEditingController(text: '${widget.configuracao.minutosTolerancia}');
   late final _mensalidade = TextEditingController(text: _formatarValor(widget.configuracao.valorMensalidade));
   late final _reservadas = TextEditingController(text: '${widget.configuracao.vagasReservadasMensalistas}');
   bool _salvando = false;
-
-  static const _atalhosTolerancia = [0, 10, 15, 20, 30];
+  String? _descricaoPreco;
 
   static String _formatarValor(double valor) => valor.toStringAsFixed(2).replaceAll('.', ',');
 
@@ -47,14 +45,29 @@ class _AbaPrecoState extends State<AbaPreco> {
   @override
   void initState() {
     super.initState();
-    // Atualiza a simulação enquanto digita
-    _valorHora.addListener(() => setState(() {}));
-    _tolerancia.addListener(() => setState(() {}));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _carregarTabela());
+  }
+
+  Future<void> _carregarTabela() async {
+    try {
+      final tabela = await context.read<ClienteApi>().tabelaPreco();
+      if (mounted) setState(() => _descricaoPreco = tabela.descricao);
+    } on ExcecaoApi catch (e) {
+      if (mounted) setState(() => _descricaoPreco = e.mensagem);
+    }
+  }
+
+  Future<void> _editarTabela() async {
+    final salvou = await Navigator.of(context)
+        .push<bool>(MaterialPageRoute(builder: (_) => TabelaPrecoTela(nomePatio: widget.configuracao.nome)));
+    if (salvou != true || !mounted) return;
+    await _carregarTabela();
+    if (mounted) await context.read<AdministracaoProvider>().carregar(); // o valor/hora e a tolerância podem ter mudado
   }
 
   @override
   void dispose() {
-    for (final c in [_nome, _valorHora, _tolerancia, _mensalidade, _reservadas]) {
+    for (final c in [_nome, _mensalidade, _reservadas]) {
       c.dispose();
     }
     super.dispose();
@@ -66,7 +79,7 @@ class _AbaPrecoState extends State<AbaPreco> {
     try {
       await context
           .read<AdministracaoProvider>()
-          .salvarConfiguracao(_nome.text.trim(), lerValor(_valorHora.text)!, int.parse(_tolerancia.text),
+          .salvarConfiguracao(_nome.text.trim(), widget.configuracao.valorHora, widget.configuracao.minutosTolerancia,
               valorMensalidade: lerValor(_mensalidade.text) ?? 0, vagasReservadasMensalistas: int.parse(_reservadas.text));
       if (mounted) mostrarAviso(context, 'Configuração salva. Vale para as próximas saídas.');
     } on ExcecaoApi catch (e) {
@@ -76,15 +89,8 @@ class _AbaPrecoState extends State<AbaPreco> {
     }
   }
 
-  /// Mesma regra da API: arredonda para cima ao minuto; dentro da tolerância é grátis
-  static double _simular(int minutos, double valorHora, int tolerancia) =>
-      tolerancia > 0 && minutos <= tolerancia ? 0 : ((minutos / 60) * valorHora * 100).roundToDouble() / 100;
-
   @override
   Widget build(BuildContext context) {
-    final valorHora = lerValor(_valorHora.text) ?? 0;
-    final tolerancia = int.tryParse(_tolerancia.text) ?? 0;
-
     return Form(
       key: _formulario,
       child: ListView(padding: const EdgeInsets.all(16), children: [
@@ -98,57 +104,26 @@ class _AbaPrecoState extends State<AbaPreco> {
                 decoration: const InputDecoration(labelText: 'Nome do pátio'),
                 validator: (v) => v == null || v.trim().isEmpty ? 'Informe o nome do pátio' : null,
               ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _valorHora,
-                decoration: const InputDecoration(labelText: 'Valor por hora', prefixText: 'R\$ ', hintText: 'Ex.: 12,50'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[\d.,]'))],
-                validator: (v) {
-                  final valor = lerValor(v ?? '');
-                  if (valor == null) return 'Informe um valor, ex.: 15,00';
-                  if (valor <= 0 || valor > 1000) return 'O valor deve ser maior que zero e até R\$ 1.000,00';
-                  return null;
-                },
+              const SizedBox(height: 18),
+              const Text('Tabela de preço', style: TextStyle(fontWeight: FontWeight.w600, color: CoresPkLots.azulMarinho)),
+              const SizedBox(height: 6),
+              Text(_descricaoPreco ?? 'Carregando...', style: const TextStyle(color: CoresPkLots.textoSecundario)),
+              const SizedBox(height: 4),
+              Text(
+                  'Tolerância gratuita: ${widget.configuracao.minutosTolerancia == 0 ? 'nenhuma' : '${widget.configuracao.minutosTolerancia} min'}',
+                  style: const TextStyle(color: CoresPkLots.textoSecundario)),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _editarTabela,
+                  icon: const Icon(Icons.tune),
+                  label: const Text('Editar tabela de preço'),
+                ),
               ),
               const SizedBox(height: 6),
-              const Text('A cobrança é proporcional ao tempo, arredondado para cima ao minuto.',
+              const Text('Tolerância, por hora ou 1º período + frações, diária máxima, pernoite e preço de fim de semana, com simulação.',
                   style: TextStyle(fontSize: 12, color: CoresPkLots.textoSuave)),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const TituloSecao('Tolerância gratuita', icone: Icons.timer_outlined),
-              const Text(
-                'Quem sair dentro da tolerância não paga. Passou dela, é cobrado o tempo todo.',
-                style: TextStyle(color: CoresPkLots.textoSecundario),
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: _tolerancia,
-                decoration: const InputDecoration(labelText: 'Tolerância', suffixText: 'minutos'),
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (v) {
-                  final minutos = int.tryParse(v ?? '');
-                  if (minutos == null) return 'Informe os minutos (0 desativa)';
-                  if (minutos > 240) return 'Máximo de 240 minutos';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 10),
-              Wrap(spacing: 8, children: [
-                for (final minutos in _atalhosTolerancia)
-                  ChoiceChip(
-                    label: Text(minutos == 0 ? 'Sem tolerância' : '$minutos min'),
-                    selected: tolerancia == minutos,
-                    onSelected: (_) => _tolerancia.text = '$minutos',
-                  ),
-              ]),
             ]),
           ),
         ),
@@ -196,28 +171,6 @@ class _AbaPrecoState extends State<AbaPreco> {
               const SizedBox(height: 6),
               const Text('Vagas reservadas não aparecem como livres para avulsos enquanto não forem usadas por mensalistas.',
                   style: TextStyle(fontSize: 12, color: CoresPkLots.textoSuave)),
-            ]),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              const TituloSecao('Simulação', icone: Icons.calculate_outlined),
-              for (final (rotulo, minutos) in [('10 min', 10), ('16 min', 16), ('30 min', 30), ('1h', 60), ('2h 30min', 150)])
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(children: [
-                    Expanded(child: Text('Ficou $rotulo', style: const TextStyle(color: CoresPkLots.textoSecundario))),
-                    Text(
-                      _simular(minutos, valorHora, tolerancia) == 0 && valorHora > 0
-                          ? 'Grátis'
-                          : Formatadores.moeda(_simular(minutos, valorHora, tolerancia)),
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: CoresPkLots.azulMarinho),
-                    ),
-                  ]),
-                ),
             ]),
           ),
         ),

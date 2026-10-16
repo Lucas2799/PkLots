@@ -142,6 +142,8 @@ namespace PkLots.Infrastructure.Data
 
             modelBuilder.Entity<Patio>()
                 .Property(p => p.ValorMensalidade).HasPrecision(10, 2);
+            modelBuilder.Entity<Patio>()
+                .Property(p => p.TabelaPrecoJson).HasColumnType("jsonb");
 
             // Pagamentos e caixa
             // Planos são da plataforma (sem filtro); a assinatura é da empresa

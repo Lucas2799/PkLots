@@ -118,6 +118,7 @@ namespace PkLots.Application.Tests
         public ServicoRelatorios Relatorios => new(Db, ContextoPatio, Relogio);
         public ServicoPlanos Planos => new(Db, ContextoPatio, Relogio);
         public ServicoFaturas Faturas => new(Db, ContextoPatio, Links, Relogio);
+        public ServicoTabelaPreco TabelaPreco => new(Db, ContextoPatio, Relogio);
         public ImpressoraFalsa Impressora { get; } = new();
         public ServicoImpressao Impressao =>
             new(Db, ContextoPatio, Impressora, Links, Relogio, Microsoft.Extensions.Logging.Abstractions.NullLogger<ServicoImpressao>.Instance);

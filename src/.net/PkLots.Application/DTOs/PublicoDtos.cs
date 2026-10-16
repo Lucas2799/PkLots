@@ -15,7 +15,8 @@ namespace PkLots.Application.DTOs
         bool CobertoPorMensalidade,
         DateTime? DataHoraSaida,
         string? FormaPagamento,
-        DateTime ConsultadoEm);
+        DateTime ConsultadoEm,
+        string? DescricaoPreco = null);
 
     // Convite de mensalista (antes de aceitar): placas mascaradas para a pessoa conferir se é ela
     public record ConviteMensalistaDto(
