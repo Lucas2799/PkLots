@@ -15,7 +15,11 @@ namespace PkLots.Application.Tests
     // Por padrão os serviços rodam como admin dessa empresa, no pátio criado.
     public sealed class Cenario : IDisposable
     {
+        // Banco de cada cenário: em memória por padrão; os testes de integração trocam por um PostgreSQL real
+        public static Func<BancoDeTeste>? FabricaBanco { get; set; }
+
         private readonly DbContextOptions<PkLotsDbContext> _opcoes;
+        private readonly BancoDeTeste? _banco;
 
         public static readonly DateTimeOffset Inicio = new(2026, 9, 30, 13, 30, 45, TimeSpan.Zero);
 
@@ -33,7 +37,8 @@ namespace PkLots.Application.Tests
 
         public Cenario(int vagasPorFileira = 10)
         {
-            _opcoes = new DbContextOptionsBuilder<PkLotsDbContext>()
+            _banco = FabricaBanco?.Invoke();
+            _opcoes = _banco?.Opcoes ?? new DbContextOptionsBuilder<PkLotsDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
             Db = new PkLotsDbContext(_opcoes);
@@ -44,17 +49,28 @@ namespace PkLots.Application.Tests
             Patio = new Patio { EmpresaId = Empresa.Id, Nome = "Pátio Teste", ValorHora = 15.00m, CriadoEm = criacao };
             Db.Empresas.Add(Empresa);
             Db.Patios.Add(Patio);
-            // Como a migration: plano Cortesia (sem limites) e a empresa do cenário nele
-            Db.Planos.Add(new Plano
-            {
-                Id = RecursosPlano.PlanoCortesiaId, Nome = "Cortesia", PrecoPorPatio = 0, Recursos = [.. RecursosPlano.Todos], CriadoEm = criacao
-            });
+            // Como a migration: plano Cortesia (sem limites) e a empresa do cenário nele (no PostgreSQL a migration já criou)
+            if (!Db.Planos.Any(p => p.Id == RecursosPlano.PlanoCortesiaId))
+                Db.Planos.Add(new Plano
+                {
+                    Id = RecursosPlano.PlanoCortesiaId, Nome = "Cortesia", PrecoPorPatio = 0, Recursos = [.. RecursosPlano.Todos], CriadoEm = criacao
+                });
             Db.Assinaturas.Add(new Assinatura { EmpresaId = Empresa.Id, PlanoId = RecursosPlano.PlanoCortesiaId, CriadoEm = criacao });
+            // Quem usa os serviços precisa existir no banco (no PostgreSQL caixas e pagamentos apontam para ele).
+            // Conta inativa e fora da empresa: não entra em listas, limites nem avisos
+            Db.Usuarios.Add(new Usuario
+            {
+                Id = UsuarioAtualId, Email = "cenario@pklots.teste", SenhaHash = "-", NomeCompleto = "Usuário do Cenário",
+                Perfil = Perfis.Motorista, Ativo = false, CriadoEm = criacao
+            });
             foreach (var fileira in new[] { 'A', 'B', 'C' })
                 for (var i = 1; i <= vagasPorFileira; i++)
                     Db.Vagas.Add(new Vaga { PatioId = Patio.Id, Numero = $"{fileira}{i}", Fileira = fileira, Indice = i });
             Db.SaveChanges();
         }
+
+        // Outra conexão com o mesmo banco, como uma segunda requisição (testes de concorrência)
+        public PkLotsDbContext NovoDb() => new(_opcoes);
 
         public IContextoPatio ContextoPatio =>
             new ContextoPatioTeste(Db, PerfilAtual is Perfis.Admin or Perfis.Operador ? Empresa.Id : null, UsuarioAtualId, PerfilAtual, PatioEscolhidoId);
@@ -153,8 +169,15 @@ namespace PkLots.Application.Tests
             return usuario;
         }
 
-        public void Dispose() => Db.Dispose();
+        public void Dispose()
+        {
+            Db.Dispose();
+            _banco?.Descartar();
+        }
     }
+
+    // Banco de um cenário e como descartá-lo ao final do teste
+    public record BancoDeTeste(DbContextOptions<PkLotsDbContext> Opcoes, Action Descartar);
 
     // Mesmas regras do ContextoPatio real (admin: pátios da empresa; operador: vinculados), sem HTTP
     public class ContextoPatioTeste(PkLotsDbContext db, Guid? empresaId, Guid? usuarioId, string? perfil, Guid? patioEscolhido) : IContextoPatio

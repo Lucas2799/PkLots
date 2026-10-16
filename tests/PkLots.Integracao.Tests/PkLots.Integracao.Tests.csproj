@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <!-- Os mesmos testes do projeto de unidade, agora contra um PostgreSQL real (Testcontainers) -->
+  <ItemGroup>
+    <Compile Include="..\PkLots.Application.Tests\**\*.cs" Exclude="..\PkLots.Application.Tests\bin\**;..\PkLots.Application.Tests\obj\**" LinkBase="Unidade" />
+  </ItemGroup>
+
+  <!-- Sem limite de threads do xUnit: os testes que esperam o container subir não seguram os demais -->
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" Version="8.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
+    <PackageReference Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageReference Include="xunit" Version="2.4.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\.net\PkLots.Application\PkLots.Application.csproj" />
+    <ProjectReference Include="..\..\src\.net\PkLots.Infrastructure\PkLots.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

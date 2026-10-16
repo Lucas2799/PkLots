@@ -39,7 +39,7 @@ namespace PkLots.Application.Tests
             await cenario.Autenticacao.LoginAsync(Login("Correta123"));
             await Assert.ThrowsAsync<ExcecaoNaoAutorizado>(() => cenario.Autenticacao.LoginAsync(Login("errada1")));
 
-            Assert.Equal(1, (await cenario.Db.Usuarios.SingleAsync()).FalhasLogin);
+            Assert.Equal(1, (await cenario.Db.Usuarios.SingleAsync(u => u.Email == "op@pklots.local")).FalhasLogin);
         }
 
         [Fact]
@@ -69,7 +69,7 @@ namespace PkLots.Application.Tests
             var token = await cenario.Autenticacao.TrocarSenhaAsync(usuario.Id, new TrocarSenhaRequisicao("Temporaria1", "MinhaNova2026"));
 
             Assert.False(token.DeveTrocarSenha);
-            Assert.False((await cenario.Db.Usuarios.SingleAsync()).DeveTrocarSenha);
+            Assert.False((await cenario.Db.Usuarios.SingleAsync(u => u.Email == "op@pklots.local")).DeveTrocarSenha);
             await cenario.Autenticacao.LoginAsync(new("op@pklots.local", "MinhaNova2026"));
         }
 

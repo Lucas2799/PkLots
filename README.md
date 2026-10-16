@@ -393,10 +393,20 @@ Revise a migration gerada antes de aplicar (renomeações e colunas novas com da
 ### Testes
 
 ```bash
-dotnet test tests/PkLots.Application.Tests             # regras de negócio (.NET)
+dotnet test tests/PkLots.Application.Tests             # regras de negócio (.NET, banco em memória, ~2 s)
+dotnet test tests/PkLots.Integracao.Tests              # as mesmas regras + concorrência e migrations num PostgreSQL real
 cd src/flutter && flutter analyze && flutter test       # app
 cd src/python && pip install -r requirements-dev.txt && pytest   # validação de placas
 ```
+
+**Testes de integração (Testcontainers).** Sobem um PostgreSQL 16 descartável (a mesma imagem da produção), aplicam as migrations
+num banco modelo e dão a cada teste uma cópia limpa dele; o container é removido no fim. Pegam o que o banco em memória não pega:
+consultas que o PostgreSQL não traduz, chaves estrangeiras, índices únicos, `jsonb` e concorrência (duas entradas da mesma placa,
+duas confirmações da mesma saída, dois carros disputando a mesma vaga). Também conferem que as migrations cobrem o modelo
+(esqueceu o `dotnet ef migrations add`, o teste falha) e que a última migration desfaz e refaz.
+
+Precisam de Docker ou Podman. Com Podman, ative o socket do usuário uma vez: `systemctl --user enable --now podman.socket`
+(os testes o encontram sozinhos; em outro caminho, defina `DOCKER_HOST`). Rode-os antes de cada deploy.
 
 ---
 
@@ -421,6 +431,6 @@ PkLots/
 │   ├── python/                  # microsserviço LPR (Flask + fast-alpr)
 │   ├── web-publico/             # página pública do ticket (HTML leve, sem Flutter)
 │   └── flutter/                 # app web/Android (mensalista, gestão, administração, relatórios, plataforma)
-├── tests/                       # testes .NET
+├── tests/                       # testes .NET (unidade e integração com PostgreSQL)
 └── docs/                        # documentação do projeto
 ```

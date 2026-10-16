@@ -282,8 +282,8 @@ namespace PkLots.Application.Tests
         public async Task Relatorio_do_dia_admin_ve_todos_e_operador_so_o_seu()
         {
             using var cenario = new Cenario();
-            var ana = Guid.NewGuid();
-            var bruno = Guid.NewGuid();
+            var ana = cenario.CriarUsuario("ana@pklots.local", "Senha@123", Perfis.Admin).Id;
+            var bruno = cenario.CriarUsuario("bruno@pklots.local", "Senha@123", Perfis.Admin).Id;
             cenario.PerfilAtual = Perfis.Admin;
             cenario.UsuarioAtualId = ana;
             await cenario.Caixa.AbrirAsync(new AbrirCaixaRequisicao(10m));

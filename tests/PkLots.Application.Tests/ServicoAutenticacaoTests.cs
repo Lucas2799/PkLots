@@ -17,7 +17,7 @@ namespace PkLots.Application.Tests
 
             Assert.Equal(Perfis.Admin, token.Perfil);
             Assert.Equal(86400, token.ExpiraEm);
-            Assert.Equal(Cenario.Inicio.UtcDateTime, (await cenario.Db.Usuarios.SingleAsync()).UltimoLogin);
+            Assert.Equal(Cenario.Inicio.UtcDateTime, (await cenario.Db.Usuarios.SingleAsync(u => u.Email == "admin@pklots.local")).UltimoLogin);
         }
 
         [Theory]
