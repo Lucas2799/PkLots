@@ -17,7 +17,7 @@ namespace PkLots.Application.Tests
         {
             var cenario = new Cenario();
             cenario.CriarUsuario("dono@empresa.com", "x", Perfis.Admin);
-            var plano = await cenario.Planos.CriarAsync(new SalvarPlanoRequisicao("Profissional", null, preco, null, null, null, []));
+            var plano = await cenario.Planos.CriarAsync(new SalvarPlanoRequisicao("Plano de teste", null, preco, null, null, null, []));
             await cenario.Planos.SalvarAssinaturaAsync(SuperAdmin, cenario.Empresa.Id,
                 new SalvarAssinaturaRequisicao(plano.Id, null, diaVencimento, testeAte, null));
             return cenario;
@@ -35,7 +35,7 @@ namespace PkLots.Application.Tests
             // Setembro venceu (05/09) antes de virar cliente; outubro (05/10) já está na janela de 10 dias
             var fatura = Assert.Single(await cenario.Faturas.ListarAsync(null, null));
             Assert.Equal((new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 5), 200m), (fatura.Competencia, fatura.Vencimento, fatura.Valor));
-            Assert.Equal((2, 100m, "Profissional", SituacaoFatura.Aberta), (fatura.PatiosCobrados, fatura.PrecoPorPatio, fatura.NomePlano, fatura.Situacao));
+            Assert.Equal((2, 100m, "Plano de teste", SituacaoFatura.Aberta), (fatura.PatiosCobrados, fatura.PrecoPorPatio, fatura.NomePlano, fatura.Situacao));
             var email = await cenario.Db.EmailsPendentes.SingleAsync();
             Assert.Equal("dono@empresa.com", email.Para);
             Assert.Contains("R$ 200,00", email.CorpoTexto);

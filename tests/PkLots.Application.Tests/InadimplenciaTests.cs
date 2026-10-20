@@ -15,7 +15,7 @@ namespace PkLots.Application.Tests
         {
             var cenario = new Cenario();
             cenario.CriarUsuario("dono@empresa.com", "x", Perfis.Admin);
-            var plano = await cenario.Planos.CriarAsync(new SalvarPlanoRequisicao("Profissional", null, 100m, null, null, null, [.. RecursosPlano.Todos]));
+            var plano = await cenario.Planos.CriarAsync(new SalvarPlanoRequisicao("Plano de teste", null, 100m, null, null, null, [.. RecursosPlano.Todos]));
             await cenario.Planos.SalvarAssinaturaAsync(SuperAdmin, cenario.Empresa.Id, new SalvarAssinaturaRequisicao(plano.Id, null, 5, null, null));
             await cenario.Faturas.EmitirMensalidadesAsync();
             return cenario;
@@ -75,7 +75,7 @@ namespace PkLots.Application.Tests
         public async Task Carencia_segue_a_do_plano()
         {
             using var cenario = await CenarioComFaturaAsync();
-            var plano = (await cenario.Planos.ListarAsync()).Single(p => p.Nome == "Profissional");
+            var plano = (await cenario.Planos.ListarAsync()).Single(p => p.Nome == "Plano de teste");
             await cenario.Planos.AtualizarAsync(plano.Id, new SalvarPlanoRequisicao(plano.Nome, null, 100m, null, null, null, [], DiasCarencia: 0));
 
             Dia(cenario, 6);
@@ -111,7 +111,7 @@ namespace PkLots.Application.Tests
             var relatorio = await cenario.Relatorios.ObterDaPlataformaAsync(null, null);
             Assert.Equal((100m, 100m, 1), (relatorio.Totais.ReceitaRecorrente, relatorio.Totais.ValorEmAberto, relatorio.Totais.EmpresasInadimplentes));
             var empresa = relatorio.Empresas.Single();
-            Assert.Equal(("Profissional", 100m, SituacaoAssinatura.Bloqueada), (empresa.NomePlano, empresa.MensalidadePkLots, empresa.SituacaoCobranca));
+            Assert.Equal(("Plano de teste", 100m, SituacaoAssinatura.Bloqueada), (empresa.NomePlano, empresa.MensalidadePkLots, empresa.SituacaoCobranca));
         }
     }
 }

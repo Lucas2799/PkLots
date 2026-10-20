@@ -156,6 +156,17 @@ O superadmin cadastra os **planos** em *Plataforma → Planos* (tudo editável):
 - **Limites e recursos** valem na hora. O que passa do limite é recusado com mensagem clara e o app esconde os recursos fora do plano. Baixar de plano não apaga nada: só impede criar além do novo limite.
 - **Empresas já existentes** foram colocadas no plano **Cortesia** (tudo liberado, sem limites, sem cobrança).
 
+Planos que já vêm cadastrados (ponto de partida, edite à vontade). Entrada/saída, caixa, PIX, ticket em PDF, painel e auditoria estão em todos:
+
+| Plano | Por pátio/mês | Pátios | Vagas/pátio | Usuários | Recursos | Carência |
+|---|---|---|---|---|---|---|
+| Essencial | R$ 89,90 | 1 | 50 | 3 | Mensalistas | 7 dias |
+| Profissional | R$ 159,90 | 3 | 150 | 10 | Mensalistas, app do mensalista, relatórios, impressora de rede | 7 dias |
+| Rede | R$ 239,90 | sem limite | sem limite | sem limite | Tudo, inclusive leitura automática de placa | 10 dias |
+| Cortesia | R$ 0 | sem limite | sem limite | sem limite | Tudo | 7 dias |
+
+Para um cliente piloto, use o plano certo com **período de teste** e/ou **preço negociado** na assinatura, em vez de criar um plano à parte.
+
 **Faturas** (*Plataforma → Faturas*):
 - A mensalidade é emitida sozinha **10 dias antes do vencimento** (verificação a cada hora; o botão "Emitir mensalidades agora" força a emissão). Não há fatura no período de teste nem em plano gratuito.
 - Também dá para lançar **cobrança avulsa** (ex.: taxa de implantação).
